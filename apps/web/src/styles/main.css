@@ -1,0 +1,266 @@
+:root {
+  --bg: #f4f5fb;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --border: #e6e8f0;
+  --text: #1a2233;
+  --text-muted: #667085;
+  --text-soft: #98a2b3;
+
+  --brand: #4f46e5;
+  --brand-strong: #4338ca;
+  --brand-soft: #eef2ff;
+
+  --sidebar-bg: #0f1526;
+  --sidebar-bg-2: #161d33;
+  --sidebar-text: #c3cad9;
+  --sidebar-active: #ffffff;
+
+  --success: #16a34a;
+  --success-soft: #dcfce7;
+  --warning: #d97706;
+  --warning-soft: #fef3c7;
+  --info: #2563eb;
+  --info-soft: #dbeafe;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+
+  --font: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ---- Layout helpers ---- */
+.page {
+  padding: 32px 40px 56px;
+  max-width: 1180px;
+}
+
+.page__title {
+  font-size: 26px;
+}
+
+.page__subtitle {
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.section {
+  margin-top: 32px;
+}
+
+.section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.section__title {
+  font-size: 17px;
+}
+
+.section__link {
+  font-size: 13px;
+  color: var(--brand);
+  font-weight: 600;
+}
+
+/* ---- Card ---- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.grid {
+  display: grid;
+  gap: 18px;
+}
+
+.grid--stats {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.grid--cards {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.grid--2 {
+  grid-template-columns: 1.4fr 1fr;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .grid--2 {
+    grid-template-columns: 1fr;
+  }
+  .page {
+    padding: 24px 20px 48px;
+  }
+}
+
+/* ---- Badges / pills ---- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.badge--dot::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  margin-right: 7px;
+}
+
+.badge--working {
+  color: var(--success);
+  background: var(--success-soft);
+}
+.badge--available {
+  color: var(--info);
+  background: var(--info-soft);
+}
+.badge--hiring {
+  color: var(--text-soft);
+  background: var(--surface-2);
+}
+.badge--active {
+  color: var(--success);
+  background: var(--success-soft);
+}
+.badge--planned {
+  color: var(--info);
+  background: var(--info-soft);
+}
+.badge--paused {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+.badge--completed {
+  color: var(--brand);
+  background: var(--brand-soft);
+}
+
+/* Plaquinhas flutuantes do escritório 3D (CSS2D labels) */
+.office-tag {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 6px 16px rgba(16, 24, 40, 0.14);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateY(-6px);
+  user-select: none;
+}
+
+.office-tag__title {
+  display: flex;
+  align-items: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.office-tag__emoji {
+  margin-right: 5px;
+  font-size: 14px;
+}
+
+.office-tag__status {
+  display: flex;
+  align-items: center;
+  font-size: 10.5px;
+  color: var(--text-soft);
+  margin-top: 1px;
+}
+
+.office-tag__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  margin-right: 5px;
+  animation: tagpulse 1.6s ease-in-out infinite;
+}
+
+@keyframes tagpulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+}
+
+.office-tag--working {
+  border-color: var(--success);
+}
+
+.office-tag--working .office-tag__status {
+  color: var(--success);
+}

@@ -1,0 +1,32 @@
+{
+  "name": "@operaia/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:arch": "vitest run architecture-guard"
+  },
+  "dependencies": {
+    "@pixi/tilemap": "^5.0.2",
+    "easystarjs": "^0.4.4",
+    "pixi-viewport": "^6.0.3",
+    "pixi.js": "^8.19.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/easystarjs": "^0.3.4",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/test-utils": "^2.4.6",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.7.3",
+    "vite": "^7.0.0",
+    "vitest": "^3.0.5",
+    "vue-tsc": "^2.2.0"
+  }
+}
