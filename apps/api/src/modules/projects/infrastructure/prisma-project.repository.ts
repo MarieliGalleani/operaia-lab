@@ -30,6 +30,11 @@ export class PrismaProjectRepository implements ProjectRepository {
     return row ? toDomain(row) : null;
   }
 
+  async findByName(name: string): Promise<Project | null> {
+    const row = await prisma.project.findFirst({ where: { name } });
+    return row ? toDomain(row) : null;
+  }
+
   async findAll(pagination?: Pagination): Promise<Project[]> {
     const rows = await prisma.project.findMany({
       orderBy: { createdAt: "desc" },

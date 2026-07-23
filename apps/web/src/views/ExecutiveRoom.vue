@@ -9,7 +9,10 @@ import type { Workflow } from "@/types/office";
 const { employees, projects, activities, summary, fetchWorkflow } = useOffice();
 
 const ceo = computed(() =>
-  employees.value.find((employee) => employee.role === "CEO"),
+  employees.value.find(
+    (employee) =>
+      employee.specialization === "MANAGEMENT" && employee.active,
+  ),
 );
 
 const featured = computed(
@@ -20,10 +23,14 @@ const featured = computed(
 
 const workflow = ref<Workflow | undefined>(undefined);
 
-onMounted(async () => {
+async function refreshWorkflow(): Promise<void> {
   if (featured.value) {
     workflow.value = await fetchWorkflow(featured.value.id);
   }
+}
+
+onMounted(async () => {
+  await refreshWorkflow();
 });
 </script>
 
@@ -52,7 +59,7 @@ onMounted(async () => {
             especialistas certos e devolve um relatório executivo.
           </p>
         </div>
-        <ExecutiveChat :show-header="false" />
+        <ExecutiveChat :show-header="false" @replied="refreshWorkflow" />
       </div>
 
       <aside class="room__side">

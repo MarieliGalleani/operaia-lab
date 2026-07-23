@@ -10,8 +10,8 @@ const STATUS_LABEL: Record<Project["status"], string> = {
 /**
  * Gera a resposta executiva do CEO — Opera a partir do estado atual.
  *
- * Deterministico e sem IA: no futuro esta funcao sera substituida por uma
- * chamada real ao CEO — Opera via API (Employee Activation Layer).
+ * APENAS para mocks/testes isolados (`createMockGateways` / MockOfficeService).
+ * O caminho principal do escritorio usa POST /employees/:id/ask → MissionOrchestrator.
  */
 export function buildCeoAnswer(
   _question: string,

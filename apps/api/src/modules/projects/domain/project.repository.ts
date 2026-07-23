@@ -22,6 +22,7 @@ export interface UpdateProjectInput {
 export interface ProjectRepository {
   create(input: CreateProjectInput): Promise<Project>;
   findById(id: UUID): Promise<Project | null>;
+  findByName(name: string): Promise<Project | null>;
   findAll(pagination?: Pagination): Promise<Project[]>;
   update(id: UUID, input: UpdateProjectInput): Promise<Project>;
   delete(id: UUID): Promise<void>;

@@ -14,6 +14,23 @@ const envSchema = z.object({
     .enum(["fatal", "error", "warn", "info", "debug", "trace"])
     .default("info"),
   DATABASE_URL: z.string().url(),
+
+  /** Provedor de LLM da Equipe Digital. */
+  LLM_PROVIDER: z
+    .enum(["gemini", "openai", "anthropic", "openrouter", "deterministic"])
+    .default("gemini"),
+  LLM_MODEL: z.string().default("gemini-2.5-flash"),
+  /** CSV de fallbacks, ex.: "openai,anthropic" (ignorados se nao implementados). */
+  LLM_FALLBACK_PROVIDERS: z.string().optional(),
+  LLM_MAX_TOKENS_CLAMP: z.coerce.number().int().positive().default(8192),
+  LLM_OBSERVABILITY: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((value) => value === "true"),
+  GEMINI_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

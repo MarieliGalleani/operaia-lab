@@ -6,6 +6,10 @@ import { formatTime, greeting } from "@/utils/format";
 
 withDefaults(defineProps<{ showHeader?: boolean }>(), { showHeader: true });
 
+const emit = defineEmits<{
+  replied: [];
+}>();
+
 const suggestions = [
   "Opera, como estão meus projetos?",
   "Quais são os riscos agora?",
@@ -55,6 +59,7 @@ async function send(text: string): Promise<void> {
   const reply = await officeService.askCeo(question);
   messages.value.push(reply);
   sending.value = false;
+  emit("replied");
   await scrollToEnd();
 }
 </script>

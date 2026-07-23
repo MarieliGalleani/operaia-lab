@@ -12,5 +12,9 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // Testes unitarios do web usam mock; caminho principal do app e HTTP.
+    env: {
+      VITE_USE_REAL_API: "false",
+    },
   },
 });

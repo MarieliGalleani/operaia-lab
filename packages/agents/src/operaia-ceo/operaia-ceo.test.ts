@@ -147,4 +147,50 @@ describe("OperaIA CEO (migrado para o Employee Framework)", () => {
     expect(output.decision.delegations).toHaveLength(0);
     expect(output.quality.passed).toBe(true);
   });
+
+  it("consolida entregas de especialistas sem redelegar", async () => {
+    const llm = new StubLLM("Consolidei o plano da Mag para o usuario.");
+    const ceo = createCeo(llm);
+
+    const output = await ceo.work({
+      briefing: {
+        ...briefing([
+          {
+            id: "t1",
+            title: "Implementar autenticacao",
+            status: TaskStatus.TODO,
+            impact: 5,
+            urgency: 5,
+          },
+        ]),
+        additional: {
+          roadmap: [],
+          sessions: [],
+          delegationOutcomes: [
+            {
+              matched: true,
+              specialization: Specialization.SOFTWARE_ENGINEERING,
+              reason: "Implementar",
+              employeeId: "cto-mag",
+              report: {
+                summary: "Plano tecnico da Mag.",
+                analysis: "Analise tecnica.",
+                plan: ["1. Revisar arquitetura"],
+                recommendations: ["Quebrar em tarefas"],
+                risks: ["Dependencia de auth"],
+                nextActions: ["Implementar: autenticacao"],
+              },
+              qualityPassed: true,
+            },
+          ],
+        },
+      },
+    });
+
+    expect(output.decision.delegations).toHaveLength(0);
+    expect(output.decision.analyzed).toContain("consolidacao");
+    expect(output.report.summary).toContain("Consolidei");
+    expect(output.report.risks).toContain("Dependencia de auth");
+    expect(llm.lastMessages[1]?.content).toContain("consolidacao");
+  });
 });

@@ -13,10 +13,8 @@ import type { OfficeGateways } from "@/data/gateways/office-gateways";
 import { createHttpClient, type HttpClient } from "./http-client";
 
 /**
- * Adapters HTTP contra a API real. As sessões já existem hoje
- * (`/workspaces/:id/sessions`); os demais endpoints seguem o mesmo padrão e
- * serão habilitados quando expostos pelo backend — a troca é apenas ligar
- * `VITE_USE_REAL_API=true`, sem alterar componentes.
+ * Adapters HTTP contra a API real da Equipe Digital.
+ * Caminho principal do escritorio virtual — sem mocks.
  */
 export function createHttpGateways(
   client: HttpClient = createHttpClient(),
@@ -25,10 +23,22 @@ export function createHttpGateways(
     workspaces: {
       listWorkspaces: () => client.get<WorkspaceDTO[]>("/workspaces"),
       getWorkspace: (id) => client.get<WorkspaceDTO>(`/workspaces/${id}`),
-      listTasks: (workspaceId) =>
-        client.get<WorkspaceTaskDTO[]>(
-          workspaceId ? `/workspaces/${workspaceId}/tasks` : "/tasks",
-        ),
+      listTasks: async (workspaceId) => {
+        if (workspaceId) {
+          return client.get<WorkspaceTaskDTO[]>(
+            `/workspaces/${workspaceId}/tasks`,
+          );
+        }
+        const workspaces = await client.get<WorkspaceDTO[]>("/workspaces");
+        const nested = await Promise.all(
+          workspaces.map((workspace) =>
+            client.get<WorkspaceTaskDTO[]>(
+              `/workspaces/${workspace.id}/tasks`,
+            ),
+          ),
+        );
+        return nested.flat();
+      },
     },
 
     registry: {
@@ -43,8 +53,15 @@ export function createHttpGateways(
           workspaceId,
           question,
         }),
-      getWorkflow: (workspaceId) =>
-        client.get<WorkflowDTO>(`/workspaces/${workspaceId}/workflow`),
+      getWorkflow: async (workspaceId) => {
+        try {
+          return await client.get<WorkflowDTO>(
+            `/workspaces/${workspaceId}/workflow`,
+          );
+        } catch {
+          return undefined;
+        }
+      },
     },
 
     sessions: {
@@ -73,10 +90,18 @@ export function createHttpGateways(
     },
 
     events: {
-      listEvents: (workspaceId) =>
-        client.get<OrchestrationEventDTO[]>(
-          workspaceId ? `/workspaces/${workspaceId}/events` : "/events",
-        ),
+      listEvents: async (workspaceId) => {
+        if (!workspaceId) {
+          return [] as OrchestrationEventDTO[];
+        }
+        try {
+          return await client.get<OrchestrationEventDTO[]>(
+            `/workspaces/${workspaceId}/events`,
+          );
+        } catch {
+          return [];
+        }
+      },
     },
   };
 }

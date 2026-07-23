@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-operaia}
       POSTGRES_DB: ${POSTGRES_DB:-operaia_lab}
     ports:
-      - "5432:5432"
+      # 5433 no host: 5432 ja costuma estar ocupada por outros containers locais
+      - "5433:5432"
     volumes:
       - operaia_pgdata:/var/lib/postgresql/data
     healthcheck:

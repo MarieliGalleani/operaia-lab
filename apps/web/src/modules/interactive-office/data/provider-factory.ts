@@ -3,10 +3,10 @@ import { MockProvider } from "./mock-provider";
 import type { InteractiveOfficeProvider } from "./office-provider";
 
 /**
- * Escolhe o provider conforme o ambiente. Trocar mock por API real é só
- * definir VITE_USE_REAL_API=true — nenhum componente precisa mudar.
+ * Escolhe o provider conforme o ambiente.
+ * Caminho principal = API real. Mock só com VITE_USE_REAL_API=false.
  */
 export function createOfficeProvider(): InteractiveOfficeProvider {
-  const useApi = import.meta.env.VITE_USE_REAL_API === "true";
-  return useApi ? new ApiProvider() : new MockProvider();
+  const useMock = import.meta.env.VITE_USE_REAL_API === "false";
+  return useMock ? new MockProvider() : new ApiProvider();
 }

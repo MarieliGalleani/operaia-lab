@@ -9,9 +9,14 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@google/genai": "^1.52.0",
     "@operaia/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.5"
   }
 }

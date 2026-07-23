@@ -19,6 +19,9 @@ logs/
 *.log
 npm-debug.log*
 
+# Operacao assistida (registros locais de missao)
+apps/api/.ops/
+
 # Editor / OS
 .DS_Store
 Thumbs.db

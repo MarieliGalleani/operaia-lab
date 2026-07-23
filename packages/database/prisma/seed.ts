@@ -1,5 +1,5 @@
 import { agentRegistry } from "@operaia/agents";
-import { Priority, ProjectStatus } from "@operaia/shared";
+import { Priority, ProjectStatus, TaskStatus } from "@operaia/shared";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -7,21 +7,57 @@ const prisma = new PrismaClient();
 const projects = [
   {
     name: "NEXO",
-    description: "Projeto NEXO.",
+    description: "Finalizar desenvolvimento da NEXO",
     status: ProjectStatus.ACTIVE,
     priority: Priority.HIGH,
+    tasks: [
+      {
+        title: "Implementar autenticacao",
+        status: TaskStatus.TODO,
+        priority: Priority.URGENT,
+      },
+      {
+        title: "Sincronizar dados offline",
+        status: TaskStatus.TODO,
+        priority: Priority.HIGH,
+      },
+      {
+        title: "Escrever documentacao",
+        status: TaskStatus.DONE,
+        priority: Priority.MEDIUM,
+      },
+      {
+        title: "Revisar plano de execucao",
+        status: TaskStatus.DONE,
+        priority: Priority.MEDIUM,
+      },
+    ],
   },
   {
     name: "MenuFlow",
-    description: "Projeto MenuFlow.",
-    status: ProjectStatus.ACTIVE,
+    description: "Definir e validar o MVP do MenuFlow",
+    status: ProjectStatus.PLANNED,
     priority: Priority.MEDIUM,
+    tasks: [
+      {
+        title: "Definir escopo do MVP",
+        status: TaskStatus.TODO,
+        priority: Priority.HIGH,
+      },
+    ],
   },
   {
     name: "Plataforma",
-    description: "Projeto Plataforma.",
-    status: ProjectStatus.PLANNED,
+    description: "Estruturar a plataforma OperaIA.lab",
+    status: ProjectStatus.PAUSED,
     priority: Priority.MEDIUM,
+    tasks: [
+      {
+        title: "Levantar referencias de mercado",
+        status: TaskStatus.TODO,
+        priority: Priority.LOW,
+      },
+    ],
   },
 ] as const;
 
@@ -47,24 +83,65 @@ async function seedAgents(): Promise<void> {
   }
 }
 
-async function seedProjects(): Promise<void> {
+async function seedProjectsAndTasks(): Promise<void> {
   for (const project of projects) {
-    const existing = await prisma.project.findFirst({
+    let existing = await prisma.project.findFirst({
       where: { name: project.name },
     });
-    if (existing) {
-      console.log(`Projeto ja existe, ignorando: ${project.name}`);
-      continue;
+
+    if (!existing) {
+      existing = await prisma.project.create({
+        data: {
+          name: project.name,
+          description: project.description,
+          status: project.status,
+          priority: project.priority,
+        },
+      });
+      console.log(`Projeto criado: ${project.name}`);
+    } else {
+      existing = await prisma.project.update({
+        where: { id: existing.id },
+        data: {
+          description: project.description,
+          status: project.status,
+          priority: project.priority,
+        },
+      });
+      console.log(`Projeto atualizado: ${project.name}`);
     }
-    await prisma.project.create({ data: project });
-    console.log(`Projeto criado: ${project.name}`);
+
+    for (const task of project.tasks) {
+      const existingTask = await prisma.task.findFirst({
+        where: { projectId: existing.id, title: task.title },
+      });
+      if (existingTask) {
+        await prisma.task.update({
+          where: { id: existingTask.id },
+          data: {
+            status: task.status,
+            priority: task.priority,
+          },
+        });
+        continue;
+      }
+      await prisma.task.create({
+        data: {
+          projectId: existing.id,
+          title: task.title,
+          status: task.status,
+          priority: task.priority,
+        },
+      });
+      console.log(`  Tarefa criada: ${task.title}`);
+    }
   }
 }
 
 async function main(): Promise<void> {
   console.log("Iniciando seed do OperaIA.lab...");
   await seedAgents();
-  await seedProjects();
+  await seedProjectsAndTasks();
   console.log("Seed concluido.");
 }
 
