@@ -7,6 +7,12 @@ export { CeoPlanner } from "./ceo-planner.js";
 export { CeoPrioritizer } from "./ceo-prioritizer.js";
 export { CeoReviewer } from "./ceo-reviewer.js";
 export {
+  needsSpecialistDelegation,
+  type DelegationGateInput,
+} from "./ceo-delegation-gate.js";
+export { buildDirectExecutiveReply } from "./ceo-direct-reply.js";
+export { resolveRequiredSpecialization } from "./ceo-specialization-resolver.js";
+export {
   CeoBrain,
   type CeoBrainDependencies,
 } from "./ceo-brain.js";

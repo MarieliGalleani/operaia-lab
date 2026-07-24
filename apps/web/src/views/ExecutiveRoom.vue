@@ -1,10 +1,15 @@
 <script setup lang="ts">
+/**
+ * Studio executivo — se fosse meu produto:
+ * a conversa é o trabalho; métricas e missão são periferia.
+ */
 import { computed, onMounted, ref } from "vue";
 import ActivityStream from "@/components/ActivityStream.vue";
 import ExecutiveChat from "@/components/ExecutiveChat.vue";
 import WorkflowViewer from "@/components/WorkflowViewer.vue";
 import { useOffice } from "@/composables/useOffice";
 import type { Workflow } from "@/types/office";
+import { greeting } from "@/utils/format";
 
 const { employees, projects, activities, summary, fetchWorkflow } = useOffice();
 
@@ -21,6 +26,10 @@ const featured = computed(
     projects.value[0],
 );
 
+const present = computed(() =>
+  employees.value.filter((e) => e.active).slice(0, 5),
+);
+
 const workflow = ref<Workflow | undefined>(undefined);
 
 async function refreshWorkflow(): Promise<void> {
@@ -35,62 +44,74 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="page room">
-    <section v-if="ceo" class="ceo card">
-      <div class="ceo__avatar">{{ ceo.emoji }}</div>
-      <div class="ceo__id">
-        <div class="ceo__name">{{ ceo.role }} — {{ ceo.name }}</div>
-        <div class="ceo__title">{{ ceo.mission }}</div>
-        <div class="ceo__meta">
-          <span class="badge badge--dot badge--working">
-            {{ ceo.statusLabel }}
+  <div class="studio">
+    <header class="topbar">
+      <div class="topbar__left">
+        <p class="topbar__greet">{{ greeting() }}, Marieli</p>
+        <h1 class="topbar__title">Sala da Opera</h1>
+      </div>
+
+      <div class="topbar__center">
+        <div v-if="featured" class="focus">
+          <span class="focus__label">Foco</span>
+          <span class="focus__name">{{ featured.name }}</span>
+        </div>
+        <div class="pulse" aria-label="Status do escritório">
+          <span class="pulse__item">
+            <strong>{{ summary?.activeProjects ?? 0 }}</strong> projetos
           </span>
-          <span class="ceo__last">Última atividade: {{ ceo.lastActivity }}</span>
+          <span class="pulse__item">
+            <strong>{{ summary?.workingEmployees ?? 0 }}</strong> ativos
+          </span>
+          <span class="pulse__item">
+            <strong>{{ summary?.pendingTasks ?? 0 }}</strong> tarefas
+          </span>
         </div>
       </div>
-    </section>
 
-    <div class="room__grid">
-      <div class="room__main">
-        <div class="room__prompt">
-          <h2 class="room__prompt-title">O que vamos fazer hoje?</h2>
-          <p class="room__prompt-sub">
-            Converse com a Opera sobre objetivos. Ela analisa, envolve os
-            especialistas certos e devolve um relatório executivo.
-          </p>
+      <div class="topbar__right">
+        <div class="crew" aria-label="Equipe presente">
+          <span
+            v-for="person in present"
+            :key="person.id"
+            class="crew__face"
+            :title="`${person.name} — ${person.statusLabel}`"
+          >
+            {{ person.emoji }}
+          </span>
+        </div>
+        <router-link to="/campus" class="btn btn--ghost topbar__walk">Campus</router-link>
+        <router-link to="/office" class="btn btn--ghost topbar__walk">Andar</router-link>
+      </div>
+    </header>
+
+    <div class="stage">
+      <section class="stage__main panel card-motion" style="--d: 1">
+        <div v-if="ceo" class="host">
+          <div class="host__avatar">{{ ceo.emoji }}</div>
+          <div class="host__copy">
+            <div class="host__row">
+              <h2 class="host__name">{{ ceo.name }}</h2>
+              <span class="badge badge--dot badge--working">{{ ceo.statusLabel }}</span>
+            </div>
+            <p class="host__role">{{ ceo.role }} · {{ ceo.mission }}</p>
+          </div>
         </div>
         <ExecutiveChat :show-header="false" @replied="refreshWorkflow" />
-      </div>
+      </section>
 
-      <aside class="room__side">
-        <div class="card room__panel">
-          <span class="room__panel-label">No escritório agora</span>
-          <ul class="pulse">
-            <li class="pulse__item">
-              <strong>{{ summary?.activeProjects ?? 0 }}</strong>
-              <span>projetos ativos</span>
-            </li>
-            <li class="pulse__item">
-              <strong>{{ summary?.workingEmployees ?? 0 }}</strong>
-              <span>funcionários trabalhando</span>
-            </li>
-            <li class="pulse__item">
-              <strong>{{ summary?.pendingTasks ?? 0 }}</strong>
-              <span>tarefas pendentes</span>
-            </li>
-          </ul>
-        </div>
-
-        <WorkflowViewer v-if="workflow" :workflow="workflow" />
-
-        <div class="card room__panel">
-          <div class="room__panel-head">
-            <span class="room__panel-label">Atividades recentes</span>
-            <router-link to="/office/atividades" class="section__link">
-              Ver tudo
-            </router-link>
+      <aside class="stage__rail">
+        <div class="stage__rail-scroll">
+          <div class="card-motion stage__workflow" style="--d: 2">
+            <WorkflowViewer v-if="workflow" :workflow="workflow" />
           </div>
-          <ActivityStream :activities="activities" :limit="5" />
+          <section class="rail-block panel card-motion" style="--d: 3">
+            <div class="rail-block__head">
+              <h3>Hoje no lab</h3>
+              <router-link to="/office/atividades" class="section__link">Tudo</router-link>
+            </div>
+            <ActivityStream :activities="activities" :limit="4" />
+          </section>
         </div>
       </aside>
     </div>
@@ -98,131 +119,311 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.ceo {
+.studio {
   display: flex;
-  align-items: center;
-  padding: 24px 26px;
-  margin-bottom: 22px;
-  background: linear-gradient(120deg, var(--brand-soft), var(--surface));
+  flex-direction: column;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  padding: 0;
+  animation: rise-in 0.45s var(--ease) both;
 }
 
-.ceo__avatar {
-  width: 76px;
-  height: 76px;
-  min-width: 76px;
-  border-radius: 18px;
+.topbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(59, 130, 246, 0.14), transparent 42%),
+    radial-gradient(ellipse at 100% 0%, rgba(56, 189, 248, 0.06), transparent 36%),
+    linear-gradient(180deg, #0c1424 0%, var(--bg) 100%);
+}
+
+.topbar__left {
+  min-width: 180px;
+  margin-right: 24px;
+}
+
+.topbar__greet {
+  font-size: var(--text-xs);
+  color: var(--text-soft);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.topbar__title {
+  margin-top: 4px;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.topbar__center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.focus {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background:
+    linear-gradient(165deg, rgba(30, 48, 80, 0.4), transparent 50%),
+    rgba(14, 21, 36, 0.72);
+  border: 1px solid var(--border);
+  margin-right: 16px;
+}
+
+.focus__label {
+  font-size: var(--text-xs);
+  color: var(--text-soft);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: 10px;
+}
+
+.focus__name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--brand);
+}
+
+.pulse {
+  display: flex;
+  align-items: center;
+}
+
+.pulse__item {
+  display: inline-flex;
+  align-items: baseline;
+  margin-right: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(165deg, rgba(30, 48, 80, 0.4), transparent 50%),
+    rgba(14, 21, 36, 0.72);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.pulse__item strong {
+  color: var(--text);
+  font-weight: 700;
+  margin-right: 6px;
+  font-size: var(--text-lg);
+}
+
+.topbar__right {
+  display: flex;
+  align-items: center;
+  margin-left: 16px;
+}
+
+.topbar__walk {
+  margin-left: 10px;
+  white-space: nowrap;
+}
+
+.crew {
+  display: flex;
+  align-items: center;
+  margin-right: 12px;
+}
+
+.crew__face {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 2px solid var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  margin-left: -8px;
+}
+
+.crew__face:first-child {
+  margin-left: 0;
+}
+
+.stage {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(300px, 0.9fr);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.stage__main {
+  display: flex;
+  flex-direction: column;
+  margin: 20px 12px 24px 28px;
+  padding: 0;
+  overflow: hidden;
+  min-height: 0;
+  height: auto;
+}
+
+.host {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
   background: var(--surface);
+}
+
+.host__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--surface-2);
   border: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 40px;
-  margin-right: 20px;
+  font-size: 24px;
+  margin-right: 14px;
 }
 
-.ceo__name {
-  font-size: 21px;
-  font-weight: 700;
-}
-
-.ceo__title {
-  font-size: 13.5px;
-  color: var(--text-muted);
-  margin-top: 4px;
-  max-width: 640px;
-}
-
-.ceo__meta {
+.host__row {
   display: flex;
   align-items: center;
-  margin-top: 12px;
 }
 
-.ceo__last {
-  font-size: 12.5px;
-  color: var(--text-soft);
-  margin-left: 14px;
+.host__name {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  margin-right: 10px;
 }
 
-.room__grid {
-  display: grid;
-  grid-template-columns: 1.55fr 1fr;
-  gap: 22px;
-  align-items: start;
-}
-
-@media (max-width: 980px) {
-  .room__grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.room__prompt {
-  margin-bottom: 14px;
-}
-
-.room__prompt-title {
-  font-size: 20px;
-}
-
-.room__prompt-sub {
-  font-size: 13.5px;
-  color: var(--text-muted);
+.host__role {
   margin-top: 4px;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  max-width: 52ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.room__side {
+.stage__main :deep(.chat) {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  border: none;
+  box-shadow: none;
+  background: var(--surface);
+  border-radius: 0;
+}
+
+.stage__main :deep(.chat__thread) {
+  padding: 18px 20px;
+  overflow-y: auto;
+}
+
+.stage__main :deep(.chat__suggestions),
+.stage__main :deep(.chat__input) {
+  flex-shrink: 0;
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-bottom: 16px;
+}
+
+.stage__rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  padding: 20px 28px 24px 12px;
+  border-left: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.stage__rail-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
 
-.room__side > * {
-  margin-bottom: 18px;
+.stage__workflow {
+  flex-shrink: 0;
+  margin-bottom: 16px;
 }
 
-.room__panel {
-  padding: 18px 20px;
+.rail-block {
+  padding: 16px;
+  margin-bottom: 0;
 }
 
-.room__panel-head {
+.rail-block__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
-.room__panel-label {
-  display: block;
-  font-size: 11.5px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-soft);
+.rail-block__head h3 {
+  font-size: var(--text-sm);
+  font-weight: 600;
 }
 
-.pulse {
-  list-style: none;
-  margin: 14px 0 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-}
+@media (max-width: 980px) {
+  .studio {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
 
-.pulse__item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
+  .topbar {
+    flex-wrap: wrap;
+    padding: 16px;
+  }
 
-.pulse__item strong {
-  font-size: 26px;
-  color: var(--brand);
-}
+  .topbar__left,
+  .topbar__center,
+  .topbar__right {
+    width: 100%;
+    margin: 0 0 12px;
+  }
 
-.pulse__item span {
-  font-size: 11.5px;
-  color: var(--text-soft);
-  margin-top: 2px;
+  .topbar__right {
+    justify-content: space-between;
+  }
+
+  .stage {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .stage__main {
+    margin: 12px 16px;
+    min-height: 70vh;
+  }
+
+  .stage__rail {
+    border-left: none;
+    border-top: 1px solid var(--border);
+    padding: 16px;
+    height: auto;
+    overflow: visible;
+  }
+
+  .stage__rail-scroll {
+    overflow: visible;
+  }
 }
 </style>

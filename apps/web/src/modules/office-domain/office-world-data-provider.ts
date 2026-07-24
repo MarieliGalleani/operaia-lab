@@ -1,9 +1,9 @@
 /**
- * Compoe os providers do dominio "escritorio" em um WorldDataProvider.
+ * Compoe os providers do dominio espacial (Opera Campus + Residentes).
  *
- * A presenca reaproveita o provider generico do virtual-world (sem duplicacao).
- * Esta e a peca que a casca Vue injeta em <VirtualWorld :provider="..."> para
- * carregar o escritorio como PRIMEIRO mapa do Mundo Virtual.
+ * A casca Vue injeta este provider em <VirtualWorld> para carregar o mundo.
+ * O mapa inicial e responsabilidade da pagina (ponto de entrada do produto),
+ * nao da engine.
  */
 
 import type { WorldDataProvider } from "../virtual-world/contracts/providers";

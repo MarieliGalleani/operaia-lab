@@ -21,7 +21,15 @@ export class EmployeeRunner {
       context.workspace,
       context.objective,
     );
-    const briefing = attachDelegationOutcomes(base, context.delegationOutcomes);
+    const withMemory = attachMemoryNotes(base, context.memoryNotes);
+    const withDelegation = attachDelegationOutcomes(
+      withMemory,
+      context.delegationOutcomes,
+    );
+    const briefing = attachExecutionSummaries(
+      withDelegation,
+      context.executionSummaries,
+    );
     const output = await employee.work({ briefing });
 
     return {
@@ -31,6 +39,28 @@ export class EmployeeRunner {
       output,
     };
   }
+}
+
+/**
+ * Injeta notas de memoria no briefing (history + additional.memoryContext).
+ * Apenas transporte — sem acoplar a MemoryStore.
+ */
+function attachMemoryNotes(
+  briefing: EmployeeBriefing,
+  notes: readonly string[] | undefined,
+): EmployeeBriefing {
+  if (!notes || notes.length === 0) {
+    return briefing;
+  }
+
+  return {
+    ...briefing,
+    history: [...briefing.history, ...notes],
+    additional: {
+      ...briefing.additional,
+      memoryContext: notes,
+    },
+  };
 }
 
 /**
@@ -59,6 +89,27 @@ function attachDelegationOutcomes(
         decision: outcome.result?.output.decision,
         qualityPassed: outcome.result?.output.quality.passed,
       })),
+    },
+  };
+}
+
+/**
+ * Injeta resultados normalizados do Execution Engine no briefing.
+ * Apenas transporte — o brain decide se usa.
+ */
+function attachExecutionSummaries(
+  briefing: EmployeeBriefing,
+  summaries: EmployeeContext["executionSummaries"],
+): EmployeeBriefing {
+  if (!summaries || summaries.length === 0) {
+    return briefing;
+  }
+
+  return {
+    ...briefing,
+    additional: {
+      ...briefing.additional,
+      executionResults: summaries,
     },
   };
 }

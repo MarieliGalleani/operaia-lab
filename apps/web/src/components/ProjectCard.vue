@@ -22,7 +22,7 @@ const team = computed(() =>
 </script>
 
 <template>
-  <router-link :to="`/office/projetos/${project.id}`" class="project card">
+  <router-link :to="`/office/projetos/${project.id}`" class="project panel card-motion">
     <header class="project__head">
       <h3 class="project__name">{{ project.name }}</h3>
       <span class="badge" :class="STATUS[project.status].cls">
@@ -33,8 +33,8 @@ const team = computed(() =>
     <p class="project__objective">{{ project.objective }}</p>
 
     <div class="project__progress">
-      <div class="project__bar">
-        <div class="project__bar-fill" :style="{ width: `${project.progress}%` }" />
+      <div class="meter">
+        <span :style="{ width: `${project.progress}%` }" />
       </div>
       <span class="project__pct">{{ project.progress }}%</span>
     </div>
@@ -50,7 +50,7 @@ const team = computed(() =>
           {{ member.emoji }}
         </span>
       </div>
-      <span class="project__open">Abrir workspace →</span>
+      <span class="project__open">Abrir →</span>
     </footer>
   </router-link>
 </template>
@@ -58,13 +58,17 @@ const team = computed(() =>
 <style scoped>
 .project {
   display: block;
-  padding: 20px;
-  transition: transform 0.15s, box-shadow 0.15s;
+  padding: 18px;
+  transition: border-color 0.2s var(--ease), transform 0.2s var(--ease);
 }
 
 .project:hover {
+  border-color: var(--brand-line);
   transform: translateY(-2px);
-  box-shadow: var(--shadow);
+}
+
+.project:hover .project__open {
+  color: var(--info);
 }
 
 .project__head {
@@ -74,13 +78,16 @@ const team = computed(() =>
 }
 
 .project__name {
-  font-size: 17px;
+  font-size: var(--text-lg);
+  font-weight: 600;
 }
 
 .project__objective {
   margin-top: 8px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   min-height: 38px;
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 .project__progress {
@@ -89,23 +96,13 @@ const team = computed(() =>
   margin-top: 14px;
 }
 
-.project__bar {
+.project__progress .meter {
   flex: 1;
-  height: 7px;
-  background: var(--surface-2);
-  border-radius: 999px;
-  overflow: hidden;
   margin-right: 10px;
 }
 
-.project__bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--brand), #818cf8);
-  border-radius: 999px;
-}
-
 .project__pct {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--text-muted);
 }
@@ -122,20 +119,20 @@ const team = computed(() =>
 }
 
 .project__avatar {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: var(--brand-soft);
+  background: var(--surface-2);
   border: 2px solid var(--surface);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 15px;
+  font-size: 13px;
   margin-right: -8px;
 }
 
 .project__open {
-  font-size: 12.5px;
+  font-size: var(--text-xs);
   color: var(--brand);
   font-weight: 600;
 }

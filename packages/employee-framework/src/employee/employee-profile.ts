@@ -17,4 +17,6 @@ export interface EmployeeProfile {
   readonly permissions: readonly string[];
   readonly limits: readonly string[];
   readonly qualityRules: readonly string[];
+  /** Versao do employee (semver). Default na borda da API: 1.0.0 */
+  readonly version?: string;
 }

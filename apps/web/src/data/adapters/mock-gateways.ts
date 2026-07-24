@@ -19,13 +19,16 @@ function delay<T>(value: T): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), LATENCY_MS));
 }
 
-/** Perfis reais no Employee Registry (hoje: Opera e Mag). */
+/** Perfis do Employee Registry (espelha a Equipe Digital contratada). */
 const mockProfiles: readonly EmployeeProfileDTO[] = [
   {
     id: "operaia-ceo",
     name: "Opera",
     role: "CEO",
     specialization: "MANAGEMENT",
+    status: "WORKING",
+    version: "1.0.0",
+    executable: true,
     mission: "Coordenar o OperaIA.lab: analisar, priorizar, planejar e delegar.",
     capabilities: ["analisar workspace", "priorizar", "planejar", "delegar"],
     permissions: ["criar plano", "definir prioridades", "solicitar agentes"],
@@ -36,27 +39,117 @@ const mockProfiles: readonly EmployeeProfileDTO[] = [
     name: "Mag",
     role: "CTO",
     specialization: "SOFTWARE_ENGINEERING",
+    status: "AVAILABLE",
+    version: "1.0.0",
+    executable: true,
     mission: "Garantir arquitetura sólida e desenvolvimento com qualidade.",
     capabilities: ["analisar arquitetura", "planos técnicos", "revisar código"],
     permissions: ["definir arquitetura", "priorizar tarefas técnicas"],
     limits: ["não decide comercial", "não faz marketing", "não define UX final"],
   },
+  {
+    id: "luna",
+    name: "Luna",
+    role: "Product Designer",
+    specialization: "PRODUCT_DESIGN",
+    status: "AVAILABLE",
+    version: "1.0.0",
+    executable: true,
+    mission: "Tornar cada produto claro, desejável e fácil de usar.",
+    capabilities: ["analisar jornadas", "propor plano de design"],
+    permissions: ["analisar briefing", "propor plano do dominio"],
+    limits: ["não escolhe funcionários por nome"],
+  },
+  {
+    id: "nexus",
+    name: "Nexus",
+    role: "Product Manager",
+    specialization: "PRODUCT_MANAGEMENT",
+    status: "AVAILABLE",
+    version: "1.0.0",
+    executable: true,
+    mission: "Traduzir objetivos de negócio em produto e roadmap.",
+    capabilities: ["analisar produto", "propor roadmap"],
+    permissions: ["analisar briefing", "propor plano do dominio"],
+    limits: ["não escolhe funcionários por nome"],
+  },
+  {
+    id: "atlas",
+    name: "Atlas",
+    role: "Automation Specialist",
+    specialization: "AUTOMATION",
+    status: "AVAILABLE",
+    version: "1.0.0",
+    executable: true,
+    mission: "Conectar sistemas e automatizar fluxos operacionais.",
+    capabilities: ["analisar processos", "propor automações"],
+    permissions: ["analisar briefing", "propor plano do dominio"],
+    limits: ["não escolhe funcionários por nome"],
+  },
+  {
+    id: "aurora",
+    name: "Aurora",
+    role: "Finance Lead",
+    specialization: "FINANCE",
+    status: "AVAILABLE",
+    version: "1.0.0",
+    executable: true,
+    mission: "Cuidar da saúde financeira dos projetos.",
+    capabilities: ["analisar custos", "propor plano financeiro"],
+    permissions: ["analisar briefing", "propor plano do dominio"],
+    limits: ["não escolhe funcionários por nome"],
+  },
+  {
+    id: "themis",
+    name: "Themis",
+    role: "Legal Counsel",
+    specialization: "LEGAL",
+    status: "AVAILABLE",
+    version: "1.0.0",
+    executable: true,
+    mission: "Proteger o escritório e garantir conformidade legal.",
+    capabilities: ["analisar riscos jurídicos", "propor compliance"],
+    permissions: ["analisar briefing", "propor plano do dominio"],
+    limits: ["não escolhe funcionários por nome"],
+  },
+  {
+    id: "mercurio",
+    name: "Mercúrio",
+    role: "Marketing Lead",
+    specialization: "MARKETING",
+    status: "AVAILABLE",
+    version: "1.0.0",
+    executable: true,
+    mission: "Levar cada produto ao público certo com a mensagem certa.",
+    capabilities: ["analisar audiência", "propor plano de marketing"],
+    permissions: ["analisar briefing", "propor plano do dominio"],
+    limits: ["não escolhe funcionários por nome"],
+  },
+  {
+    id: "orion",
+    name: "Orion",
+    role: "Operations Lead",
+    specialization: "OPERATIONS",
+    status: "AVAILABLE",
+    version: "1.0.0",
+    executable: true,
+    mission: "Garantir operação diária eficiente e escalável.",
+    capabilities: ["analisar fluxos", "propor melhorias de processo"],
+    permissions: ["analisar briefing", "propor plano do dominio"],
+    limits: ["não escolhe funcionários por nome"],
+  },
 ];
 
-const mockStatuses: readonly EmployeeStatusDTO[] = [
-  {
-    employeeId: "operaia-ceo",
-    status: "WORKING",
-    statusLabel: "Coordenando projetos",
-    lastActivity: "Criou o plano da NEXO há 5 min",
-  },
-  {
-    employeeId: "cto-mag",
-    status: "AVAILABLE",
-    statusLabel: "Disponível",
-    lastActivity: "Recebeu briefing técnico da NEXO há 3 min",
-  },
-];
+const mockStatuses: readonly EmployeeStatusDTO[] = mockProfiles.map((profile) => ({
+  employeeId: profile.id,
+  status: profile.id === "operaia-ceo" ? "WORKING" : "AVAILABLE",
+  statusLabel:
+    profile.id === "operaia-ceo" ? "Coordenando projetos" : "Disponível",
+  lastActivity:
+    profile.id === "operaia-ceo"
+      ? "Criou o plano da NEXO há 5 min"
+      : "Aguardando missão no escritório",
+}));
 
 function toWorkspaceDTO(): readonly WorkspaceDTO[] {
   return projects.map((project) => ({ ...project }));

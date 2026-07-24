@@ -19,6 +19,7 @@ describe("Etapa 8 — Operacao Assistida NEXO", () => {
 
     expect(run.workspaceId).toBe("nexo");
     expect(run.workspaceName).toBe("NEXO");
+    expect(run.status).toBe("completed");
     expect(run.usableResult.length).toBeGreaterThan(40);
     expect(run.reply.employeeId).toBe("operaia-ceo");
     expect(run.reply.answer.nextActions.length).toBeGreaterThan(0);

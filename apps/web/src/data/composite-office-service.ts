@@ -17,15 +17,11 @@ import {
   toWorkflow,
 } from "./mappers";
 import type { OfficeService } from "./office-service";
-import { plannedHires } from "./presentation";
 
 /**
  * Fachada do escritório sobre os gateways.
  *
- * É o único ponto que orquestra as 5 portas (Workspace Runtime, Employee
- * Registry, Employee Runtime, Sessions, Orchestration Events) e traduz DTOs em
- * modelos de UI. Trocar mock por HTTP é injetar outro `OfficeGateways` — esta
- * classe e todos os componentes permanecem intactos.
+ * Lista apenas Employees retornados pelo Registry (executáveis).
  */
 export class CompositeOfficeService implements OfficeService {
   constructor(private readonly gateways: OfficeGateways) {}
@@ -36,10 +32,9 @@ export class CompositeOfficeService implements OfficeService {
       this.gateways.runtime.getStatuses(),
     ]);
     const statusById = new Map(statuses.map((s) => [s.employeeId, s]));
-    const hired = profiles.map((profile) =>
+    return profiles.map((profile) =>
       toEmployee(profile, statusById.get(profile.id)),
     );
-    return [...hired, ...plannedHires];
   }
 
   async getProjects(): Promise<readonly Project[]> {

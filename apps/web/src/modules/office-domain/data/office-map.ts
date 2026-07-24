@@ -21,6 +21,7 @@ import type {
   SpawnPointDef,
 } from "../../virtual-world/contracts/map";
 import { CORPORATE_THEME_ID } from "./corporate-theme";
+import { CAMPUS_PLAZA_MAP_ID } from "./campus-ids";
 import { decorationsForKind, prop, REST_KINDS } from "./office-room-kits";
 
 // —— Geometria da grade (planta enxuta) ——————————————————————————————————————
@@ -163,6 +164,18 @@ function buildSpawnPoints(): SpawnPointDef[] {
   const points: SpawnPointDef[] = [];
   const reception = ROOM_BOUNDS.reception ?? cellBounds(0, 0);
   points.push({ id: "entrance", col: reception.col + 4, row: reception.row + CELL_H, facing: "s" });
+  points.push({
+    id: "elevator-lab",
+    col: reception.col + 6,
+    row: reception.row + 1,
+    facing: "s",
+  });
+  points.push({
+    id: "from-campus",
+    col: reception.col + 2,
+    row: reception.row + 2,
+    facing: "s",
+  });
   for (const [id, b] of Object.entries(ROOM_BOUNDS)) {
     points.push({ id, col: b.col + Math.floor(CELL_W / 2), row: b.row + Math.floor(CELL_H / 2) });
   }
@@ -207,11 +220,36 @@ const FRONT_DOOR: EntityBlueprint = {
     renderable: { spriteId: "door", layer: "walls", visible: true },
     portal: {
       portalId: "front-door",
-      target: { mapId: "sandbox", spawnPointId: "start" },
+      target: { mapId: CAMPUS_PLAZA_MAP_ID, spawnPointId: "entrance-lab" },
       mode: "walk",
-      label: "Saida",
+      label: "Opera Campus",
     },
-    interactable: { kind: "portal", radiusTiles: 1, enabled: true, label: "Sair" },
+    interactable: { kind: "portal", radiusTiles: 1, enabled: true, label: "Sair para o Campus" },
+  },
+};
+
+/** Elevador para o 2º andar da Geraí (mapa irmão no Campus). */
+const ELEVATOR_TO_GERAI: EntityBlueprint = {
+  id: "elevator-to-gerai",
+  ref: "portal-door",
+  components: {
+    transform: {
+      col: (ROOM_BOUNDS.reception?.col ?? ORIGIN_X) + 6,
+      row: 0,
+    },
+    renderable: { spriteId: "door", layer: "walls", visible: true },
+    portal: {
+      portalId: "elevator-to-gerai",
+      target: { mapId: "gerai-f2", spawnPointId: "elevator-in" },
+      mode: "walk",
+      label: "Elevador · Geraí 2º",
+    },
+    interactable: {
+      kind: "portal",
+      radiusTiles: 1,
+      enabled: true,
+      label: "Geraí — 2º andar",
+    },
   },
 };
 
@@ -221,7 +259,7 @@ const GROUND_FLOOR: FloorDef = {
   level: 0,
   size: { cols: MAP_COLS, rows: MAP_ROWS },
   areas: AREAS,
-  entities: [...ambientProps(), FRONT_DOOR],
+  entities: [...ambientProps(), FRONT_DOOR, ELEVATOR_TO_GERAI],
   spawnPoints: buildSpawnPoints(),
 };
 

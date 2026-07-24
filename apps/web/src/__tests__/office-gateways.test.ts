@@ -8,9 +8,19 @@ import type { OfficeGateways } from "@/data/gateways/office-gateways";
 describe("Gateways mock — cada sistema do backend", () => {
   const gateways = createMockGateways();
 
-  it("Employee Registry lista os perfis contratados (Opera e Mag)", async () => {
+  it("Employee Registry lista a Equipe Digital contratada", async () => {
     const profiles = await gateways.registry.listProfiles();
-    expect(profiles.map((p) => p.id)).toEqual(["operaia-ceo", "cto-mag"]);
+    expect(profiles.map((p) => p.id)).toEqual([
+      "operaia-ceo",
+      "cto-mag",
+      "luna",
+      "nexus",
+      "atlas",
+      "aurora",
+      "themis",
+      "mercurio",
+      "orion",
+    ]);
   });
 
   it("Workspace Runtime lista workspaces e tarefas por workspace", async () => {
@@ -104,9 +114,8 @@ describe("CompositeOfficeService — desacoplado dos gateways", () => {
     const service = new CompositeOfficeService(fake);
 
     const employees = await service.getEmployees();
-    // 1 contratado (do gateway) + 7 vagas preparadas
+    expect(employees).toHaveLength(1);
     expect(employees[0]?.statusLabel).toBe("Trabalhando");
-    expect(employees.length).toBe(8);
 
     const summary = await service.getSummary();
     expect(summary.activeProjects).toBe(1);

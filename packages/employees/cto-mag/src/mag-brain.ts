@@ -24,11 +24,15 @@ export interface MagBrainDependencies {
 }
 
 /**
- * Cerebro da CTO Mag como especializacao do Employee Framework.
+ * Cerebro da CTO Mag.
  *
- * A analise tecnica e deterministica (derivada do briefing); o LLM produz
- * apenas a narrativa da analise. Mesma filosofia do CEO, expressa no contrato
- * comum (EmployeeDecision).
+ * Retorno padronizado (via EmployeeDecision → EmployeeReport):
+ * - analise (`analyzed` + `reasoning`)
+ * - conclusao (`decision`)
+ * - acoes propostas (`recommendations` → plan no report)
+ * - proximos passos (`nextActions`)
+ *
+ * LLM produz apenas a conclusao narrativa; estrutura e deterministica.
  */
 export class MagBrain implements EmployeeBrain {
   private readonly llm: LLMProvider;
@@ -45,34 +49,54 @@ export class MagBrain implements EmployeeBrain {
       (task) => (task.dependsOn?.length ?? 0) > 0,
     );
 
-    const plan = this.buildImplementationPlan(pending);
+    const proposedActions = this.buildProposedActions(pending);
     const risks = this.identifyRisks(blocked, withDeps);
-    const narrative = await this.generateAnalysis(briefing, pending, withDeps);
+    const nextSteps = this.buildNextSteps(pending, withDeps);
+    const analysis = this.buildAnalysis(briefing, pending, withDeps, blocked);
+    const conclusion = await this.generateConclusion(
+      briefing,
+      pending,
+      withDeps,
+      proposedActions,
+    );
 
     return {
-      analyzed:
-        `Analise tecnica de ${briefing.project}: ${pending.length} tarefa(s) ` +
-        `tecnica(s) em aberto, ${withDeps.length} com dependencias e ` +
-        `${blocked.length} bloqueada(s).`,
-      decision: narrative,
+      analyzed: analysis,
+      decision: conclusion,
       reasoning:
-        "Decomposicao tecnica priorizando dependencias e reducao de risco, " +
-        "com qualidade e testes desde o inicio.",
-      recommendations: plan,
+        "Contrato do especialista: analise → conclusao → acoes propostas → proximos passos.",
+      recommendations: proposedActions,
       delegations: [],
       risks,
-      nextActions: this.buildNextActions(pending, withDeps),
+      nextActions: nextSteps,
     };
   }
 
-  /** Plano de implementacao: passos canonicos adaptados ao volume de trabalho. */
-  private buildImplementationPlan(pending: readonly EmployeeTask[]): string[] {
+  /** Analise tecnica estruturada (sem LLM). */
+  private buildAnalysis(
+    briefing: EmployeeBriefing,
+    pending: readonly EmployeeTask[],
+    withDeps: readonly EmployeeTask[],
+    blocked: readonly EmployeeTask[],
+  ): string {
+    return (
+      `Analise tecnica de ${briefing.project} para "${briefing.objective}": ` +
+      `${pending.length} tarefa(s) em aberto, ${withDeps.length} com dependencias, ` +
+      `${blocked.length} bloqueada(s). ` +
+      `Pendencias: ${briefing.pending.join(", ") || "(nenhuma)"}.`
+    );
+  }
+
+  /** Acoes propostas = plano de implementacao. */
+  private buildProposedActions(pending: readonly EmployeeTask[]): string[] {
     if (pending.length === 0) {
       return [
         "Nenhuma tarefa tecnica pendente: consolidar testes e documentacao tecnica.",
       ];
     }
-    return IMPLEMENTATION_STEPS.map((step, index) => `${index + 1}. ${step}`);
+    return IMPLEMENTATION_STEPS.map(
+      (step, index) => `${index + 1}. ${step}`,
+    );
   }
 
   /** Riscos tecnicos derivados de bloqueios e cadeias de dependencia. */
@@ -96,21 +120,25 @@ export class MagBrain implements EmployeeBrain {
     return risks;
   }
 
-  /** Proximas acoes concretas: tarefas sem dependencias primeiro. */
-  private buildNextActions(
+  /** Proximos passos concretos: tarefas sem dependencias primeiro. */
+  private buildNextSteps(
     pending: readonly EmployeeTask[],
     withDeps: readonly EmployeeTask[],
   ): string[] {
     const blockedIds = new Set(withDeps.map((task) => task.id));
     const ready = pending.filter((task) => !blockedIds.has(task.id));
     const ordered = [...ready, ...withDeps];
-    return ordered.slice(0, TOP_ACTIONS).map((task) => `Implementar: ${task.title}`);
+    return ordered
+      .slice(0, TOP_ACTIONS)
+      .map((task) => `Implementar: ${task.title}`);
   }
 
-  private async generateAnalysis(
+  /** Conclusao narrativa via LLM (unica chamada do especialista). */
+  private async generateConclusion(
     briefing: EmployeeBriefing,
     pending: readonly EmployeeTask[],
     withDeps: readonly EmployeeTask[],
+    proposedActions: readonly string[],
   ): Promise<string> {
     const messages: LLMMessage[] = [
       { role: "system", content: buildMagSystemPrompt() },
@@ -121,9 +149,9 @@ export class MagBrain implements EmployeeBrain {
           `Projeto: ${briefing.project}`,
           `Tarefas tecnicas em aberto: ${pending.length}`,
           `Tarefas com dependencias: ${withDeps.length}`,
-          `Pendencias: ${briefing.pending.join(", ") || "(nenhuma)"}`,
-          "Escreva uma analise tecnica curta (2-3 frases) com a leitura de " +
-            "arquitetura e a abordagem de implementacao.",
+          `Acoes propostas: ${proposedActions.join(" | ")}`,
+          "Escreva a CONCLUSAO tecnica curta (2-3 frases): leitura de arquitetura",
+          "e abordagem de implementacao. Nao liste o plano inteiro de novo.",
         ].join("\n"),
       },
     ];

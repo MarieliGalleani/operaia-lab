@@ -6,14 +6,21 @@ import { projects, tasks } from "@/data/projects";
 const service = new MockOfficeService();
 
 describe("MockOfficeService — carregamento do escritório", () => {
-  it("carrega os funcionários incluindo CEO — Opera e CTO — Mag", async () => {
+  it("carrega os funcionários executáveis da Equipe Digital", async () => {
     const employees = await service.getEmployees();
     const ids = employees.map((e) => e.id);
-    expect(ids).toContain("operaia-ceo");
-    expect(ids).toContain("cto-mag");
-    // vagas preparadas para novas contratações
-    expect(ids).toContain("ux-luna");
-    expect(employees.some((e) => !e.active)).toBe(true);
+    expect(ids).toEqual([
+      "operaia-ceo",
+      "cto-mag",
+      "luna",
+      "nexus",
+      "atlas",
+      "aurora",
+      "themis",
+      "mercurio",
+      "orion",
+    ]);
+    expect(employees.every((e) => e.active)).toBe(true);
   });
 
   it("expõe os projetos (workspaces) NEXO, MenuFlow e Plataforma", async () => {

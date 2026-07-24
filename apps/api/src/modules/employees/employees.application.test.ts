@@ -30,12 +30,14 @@ describe("Etapa 4 — Snapshot real via WorkspaceSource", () => {
 
   it("ask alimenta o briefing com tarefas reais do workspace", async () => {
     const app = appWith();
-    const { reply, workflow } = await app.ask({
+    const { reply, workflow, missionId } = await app.ask({
       employeeId: "operaia-ceo",
       workspaceId: "nexo",
-      question: "Como esta a NEXO?",
+      question: "Quero implementar autenticação.",
     });
 
+    expect(missionId).toBeTruthy();
+    expect(app.missionService.get(missionId)?.id).toBe(missionId);
     expect(reply.employeeId).toBe("operaia-ceo");
     expect(reply.content).toContain("Resumo");
     expect(reply.answer.summary.length).toBeGreaterThan(0);
@@ -64,6 +66,21 @@ describe("Etapa 4 — Snapshot real via WorkspaceSource", () => {
     expect(delegating?.detail).toContain(Specialization.SOFTWARE_ENGINEERING);
   });
 
+  it("ask consultivo: CEO responde sem Mag", async () => {
+    const app = appWith();
+    const { reply, workflow } = await app.ask({
+      employeeId: "operaia-ceo",
+      workspaceId: "nexo",
+      question: "Como esta a NEXO?",
+    });
+
+    expect(reply.employeeId).toBe("operaia-ceo");
+    expect(workflow.steps.some((s) => s.actorId === "cto-mag")).toBe(false);
+    expect(workflow.steps.find((s) => s.stage === "DONE")?.actorId).toBe(
+      "operaia-ceo",
+    );
+  });
+
   it("falha com workspace inexistente", async () => {
     const app = appWith();
     await expect(
@@ -75,9 +92,20 @@ describe("Etapa 4 — Snapshot real via WorkspaceSource", () => {
     ).rejects.toThrow(/Workspace/);
   });
 
-  it("lista Opera e Mag no registry", () => {
+  it("lista toda a Equipe Digital no registry", () => {
     const app = appWith();
     const profiles = app.listProfiles();
-    expect(profiles.map((p) => p.id)).toEqual(["operaia-ceo", "cto-mag"]);
+    expect(profiles.map((p) => p.id)).toEqual([
+      "operaia-ceo",
+      "cto-mag",
+      "luna",
+      "nexus",
+      "atlas",
+      "aurora",
+      "themis",
+      "mercurio",
+      "orion",
+    ]);
+    expect(profiles.every((p) => p.executable === true)).toBe(true);
   });
 });

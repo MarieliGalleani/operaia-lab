@@ -13,7 +13,13 @@ import { createWorldDataProvider } from "@/modules/virtual-world/providers/provi
 import { SAMPLE_MAP } from "@/modules/virtual-world/providers/mock/data/sample-map";
 import type { WorldViewState } from "@/modules/virtual-world/contracts/state";
 import { createOfficeWorldProvider } from "@/modules/office-domain/office-world-data-provider";
+import { CAMPUS_PLAZA_MAP } from "@/modules/office-domain/data/campus-plaza-map";
+import { CAMPUS_RECEPTION_MAP } from "@/modules/office-domain/data/campus-reception-map";
+import { CAMPUS_RESIDENT_ENTRANCES } from "@/modules/office-domain/data/campus-resident-entrances";
+import { GERAI_ENTRANCE_MAP } from "@/modules/office-domain/data/gerai-entrance-map";
+import { GERAI_F2_MAP } from "@/modules/office-domain/data/gerai-floor-2-map";
 import { OFFICE_MAP } from "@/modules/office-domain/data/office-map";
+import { CAMPUS_RECEPTION_MAP_ID } from "@/modules/office-domain/data/campus-ids";
 
 const fakeContainer = {} as unknown as HTMLElement;
 
@@ -121,7 +127,33 @@ describe("map-loader (dados -> ECS)", () => {
     const expectedAreas = OFFICE_MAP.floors.reduce((n, f) => n + f.areas.length, 0);
     expect(result.areas).toBe(expectedAreas);
     expect(world.query("area").length).toBe(result.areas);
-    expect(result.portals).toBe(1);
+    expect(result.portals).toBe(2);
+  });
+
+  it("carrega o 2º andar da Geraí como mapa de dados", () => {
+    const world = new EcsWorld();
+    const bus = new TypedEventBus();
+    const result = loadManifestIntoWorld(world, GERAI_F2_MAP, bus);
+    const expectedAreas = GERAI_F2_MAP.floors.reduce((n, f) => n + f.areas.length, 0);
+    expect(result.areas).toBe(expectedAreas);
+    expect(result.portals).toBe(2);
+  });
+
+  it("carrega a Recepção e a Praça do Campus", () => {
+    const world = new EcsWorld();
+    const bus = new TypedEventBus();
+    const reception = loadManifestIntoWorld(world, CAMPUS_RECEPTION_MAP, bus);
+    expect(reception.portals).toBe(1);
+    world.clear();
+    const plaza = loadManifestIntoWorld(world, CAMPUS_PLAZA_MAP, bus);
+    expect(plaza.portals).toBe(1 + CAMPUS_RESIDENT_ENTRANCES.length);
+  });
+
+  it("carrega a entrada oficial da Geraí", () => {
+    const world = new EcsWorld();
+    const bus = new TypedEventBus();
+    const result = loadManifestIntoWorld(world, GERAI_ENTRANCE_MAP, bus);
+    expect(result.portals).toBe(2);
   });
 });
 
@@ -149,7 +181,49 @@ describe("Provider factory", () => {
   });
 });
 
-describe("Runtime carrega o escritorio como PRIMEIRO mapa", () => {
+describe("Runtime carrega o Opera Campus como entrada do mundo", () => {
+  it("engine generica carrega a Recepção via provider de dominio", async () => {
+    const runtime = createWorldRuntime({
+      scopeId: "opera-campus",
+      initialMapId: CAMPUS_RECEPTION_MAP_ID,
+      data: createOfficeWorldProvider(),
+      engine: new NullWorldEngine(),
+      stateStore: new MemoryStateStore(),
+    });
+
+    const ready = vi.fn();
+    runtime.bus.on("world:ready", ready);
+
+    await runtime.start(fakeContainer);
+
+    expect(runtime.started).toBe(true);
+    expect(runtime.currentMapId).toBe(CAMPUS_RECEPTION_MAP_ID);
+    expect(runtime.providerKind).toBe("office-mock");
+    expect(runtime.world.query("area").length).toBeGreaterThan(0);
+    expect(ready).toHaveBeenCalledTimes(1);
+
+    runtime.dispose();
+    expect(runtime.started).toBe(false);
+  });
+
+  it("troca Campus → Praça → Lab por loadMap", async () => {
+    const runtime = createWorldRuntime({
+      scopeId: "opera-campus",
+      initialMapId: CAMPUS_RECEPTION_MAP_ID,
+      data: createOfficeWorldProvider(),
+      engine: new NullWorldEngine(),
+      stateStore: new MemoryStateStore(),
+    });
+    await runtime.start(fakeContainer);
+    await runtime.loadMap("campus-plaza");
+    expect(runtime.currentMapId).toBe("campus-plaza");
+    await runtime.loadMap("office");
+    expect(runtime.currentMapId).toBe("office");
+    runtime.dispose();
+  });
+});
+
+describe("Runtime carrega o escritorio como mapa de Residente", () => {
   it("engine generica carrega o escritorio via provider de dominio", async () => {
     const runtime = createWorldRuntime({
       scopeId: "operaia",

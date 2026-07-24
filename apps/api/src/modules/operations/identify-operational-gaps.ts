@@ -34,8 +34,8 @@ export function identifyOperationalGaps(
       code: "NARROW_ROSTER",
       severity: "info",
       message:
-        "Quadro atual cobre gestao + engenharia. UX, Produto, Marketing, Financeiro, " +
-        "Juridico e Comercial ainda nao foram validados por missao real.",
+        "Esta missao exercitou apenas SOFTWARE_ENGINEERING. " +
+        "Demais especialidades do quadro ainda nao foram validadas neste ciclo.",
     });
   }
 

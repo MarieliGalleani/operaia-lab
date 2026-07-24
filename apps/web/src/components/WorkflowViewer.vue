@@ -38,10 +38,12 @@ const steps = computed(() => props.workflow.steps);
 </script>
 
 <template>
-  <div class="workflow card">
+  <div class="workflow panel">
     <header class="workflow__head">
-      <h3 class="workflow__title">{{ workflow.title }}</h3>
-      <span class="workflow__hint">Fluxo de trabalho</span>
+      <div>
+        <p class="eyebrow">Fluxo de trabalho</p>
+        <h3 class="workflow__title">{{ workflow.title }}</h3>
+      </div>
     </header>
 
     <div class="workflow__rail">
@@ -78,25 +80,21 @@ const steps = computed(() => props.workflow.steps);
 
 <style scoped>
 .workflow {
-  padding: 20px 22px;
+  padding: 14px;
 }
 
 .workflow__head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .workflow__title {
-  font-size: 16px;
-}
-
-.workflow__hint {
-  font-size: 11.5px;
-  color: var(--text-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  margin-top: 4px;
+  font-size: 15px;
+  font-family: var(--font-display);
+  font-weight: 700;
 }
 
 .workflow__rail {
@@ -121,38 +119,40 @@ const steps = computed(() => props.workflow.steps);
   top: 6px;
   left: 50%;
   width: 100%;
-  height: 2px;
-  background: var(--border);
+  height: 1px;
+  background: linear-gradient(90deg, var(--border-strong), transparent);
 }
 
 .stage__dot {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
-  background: var(--border);
+  background: var(--border-strong);
   border: 2px solid var(--surface);
   z-index: 1;
   margin-bottom: 8px;
 }
 
 .stage__label {
-  font-size: 11.5px;
+  font-size: 10.5px;
   color: var(--text-soft);
   text-align: center;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .stage--done .stage__dot {
-  background: var(--success);
+  background: var(--brand);
 }
 .stage--done .stage__label {
   color: var(--text-muted);
 }
 .stage--current .stage__dot {
-  background: var(--brand);
-  box-shadow: 0 0 0 4px var(--brand-soft);
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
 }
 .stage--current .stage__label {
-  color: var(--brand);
+  color: var(--text);
   font-weight: 700;
 }
 
@@ -165,28 +165,29 @@ const steps = computed(() => props.workflow.steps);
 .chain__step {
   display: flex;
   align-items: center;
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-radius: var(--radius-sm);
   margin-bottom: 8px;
   background: var(--surface-2);
   border: 1px solid var(--border);
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
 }
 
 .chain__step--current {
-  border-color: var(--brand);
+  border-color: var(--brand-line);
   background: var(--brand-soft);
 }
 
 .chain__step--pending {
-  opacity: 0.65;
+  opacity: 0.6;
 }
 
 .chain__avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: rgba(16, 24, 32, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -207,6 +208,7 @@ const steps = computed(() => props.workflow.steps);
 .chain__detail {
   font-size: 12.5px;
   color: var(--text-muted);
+  margin-top: 2px;
 }
 
 .chain__status {

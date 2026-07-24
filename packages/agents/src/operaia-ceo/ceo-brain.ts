@@ -1,11 +1,14 @@
 import type { LLMMessage, LLMProvider } from "@operaia/ai-core";
-import {
-  Specialization,
-  type EmployeeBrain,
-  type EmployeeBriefing,
-  type EmployeeDecision,
-  type EmployeeReport,
+import type {
+  EmployeeBrain,
+  EmployeeBriefing,
+  EmployeeDecision,
+  EmployeeReport,
 } from "@operaia/employee-framework";
+import { TaskStatus } from "@operaia/shared";
+import { needsSpecialistDelegation } from "./ceo-delegation-gate.js";
+import { buildDirectExecutiveReply } from "./ceo-direct-reply.js";
+import { resolveRequiredSpecialization } from "./ceo-specialization-resolver.js";
 import { CeoPlanner } from "./ceo-planner.js";
 import { CeoPrioritizer } from "./ceo-prioritizer.js";
 import { CeoReviewer } from "./ceo-reviewer.js";
@@ -40,13 +43,9 @@ export interface CeoBrainDependencies {
 /**
  * Cerebro do OperaIA CEO como especializacao do Employee Framework.
  *
- * As decisoes estruturais sao deterministicas (planner/prioritizer/reviewer);
- * o LLM produz apenas o resumo executivo. Comportamento identico ao anterior,
- * agora expresso no contrato comum (EmployeeDecision).
- *
- * Quando o briefing traz `additional.delegationOutcomes`, entra em modo
- * consolidacao: revisa entregas dos especialistas, nao redelega no mesmo ciclo
- * e responde como porta-voz da organizacao.
+ * Decisoes estruturais deterministicas (planner/prioritizer/reviewer/gate).
+ * LLM so quando ha narrativa util (delegacao ou consolidacao).
+ * Caminho rapido: sem especialista → resposta imediata sem LLM.
  */
 export class CeoBrain implements EmployeeBrain {
   private readonly llm: LLMProvider;
@@ -69,44 +68,63 @@ export class CeoBrain implements EmployeeBrain {
     return this.planAndDelegate(briefing);
   }
 
-  /** Ciclo inicial: analisa workspace, prioriza e pode pedir especialidades. */
+  /** Ciclo inicial: analisa workspace, prioriza e decide se pede especialidade. */
   private async planAndDelegate(
     briefing: EmployeeBriefing,
   ): Promise<EmployeeDecision> {
     const plan = this.planner.plan(briefing);
     const priorities = this.prioritizer.prioritize(briefing.tasks);
     const review = this.reviewer.review(briefing);
-    const narrative = await this.generateSummary(
-      briefing,
-      plan,
-      review,
-      priorities,
-    );
+    const pendingTitles = briefing.tasks
+      .filter((task) => task.status !== TaskStatus.DONE)
+      .map((task) => task.title);
 
-    const shouldDelegate =
-      priorities.length > 0 &&
-      plan.steps.some((step) => step.action === CeoPlanAction.DELEGATE);
+    const shouldDelegate = needsSpecialistDelegation({
+      objective: briefing.objective,
+      pendingTitles,
+      planRequestsDelegate: plan.steps.some(
+        (step) => step.action === CeoPlanAction.DELEGATE,
+      ),
+    });
+    console.log("[ceo-gate]", {
+      objective: briefing.objective,
+      pendingTitles,
+      shouldDelegate,
+    });
+
+    const narrative = shouldDelegate
+      ? await this.generateSummary(briefing, plan, review, priorities)
+      : buildDirectExecutiveReply(briefing, review, priorities);
+
+    const specialization = shouldDelegate
+      ? resolveRequiredSpecialization({
+          objective: briefing.objective,
+          pendingTitles,
+        })
+      : null;
 
     return {
       analyzed:
         `${briefing.project}: ${review.pendingCount} pendente(s), ` +
-        `${review.blockedCount} bloqueada(s).`,
+        `${review.blockedCount} bloqueada(s)` +
+        (shouldDelegate
+          ? `; delegacao ${specialization} solicitada.`
+          : "; resposta executiva direta."),
       decision: narrative,
-      reasoning:
-        "Priorizacao por impacto, urgencia, risco, dependencias e esforco. " +
-        (priorities[0]
-          ? `Foco imediato: ${priorities[0].title} (${priorities[0].rationale}).`
-          : "Sem tarefas priorizaveis; objetivo precisa ser decomposto."),
+      reasoning: shouldDelegate
+        ? "Priorizacao por impacto/urgencia; objetivo exige especialidade (via Specialization, sem escolher funcionario)."
+        : "Missao respondida pela CEO sem especialista (gate de delegacao).",
       recommendations: plan.steps.map((step) => `${step.order}. ${step.title}`),
-      delegations: shouldDelegate
-        ? [
-            {
-              specialization: Specialization.SOFTWARE_ENGINEERING,
-              reason: "Executar as tarefas de implementacao priorizadas.",
-              task: priorities[0]?.title,
-            },
-          ]
-        : [],
+      delegations:
+        shouldDelegate && specialization
+          ? [
+              {
+                specialization,
+                reason: "Executar trabalho especializado priorizado.",
+                task: priorities[0]?.title,
+              },
+            ]
+          : [],
       risks: review.findings,
       nextActions: priorities
         .slice(0, TOP_ACTIONS)
@@ -114,10 +132,6 @@ export class CeoBrain implements EmployeeBrain {
     };
   }
 
-  /**
-   * Ciclo de review: consolida entregas dos especialistas e responde ao usuario.
-   * Nao emite novas delegacoes neste passo (evita loop no mesmo pedido).
-   */
   private async consolidate(
     briefing: EmployeeBriefing,
     outcomes: readonly SpecialistOutcomeBrief[],
@@ -224,9 +238,10 @@ export class CeoBrain implements EmployeeBrain {
         }
         return [
           `${index + 1}. ${outcome.employeeId} (${outcome.specialization}):`,
-          `   Resumo: ${outcome.report.summary}`,
-          `   Plano: ${outcome.report.plan.join(" | ") || "(vazio)"}`,
-          `   Proximas acoes: ${outcome.report.nextActions.join(" | ") || "(vazio)"}`,
+          `   Analise: ${outcome.report.analysis}`,
+          `   Conclusao: ${outcome.report.summary}`,
+          `   Acoes propostas: ${outcome.report.plan.join(" | ") || "(vazio)"}`,
+          `   Proximos passos: ${outcome.report.nextActions.join(" | ") || "(vazio)"}`,
         ].join("\n");
       })
       .join("\n");
@@ -241,7 +256,7 @@ export class CeoBrain implements EmployeeBrain {
           `Objetivo: ${briefing.objective}`,
           `Workspace: ${briefing.project}`,
           `Pendencias: ${review.pendingCount}; bloqueadas: ${review.blockedCount}`,
-          "Entregas dos especialistas:",
+          "Entregas dos especialistas (analise | conclusao | acoes | proximos passos):",
           specialistBlock || "- (nenhuma)",
           "Escreva um resumo executivo curto (2-4 frases) consolidando a situacao,",
           "o que a equipe entregou e as proximas acoes para o usuario.",

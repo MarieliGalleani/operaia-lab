@@ -23,6 +23,9 @@ export interface EmployeeProfileDTO {
   readonly name: string;
   readonly role: string;
   readonly specialization: Specialization;
+  readonly status?: EmployeeStatus;
+  readonly version?: string;
+  readonly executable?: true;
   readonly mission: string;
   readonly capabilities: readonly string[];
   readonly permissions: readonly string[];

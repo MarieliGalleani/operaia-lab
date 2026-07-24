@@ -27,11 +27,27 @@ export type { ActionExecutor } from "./ports/executor.js";
 export type { ExecutionStore } from "./ports/execution-store.js";
 export { systemClock, type Clock } from "./ports/clock.js";
 
-// Executores
+// Executores / Action Registry
 export { BaseActionExecutor } from "./executors/action-executor.js";
 export { ExecutorRegistry } from "./executors/registry.js";
+export { ActionRegistry } from "./executors/action-registry.js";
 export { TaskActionExecutor } from "./defaults/task-action-executor.js";
 export { NoopExecutor } from "./defaults/noop-executor.js";
+
+// Policy Layer
+export {
+  AllowAllActionPolicy,
+  AllowlistActionPolicy,
+  type ActionPolicy,
+  type PolicyDecision,
+} from "./policies/action-policy.js";
+
+// Normalizacao de resultado
+export {
+  normalizeActionResult,
+  normalizeExecutionResults,
+  type NormalizedActionResult,
+} from "./execution/normalize-result.js";
 
 // Erros
 export {

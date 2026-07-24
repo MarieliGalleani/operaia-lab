@@ -5,6 +5,7 @@ import { TaskActionExecutor } from "../defaults/task-action-executor.js";
 import { BaseActionExecutor } from "../executors/action-executor.js";
 import { ExecutorRegistry } from "../executors/registry.js";
 import { InvalidExecutionPlanError } from "../errors/execution-errors.js";
+import { AllowlistActionPolicy } from "../policies/action-policy.js";
 import type { Clock } from "../ports/clock.js";
 import type { ExecutionStore } from "../ports/execution-store.js";
 import {
@@ -17,6 +18,7 @@ import { ExecutionEngine } from "./execution-engine.js";
 import { ExecutionPhase } from "./execution-log.js";
 import type { ExecutionPlan } from "./execution-plan.js";
 import { ExecutionStatus } from "./execution-result.js";
+import { normalizeActionResult } from "./normalize-result.js";
 
 class IncrementingClock implements Clock {
   private ms = 0;
@@ -236,5 +238,44 @@ describe("ExecutionEngine", () => {
         ]),
       ),
     ).rejects.toBeInstanceOf(InvalidExecutionPlanError);
+  });
+
+  it("Policy Layer: nega Action fora da allowlist (SKIPPED)", async () => {
+    const registry = new ExecutorRegistry()
+      .register(new TaskActionExecutor())
+      .register(new NoopExecutor());
+    const engine = new ExecutionEngine({
+      registry,
+      policy: new AllowlistActionPolicy([ActionType.CREATE_TASK]),
+      clock: new IncrementingClock(),
+    });
+
+    const result = await engine.execute(
+      plan([
+        action({ id: "a1", type: ActionType.CREATE_TASK }),
+        action({ id: "a2", type: ActionType.LOG }),
+      ]),
+    );
+
+    expect(result.status).toBe(ExecutionStatus.PARTIAL);
+    expect(result.executed).toHaveLength(1);
+    expect(result.results[1]?.status).toBe(ActionStatus.SKIPPED);
+    expect(result.results[1]?.error).toContain("Policy negou");
+  });
+
+  it("normaliza ActionResult para contrato unico", async () => {
+    const engine = buildEngine((r) => r.register(new TaskActionExecutor()));
+    const result = await engine.execute(
+      plan([action({ id: "a1", type: ActionType.CREATE_TASK })]),
+    );
+    const normalized = normalizeActionResult(result.results[0]!);
+
+    expect(normalized.actionId).toBe("a1");
+    expect(normalized.actionType).toBe(ActionType.CREATE_TASK);
+    expect(normalized.status).toBe(ActionStatus.SUCCESS);
+    expect(typeof normalized.startedAt).toBe("string");
+    expect(typeof normalized.finishedAt).toBe("string");
+    expect(typeof normalized.duration).toBe("number");
+    expect(normalized.output).toBeDefined();
   });
 });

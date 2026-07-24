@@ -7,7 +7,7 @@ import type {
   WorkspaceDTO,
   WorkspaceTaskDTO,
 } from "@/data/dto";
-import { EMPLOYEE_PRESENTATION } from "@/data/presentation";
+import { presentationFor } from "@/data/presentation";
 import type {
   Activity,
   ChatMessage,
@@ -22,7 +22,7 @@ export function toEmployee(
   profile: EmployeeProfileDTO,
   status?: EmployeeStatusDTO,
 ): Employee {
-  const presentation = EMPLOYEE_PRESENTATION[profile.specialization];
+  const presentation = presentationFor(profile.specialization);
   return {
     id: profile.id,
     name: profile.name,

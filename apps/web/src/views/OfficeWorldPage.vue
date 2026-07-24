@@ -1,11 +1,8 @@
 <script setup lang="ts">
 /**
- * Página inicial de /office — o escritório renderizado pela engine genérica.
+ * Página do mapa da sede OperaIA.lab (Residente).
  *
- * O escritório entra em cena SOMENTE por dados: createOfficeWorldProvider()
- * fornece o mapa office-domain/data/office-map.ts ao WorldRuntime, que usa o
- * PixiWorldEngine para renderizar. Sem lógica de negócio aqui e sem qualquer
- * dependência do antigo módulo interactive-office.
+ * O ponto de entrada do mundo é o Opera Campus; esta rota abre a maquete Lab.
  */
 import { createOfficeWorldProvider } from "@/modules/office-domain/office-world-data-provider";
 import VirtualWorld from "@/modules/virtual-world/vue/VirtualWorld.vue";

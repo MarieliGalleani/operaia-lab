@@ -1,6 +1,9 @@
 import type { Employee } from "../employee/employee-contract.js";
 import type { EmployeeProfile } from "../employee/employee-profile.js";
-import { EmployeeNotFoundError } from "../errors/index.js";
+import {
+  EmployeeAlreadyRegisteredError,
+  EmployeeNotFoundError,
+} from "../errors/index.js";
 import {
   EmployeeFactory,
   type EmployeeBlueprint,
@@ -17,12 +20,15 @@ export interface RegisteredEmployee {
 
 /**
  * Registro central de funcionarios disponiveis. Apenas armazena e lista;
- * nenhuma logica de negocio.
+ * nenhuma logica de negocio. Fonte oficial dos Employees ativos.
  */
 export class EmployeeRegistry {
   private readonly entries = new Map<string, RegisteredEmployee>();
 
   register(entry: RegisteredEmployee): this {
+    if (this.entries.has(entry.profile.id)) {
+      throw new EmployeeAlreadyRegisteredError(entry.profile.id);
+    }
     this.entries.set(entry.profile.id, entry);
     return this;
   }

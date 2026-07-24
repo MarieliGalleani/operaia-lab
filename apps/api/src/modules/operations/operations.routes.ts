@@ -22,6 +22,7 @@ const gapSchema = z.object({
 
 const operationalRunResponseSchema = z.object({
   id: z.string(),
+  status: z.literal("completed"),
   workspaceId: z.string(),
   workspaceName: z.string(),
   objective: z.string(),
@@ -77,6 +78,7 @@ const operationalRunResponseSchema = z.object({
 function toResponse(run: OperationalRun) {
   return {
     id: run.id,
+    status: run.status,
     workspaceId: run.workspaceId,
     workspaceName: run.workspaceName,
     objective: run.objective,

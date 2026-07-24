@@ -17,3 +17,9 @@ export class EmployeeNotFoundError extends EmployeeFrameworkError {
     super(`Funcionario nao encontrado: ${id}`);
   }
 }
+
+export class EmployeeAlreadyRegisteredError extends EmployeeFrameworkError {
+  constructor(id: string) {
+    super(`Funcionario ja registrado: ${id}`);
+  }
+}

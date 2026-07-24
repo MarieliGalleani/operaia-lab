@@ -19,7 +19,7 @@ const projects = computed(() => props.involvedProjects ?? []);
 
 <template>
   <article
-    class="profile card"
+    class="profile panel card-motion"
     :class="{ 'profile--hiring': !employee.active }"
   >
     <header class="profile__head">
@@ -55,20 +55,20 @@ const projects = computed(() => props.involvedProjects ?? []);
 
 <style scoped>
 .profile {
-  padding: 20px;
+  padding: 18px;
   display: flex;
   flex-direction: column;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition: border-color 0.2s var(--ease), transform 0.2s var(--ease), background 0.2s var(--ease);
 }
 
 .profile:hover {
+  border-color: var(--brand-line);
   transform: translateY(-2px);
-  box-shadow: var(--shadow);
 }
 
 .profile--hiring {
   border-style: dashed;
-  background: var(--surface-2);
+  opacity: 0.85;
 }
 
 .profile__head {
@@ -79,31 +79,35 @@ const projects = computed(() => props.involvedProjects ?? []);
 }
 
 .profile__avatar {
-  width: 54px;
-  height: 54px;
-  border-radius: 14px;
-  background: var(--brand-soft);
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 24px;
 }
 
 .profile__role {
-  font-weight: 700;
-  font-size: 15.5px;
+  font-weight: 600;
+  font-size: var(--text-md);
+  color: var(--text);
 }
 
 .profile__specialty {
-  font-size: 12.5px;
+  font-size: var(--text-xs);
   color: var(--text-soft);
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .profile__mission {
-  font-size: 13px;
+  font-size: var(--text-sm);
   margin-top: 12px;
   min-height: 40px;
+  color: var(--text-muted);
+  line-height: 1.5;
 }
 
 .profile__section {
@@ -112,8 +116,8 @@ const projects = computed(() => props.involvedProjects ?? []);
 
 .profile__label {
   display: block;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--text-xs);
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-soft);
@@ -126,17 +130,17 @@ const projects = computed(() => props.involvedProjects ?? []);
 }
 
 .profile__chip {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--brand);
   background: var(--brand-soft);
-  border-radius: 999px;
-  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
   margin: 0 6px 6px 0;
 }
 
 .profile__none {
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   color: var(--text-soft);
 }
 
@@ -147,7 +151,7 @@ const projects = computed(() => props.involvedProjects ?? []);
 }
 
 .profile__action {
-  font-size: 12.5px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
 }
 </style>

@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { ExecutorNotFoundError, InvalidExecutionPlanError } from "../errors/execution-errors.js";
 import type { ExecutorRegistry } from "../executors/registry.js";
+import {
+  AllowAllActionPolicy,
+  type ActionPolicy,
+  type PolicyDecision,
+} from "../policies/action-policy.js";
 import { systemClock, type Clock } from "../ports/clock.js";
 import type { ExecutionStore } from "../ports/execution-store.js";
 import { ActionStatus, type Action } from "./action.js";
@@ -19,6 +24,8 @@ import {
 
 export interface ExecutionEngineDependencies {
   readonly registry: ExecutorRegistry;
+  /** Policy Layer: canExecute → validate antes do Registry/Executor. */
+  readonly policy?: ActionPolicy;
   readonly store?: ExecutionStore;
   readonly clock?: Clock;
   /** Se true, interrompe na primeira falha. Default: false (continue-on-error). */
@@ -33,12 +40,14 @@ type LogMeta = Pick<ExecutionLog, "actionId" | "executor" | "durationMs">;
  */
 export class ExecutionEngine {
   private readonly registry: ExecutorRegistry;
+  private readonly policy: ActionPolicy;
   private readonly store: ExecutionStore | undefined;
   private readonly clock: Clock;
   private readonly stopOnError: boolean;
 
   constructor(deps: ExecutionEngineDependencies) {
     this.registry = deps.registry;
+    this.policy = deps.policy ?? new AllowAllActionPolicy();
     this.store = deps.store;
     this.clock = deps.clock ?? systemClock;
     this.stopOnError = deps.stopOnError ?? false;
@@ -118,6 +127,19 @@ export class ExecutionEngine {
     ) => void,
   ): Promise<ActionResult> {
     const startedAt = this.clock.now();
+
+    const can = await this.policy.canExecute(action, context);
+    if (!can.allowed) {
+      return this.skipped(action, can, startedAt, log);
+    }
+
+    const valid: PolicyDecision = this.policy.validate
+      ? await this.policy.validate(action, context)
+      : { allowed: true };
+    if (!valid.allowed) {
+      return this.skipped(action, valid, startedAt, log);
+    }
+
     const executor = this.registry.resolve(action);
 
     if (!executor) {
@@ -160,6 +182,32 @@ export class ExecutionEngine {
       });
       return this.failure(action, executor.name, message, startedAt);
     }
+  }
+
+  private skipped(
+    action: Action,
+    decision: PolicyDecision,
+    startedAt: Date,
+    log: (
+      level: LogLevel,
+      phase: ExecutionPhase,
+      message: string,
+      meta?: Partial<LogMeta>,
+    ) => void,
+  ): ActionResult {
+    const reason = decision.reason ?? "Policy negou a execucao.";
+    log("warn", ExecutionPhase.ACTION_ERROR, reason, { actionId: action.id });
+    const finishedAt = this.clock.now();
+    return {
+      actionId: action.id,
+      type: action.type,
+      status: ActionStatus.SKIPPED,
+      executor: null,
+      error: reason,
+      startedAt,
+      finishedAt,
+      durationMs: finishedAt.getTime() - startedAt.getTime(),
+    };
   }
 
   private failure(
@@ -207,8 +255,16 @@ function resolveStatus(results: readonly ActionResult[]): ExecutionStatus {
   }
   const anyFailed = results.some((r) => r.status === ActionStatus.FAILED);
   const anySucceeded = results.some((r) => r.status === ActionStatus.SUCCESS);
+  const anySkipped = results.some((r) => r.status === ActionStatus.SKIPPED);
+
   if (anyFailed && anySucceeded) {
     return ExecutionStatus.PARTIAL;
   }
-  return anyFailed ? ExecutionStatus.FAILED : ExecutionStatus.SUCCESS;
+  if (anySkipped && anySucceeded) {
+    return ExecutionStatus.PARTIAL;
+  }
+  if (anyFailed || (anySkipped && !anySucceeded)) {
+    return ExecutionStatus.FAILED;
+  }
+  return ExecutionStatus.SUCCESS;
 }

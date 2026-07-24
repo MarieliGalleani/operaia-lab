@@ -60,4 +60,5 @@ export {
   EmployeeFrameworkError,
   BriefingValidationError,
   EmployeeNotFoundError,
+  EmployeeAlreadyRegisteredError,
 } from "./errors/index.js";

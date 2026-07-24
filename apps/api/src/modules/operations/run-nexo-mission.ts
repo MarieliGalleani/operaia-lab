@@ -22,7 +22,7 @@ async function main(): Promise<void> {
     ? createOperationalRuntime({
         stack: {
           provider: (process.env.LLM_PROVIDER as "gemini") ?? "gemini",
-          model: process.env.LLM_MODEL ?? "gemini-2.5-flash",
+          model: process.env.LLM_MODEL ?? "gemini-3.6-flash",
           geminiApiKey: process.env.GEMINI_API_KEY,
           openaiApiKey: process.env.OPENAI_API_KEY,
           anthropicApiKey: process.env.ANTHROPIC_API_KEY,

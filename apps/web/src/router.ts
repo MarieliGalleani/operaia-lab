@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router";
 import OfficeLayout from "@/layouts/OfficeLayout.vue";
+import CampusWorldPage from "@/views/CampusWorldPage.vue";
 import OfficeWorldPage from "@/views/OfficeWorldPage.vue";
 import ExecutiveRoom from "@/views/ExecutiveRoom.vue";
 import ProjectsView from "@/views/ProjectsView.vue";
@@ -8,10 +9,18 @@ import EmployeeRoom from "@/views/EmployeeRoom.vue";
 import ActivityCenter from "@/views/ActivityCenter.vue";
 import KnowledgeView from "@/views/KnowledgeView.vue";
 import SettingsView from "@/views/SettingsView.vue";
+import VpsPanelView from "@/views/VpsPanelView.vue";
 import VirtualWorldTest from "@/views/VirtualWorldTest.vue";
 
 const routes: RouteRecordRaw[] = [
-  { path: "/", redirect: "/office" },
+  { path: "/", redirect: "/campus" },
+  {
+    path: "/campus",
+    component: OfficeLayout,
+    children: [
+      { path: "", name: "campus", component: CampusWorldPage },
+    ],
+  },
   {
     path: "/office",
     component: OfficeLayout,
@@ -28,6 +37,7 @@ const routes: RouteRecordRaw[] = [
       },
       { path: "atividades", name: "activities", component: ActivityCenter },
       { path: "conhecimento", name: "knowledge", component: KnowledgeView },
+      { path: "vps", name: "vps-panel", component: VpsPanelView },
       { path: "configuracoes", name: "settings", component: SettingsView },
     ],
   },

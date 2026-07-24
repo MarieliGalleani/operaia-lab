@@ -45,12 +45,15 @@ export const ROOMS: readonly RoomDef[] = [
 export const ROOM_BY_SPECIALIZATION: Record<Specialization, string> = {
   MANAGEMENT: "executive",
   SOFTWARE_ENGINEERING: "engineering",
-  UX_DESIGN: "design",
-  PRODUCT: "product",
+  PRODUCT_DESIGN: "design",
+  PRODUCT_MANAGEMENT: "product",
   MARKETING: "marketing",
   AUTOMATION: "automation",
   FINANCE: "finance",
   LEGAL: "legal",
+  OPERATIONS: "lounge",
+  UX_DESIGN: "design",
+  PRODUCT: "product",
   COMMERCIAL: "commercial",
 };
 
@@ -61,12 +64,15 @@ export const MEETING_ROOM_ID = "meeting";
 export const TOOLS_BY_SPECIALIZATION: Record<Specialization, readonly string[]> = {
   MANAGEMENT: ["Painel executivo", "Relatórios", "Delegação"],
   SOFTWARE_ENGINEERING: ["Arquitetura", "Code Review", "CI/CD"],
-  UX_DESIGN: ["Wireframes", "Protótipos", "Design System"],
-  PRODUCT: ["Roadmap", "Backlog", "Discovery"],
+  PRODUCT_DESIGN: ["Wireframes", "Protótipos", "Design System"],
+  PRODUCT_MANAGEMENT: ["Roadmap", "Backlog", "Discovery"],
   AUTOMATION: ["Fluxos", "Integrações", "Webhooks"],
   MARKETING: ["Campanhas", "Conteúdo", "Analytics"],
   FINANCE: ["Fluxo de caixa", "Orçamento", "Projeções"],
   LEGAL: ["Contratos", "Compliance", "Pareceres"],
+  OPERATIONS: ["SLA", "Runbooks", "Hand-offs"],
+  UX_DESIGN: ["Wireframes", "Protótipos", "Design System"],
+  PRODUCT: ["Roadmap", "Backlog", "Discovery"],
   COMMERCIAL: ["Pipeline", "Propostas", "CRM"],
 };
 

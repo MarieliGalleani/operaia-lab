@@ -17,6 +17,7 @@ import {
 } from "fastify-type-provider-zod";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createWorkspaceRoutes } from "../workspaces/workspaces.routes.js";
+import { createMissionExecutionStack } from "../operations/mission-execution.js";
 import { EmployeesApplication } from "./employees.application.js";
 import { createEmployeeRoutes } from "./employees.routes.js";
 import { InMemoryWorkspaceSource } from "./in-memory-workspace-source.js";
@@ -37,7 +38,10 @@ function buildE2EOffice() {
   const workspaces = new InMemoryWorkspaceSource(buildTestWorkspaceCatalog());
   const workflows = new WorkflowStore();
   const application = new EmployeesApplication({ office, workspaces, workflows });
-  const orchestrator = new MissionOrchestrator(office);
+  const orchestrator = new MissionOrchestrator(
+    office,
+    createMissionExecutionStack(),
+  );
 
   return { observer, office, workspaces, workflows, application, orchestrator };
 }
@@ -126,7 +130,7 @@ describe("Etapa 7 — E2E Digital Office (missao NEXO)", () => {
     const { reply, workflow } = await application.ask({
       employeeId: "operaia-ceo",
       workspaceId: "nexo",
-      question: "Como esta a NEXO?",
+      question: "Quero implementar autenticação.",
     });
 
     expect(reply.employeeId).toBe("operaia-ceo");
@@ -159,9 +163,24 @@ describe("Etapa 7 — E2E Digital Office (missao NEXO)", () => {
     expect(mission.outcomes).toHaveLength(0);
     expect(mission.final).toBe(mission.initial);
     expect(mission.final.employeeId).toBe("operaia-ceo");
-    // Um unico ciclo LLM (sem Mag nem consolidacao)
+    // Caminho rapido: zero LLM (sem Mag nem consolidacao)
     expect(observer.snapshot().filter((e) => e.type === "call_succeeded")).toHaveLength(
-      1,
+      0,
+    );
+  });
+
+  it("ask consultivo: CEO responde imediato sem Mag", async () => {
+    const { application, observer } = buildE2EOffice();
+    const { reply, workflow } = await application.ask({
+      employeeId: "operaia-ceo",
+      workspaceId: "nexo",
+      question: "Como esta a NEXO?",
+    });
+
+    expect(reply.employeeId).toBe("operaia-ceo");
+    expect(workflow.steps.some((s) => s.actorId === "cto-mag")).toBe(false);
+    expect(observer.snapshot().filter((e) => e.type === "call_succeeded")).toHaveLength(
+      0,
     );
   });
 });

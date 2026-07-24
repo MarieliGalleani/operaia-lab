@@ -7,7 +7,7 @@ import type {
 } from "../llm-provider.js";
 import { toGeminiRequestParts } from "./gemini-message-adapter.js";
 
-const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+const DEFAULT_GEMINI_MODEL = "gemini-3.6-flash";
 
 export interface GeminiProviderOptions {
   readonly apiKey: string;

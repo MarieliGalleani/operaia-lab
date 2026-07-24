@@ -48,6 +48,7 @@ export class DelegationService {
       const result = await this.runner.run(employee, {
         workspace: context.workspace,
         objective,
+        memoryNotes: context.memoryNotes,
       });
 
       outcomes.push({

@@ -18,7 +18,7 @@ import {
   EmployeeRegistry,
   defineEmployee,
 } from "./factory/employee-registry.js";
-import { BriefingValidationError, EmployeeNotFoundError } from "./errors/index.js";
+import { BriefingValidationError, EmployeeAlreadyRegisteredError, EmployeeNotFoundError } from "./errors/index.js";
 
 // --- fixtures --------------------------------------------------------------
 
@@ -193,6 +193,13 @@ describe("EmployeeFactory + Registry", () => {
     ]);
     expect(registry.require("tester").profile.name).toBe("Tester");
     expect(() => registry.require("ghost")).toThrow(EmployeeNotFoundError);
+  });
+
+  it("rejeita registro duplicado do mesmo id", () => {
+    const registry = new EmployeeRegistry().register(defineEmployee(blueprint));
+    expect(() => registry.register(defineEmployee(blueprint))).toThrow(
+      EmployeeAlreadyRegisteredError,
+    );
   });
 
   it("cria via registry aplicando as politicas padrao", async () => {

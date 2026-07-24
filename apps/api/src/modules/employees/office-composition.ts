@@ -1,7 +1,5 @@
-import { ceoRegisteredEmployee } from "@operaia/agents";
 import type { LLMProvider } from "@operaia/ai-core";
-import { magRegisteredEmployee } from "@operaia/cto-mag";
-import { EmployeeRegistry } from "@operaia/employee-framework";
+import { registerDigitalTeam } from "@operaia/digital-team";
 import {
   DelegationService,
   EmployeeMatcher,
@@ -11,16 +9,12 @@ import {
 /**
  * Escritório digital montado na API: registry + camada de ativação.
  *
- * Espelha a composição já validada em
- * `packages/employee-runtime/src/activation-flow.test.ts` (`office()`),
- * agora como Composition Root reutilizável do produto.
- *
- * O LLM é injetado (sem singleton global). Nesta etapa o provider concreto
- * ainda não é escolhido — Etapa 5 da sprint.
+ * O roster oficial vive em `@operaia/digital-team`. Contratar um novo
+ * Employee = pacote + uma entrada no roster — este Composition Root não muda.
  */
 export interface DigitalOffice {
   readonly llm: LLMProvider;
-  readonly registry: EmployeeRegistry;
+  readonly registry: ReturnType<typeof registerDigitalTeam>;
   readonly runner: EmployeeRunner;
   readonly matcher: EmployeeMatcher;
   readonly delegation: DelegationService;
@@ -31,8 +25,8 @@ export interface DigitalOfficeConfig {
 }
 
 /**
- * COMPOSITION ROOT da equipe digital (CEO + Mag).
- * Único lugar autorizado na API a registrar funcionários e ligar
+ * COMPOSITION ROOT da Equipe Digital.
+ * Único lugar autorizado na API a montar o Registry e ligar
  * EmployeeRunner / EmployeeMatcher / DelegationService.
  */
 export function createDigitalOffice(
@@ -40,10 +34,7 @@ export function createDigitalOffice(
 ): DigitalOffice {
   const { llm } = config;
 
-  const registry = new EmployeeRegistry()
-    .register(ceoRegisteredEmployee)
-    .register(magRegisteredEmployee);
-
+  const registry = registerDigitalTeam();
   const runner = new EmployeeRunner();
   const matcher = new EmployeeMatcher(registry);
   const delegation = new DelegationService(matcher, runner, { llm });

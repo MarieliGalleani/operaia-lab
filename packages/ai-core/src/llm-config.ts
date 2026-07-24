@@ -14,7 +14,7 @@ export type LLMProviderId = (typeof LLM_PROVIDER_IDS)[number];
 
 export interface LLMProviderConfig {
   readonly provider: LLMProviderId;
-  /** Modelo padrao (ex.: gemini-2.5-flash). */
+  /** Modelo padrao (ex.: gemini-3.6-flash). */
   readonly model?: string;
   readonly geminiApiKey?: string;
   readonly openaiApiKey?: string;

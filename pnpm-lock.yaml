@@ -29,18 +29,21 @@ importers:
       '@operaia/ai-core':
         specifier: workspace:*
         version: link:../../packages/ai-core
-      '@operaia/cto-mag':
-        specifier: workspace:*
-        version: link:../../packages/employees/cto-mag
       '@operaia/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@operaia/digital-team':
+        specifier: workspace:*
+        version: link:../../packages/employees/digital-team
       '@operaia/employee-framework':
         specifier: workspace:*
         version: link:../../packages/employee-framework
       '@operaia/employee-runtime':
         specifier: workspace:*
         version: link:../../packages/employee-runtime
+      '@operaia/execution-engine':
+        specifier: workspace:*
+        version: link:../../packages/execution-engine
       '@operaia/memory':
         specifier: workspace:*
         version: link:../../packages/memory
@@ -209,6 +212,38 @@ importers:
         specifier: ^3.0.5
         version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(tsx@4.23.1)
 
+  packages/employees/atlas:
+    dependencies:
+      '@operaia/ai-core':
+        specifier: workspace:*
+        version: link:../../ai-core
+      '@operaia/employee-framework':
+        specifier: workspace:*
+        version: link:../../employee-framework
+      '@operaia/specialist-kit':
+        specifier: workspace:*
+        version: link:../specialist-kit
+    devDependencies:
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(tsx@4.23.1)
+
+  packages/employees/aurora:
+    dependencies:
+      '@operaia/ai-core':
+        specifier: workspace:*
+        version: link:../../ai-core
+      '@operaia/employee-framework':
+        specifier: workspace:*
+        version: link:../../employee-framework
+      '@operaia/specialist-kit':
+        specifier: workspace:*
+        version: link:../specialist-kit
+    devDependencies:
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(tsx@4.23.1)
+
   packages/employees/cto-mag:
     dependencies:
       '@operaia/ai-core':
@@ -220,6 +255,148 @@ importers:
       '@operaia/shared':
         specifier: workspace:*
         version: link:../../shared
+    devDependencies:
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(tsx@4.23.1)
+
+  packages/employees/digital-team:
+    dependencies:
+      '@operaia/agents':
+        specifier: workspace:*
+        version: link:../../agents
+      '@operaia/ai-core':
+        specifier: workspace:*
+        version: link:../../ai-core
+      '@operaia/cto-mag':
+        specifier: workspace:*
+        version: link:../cto-mag
+      '@operaia/employee-atlas':
+        specifier: workspace:*
+        version: link:../atlas
+      '@operaia/employee-aurora':
+        specifier: workspace:*
+        version: link:../aurora
+      '@operaia/employee-framework':
+        specifier: workspace:*
+        version: link:../../employee-framework
+      '@operaia/employee-luna':
+        specifier: workspace:*
+        version: link:../luna
+      '@operaia/employee-mercurio':
+        specifier: workspace:*
+        version: link:../mercurio
+      '@operaia/employee-nexus':
+        specifier: workspace:*
+        version: link:../nexus
+      '@operaia/employee-orion':
+        specifier: workspace:*
+        version: link:../orion
+      '@operaia/employee-runtime':
+        specifier: workspace:*
+        version: link:../../employee-runtime
+      '@operaia/employee-themis':
+        specifier: workspace:*
+        version: link:../themis
+      '@operaia/shared':
+        specifier: workspace:*
+        version: link:../../shared
+    devDependencies:
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(tsx@4.23.1)
+
+  packages/employees/luna:
+    dependencies:
+      '@operaia/ai-core':
+        specifier: workspace:*
+        version: link:../../ai-core
+      '@operaia/employee-framework':
+        specifier: workspace:*
+        version: link:../../employee-framework
+      '@operaia/specialist-kit':
+        specifier: workspace:*
+        version: link:../specialist-kit
+    devDependencies:
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(tsx@4.23.1)
+
+  packages/employees/mercurio:
+    dependencies:
+      '@operaia/ai-core':
+        specifier: workspace:*
+        version: link:../../ai-core
+      '@operaia/employee-framework':
+        specifier: workspace:*
+        version: link:../../employee-framework
+      '@operaia/specialist-kit':
+        specifier: workspace:*
+        version: link:../specialist-kit
+    devDependencies:
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(tsx@4.23.1)
+
+  packages/employees/nexus:
+    dependencies:
+      '@operaia/ai-core':
+        specifier: workspace:*
+        version: link:../../ai-core
+      '@operaia/employee-framework':
+        specifier: workspace:*
+        version: link:../../employee-framework
+      '@operaia/specialist-kit':
+        specifier: workspace:*
+        version: link:../specialist-kit
+    devDependencies:
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(tsx@4.23.1)
+
+  packages/employees/orion:
+    dependencies:
+      '@operaia/ai-core':
+        specifier: workspace:*
+        version: link:../../ai-core
+      '@operaia/employee-framework':
+        specifier: workspace:*
+        version: link:../../employee-framework
+      '@operaia/specialist-kit':
+        specifier: workspace:*
+        version: link:../specialist-kit
+    devDependencies:
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(tsx@4.23.1)
+
+  packages/employees/specialist-kit:
+    dependencies:
+      '@operaia/ai-core':
+        specifier: workspace:*
+        version: link:../../ai-core
+      '@operaia/employee-framework':
+        specifier: workspace:*
+        version: link:../../employee-framework
+      '@operaia/shared':
+        specifier: workspace:*
+        version: link:../../shared
+    devDependencies:
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(tsx@4.23.1)
+
+  packages/employees/themis:
+    dependencies:
+      '@operaia/ai-core':
+        specifier: workspace:*
+        version: link:../../ai-core
+      '@operaia/employee-framework':
+        specifier: workspace:*
+        version: link:../../employee-framework
+      '@operaia/specialist-kit':
+        specifier: workspace:*
+        version: link:../specialist-kit
     devDependencies:
       vitest:
         specifier: ^3.0.5

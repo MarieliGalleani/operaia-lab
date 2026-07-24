@@ -131,18 +131,20 @@ describe("Chat executivo e navegação por salas", () => {
     expect(wrapper.text()).toContain("Opera");
   });
 
-  it("SidebarNav exibe as áreas do escritório", () => {
+  it("SidebarNav exibe Campus e áreas do escritório", () => {
     const wrapper = mount(SidebarNav, {
       global: { plugins: [testRouter()] },
     });
     const text = wrapper.text();
     for (const label of [
-      "Escritório",
+      "Campus",
+      "OperaIA.lab",
       "Sala da CEO",
       "Equipe",
       "Projetos",
       "Central de atividades",
       "Conhecimento",
+      "Painel VPS",
       "Configurações",
     ]) {
       expect(text).toContain(label);

@@ -33,21 +33,44 @@ describe("Etapa 4 — HTTP com snapshot de Workspace", () => {
     await app.ready();
   });
 
-  it("GET /employees lista Opera e Mag", async () => {
+  it("GET /employees lista a Equipe Digital executavel", async () => {
     const response = await app.inject({
       method: "GET",
       url: "/api/v1/employees",
     });
     expect(response.statusCode).toBe(200);
-    const body = response.json() as { id: string }[];
-    expect(body.map((p) => p.id)).toEqual(["operaia-ceo", "cto-mag"]);
+    const body = response.json() as {
+      id: string;
+      executable: boolean;
+      status: string;
+      version: string;
+    }[];
+    expect(body.map((p) => p.id)).toEqual([
+      "operaia-ceo",
+      "cto-mag",
+      "luna",
+      "nexus",
+      "atlas",
+      "aurora",
+      "themis",
+      "mercurio",
+      "orion",
+    ]);
+    expect(body.every((p) => p.executable === true)).toBe(true);
+    expect(body.every((p) => p.version.length > 0)).toBe(true);
+    expect(body.every((p) => p.status === "AVAILABLE" || p.status === "WORKING")).toBe(
+      true,
+    );
   });
 
   it("POST /ask usa tarefas do snapshot e devolve workflow real", async () => {
     const response = await app.inject({
       method: "POST",
       url: "/api/v1/employees/operaia-ceo/ask",
-      payload: { workspaceId: "nexo", question: "Status da NEXO?" },
+      payload: {
+        workspaceId: "nexo",
+        question: "Quero implementar autenticação.",
+      },
     });
     expect(response.statusCode).toBe(200);
     const body = response.json() as {

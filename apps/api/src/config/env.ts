@@ -19,7 +19,7 @@ const envSchema = z.object({
   LLM_PROVIDER: z
     .enum(["gemini", "openai", "anthropic", "openrouter", "deterministic"])
     .default("gemini"),
-  LLM_MODEL: z.string().default("gemini-2.5-flash"),
+  LLM_MODEL: z.string().default("gemini-3.6-flash"),
   /** CSV de fallbacks, ex.: "openai,anthropic" (ignorados se nao implementados). */
   LLM_FALLBACK_PROVIDERS: z.string().optional(),
   LLM_MAX_TOKENS_CLAMP: z.coerce.number().int().positive().default(8192),
@@ -31,6 +31,13 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
+
+  /** Painel VPS — metadados e custo mensal estimado (0 = sem custo). */
+  VPS_NAME: z.string().default("OperaIA · ambiente local"),
+  VPS_PROVIDER: z.string().default("local"),
+  VPS_REGION: z.string().default("dev"),
+  VPS_MONTHLY_COST_BRL: z.coerce.number().nonnegative().default(0),
+  VPS_COST_CURRENCY: z.string().default("BRL"),
 });
 
 const parsed = envSchema.safeParse(process.env);

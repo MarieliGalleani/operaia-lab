@@ -3,6 +3,7 @@ import { Specialization } from "@operaia/employee-framework";
 import type { EmployeeContext } from "@operaia/employee-runtime";
 import { TaskStatus } from "@operaia/shared";
 import { describe, expect, it } from "vitest";
+import { createMissionExecutionStack } from "../operations/mission-execution.js";
 import { MissionOrchestrator } from "./mission-orchestrator.js";
 import { createDigitalOffice } from "./office-composition.js";
 
@@ -49,7 +50,7 @@ describe("Etapa 2 — MissionOrchestrator (CEO → Mag → Review → Resposta)"
   it("orquestra Opera → Mag → Opera; resposta final vem da consolidacao", async () => {
     const llm = new StubLLM();
     const office = createDigitalOffice({ llm });
-    const orchestrator = new MissionOrchestrator(office);
+    const orchestrator = new MissionOrchestrator(office, createMissionExecutionStack());
 
     const result = await orchestrator.run("operaia-ceo", nexoContext);
 
@@ -69,12 +70,18 @@ describe("Etapa 2 — MissionOrchestrator (CEO → Mag → Review → Resposta)"
 
     // Mag trabalhou (1) + Opera inicial (1) + Opera consolidacao (1)
     expect(llm.calls).toBe(3);
+    expect(result.timing.ceoMs).toBeGreaterThanOrEqual(0);
+    expect(result.timing.specialistMs).toBeGreaterThanOrEqual(0);
+    expect(result.timing.consolidationMs).toBeGreaterThanOrEqual(0);
+    expect(result.timing.totalMs).toBeGreaterThanOrEqual(
+      result.timing.ceoMs + result.timing.specialistMs + result.timing.consolidationMs,
+    );
   });
 
   it("sem pendencias: Opera responde direto, sem segundo ciclo", async () => {
     const llm = new StubLLM();
     const office = createDigitalOffice({ llm });
-    const orchestrator = new MissionOrchestrator(office);
+    const orchestrator = new MissionOrchestrator(office, createMissionExecutionStack());
 
     const doneContext: EmployeeContext = {
       workspace: {
@@ -90,12 +97,16 @@ describe("Etapa 2 — MissionOrchestrator (CEO → Mag → Review → Resposta)"
     expect(result.outcomes).toHaveLength(0);
     expect(result.final).toBe(result.initial);
     expect(result.final.employeeId).toBe("operaia-ceo");
-    expect(llm.calls).toBe(1);
+    // Caminho rapido: CEO responde sem LLM
+    expect(llm.calls).toBe(0);
+    expect(result.timing.specialistMs).toBe(0);
+    expect(result.timing.consolidationMs).toBe(0);
+    expect(result.timing.totalMs).toBeGreaterThanOrEqual(0);
   });
 
   it("nao expoe o summary bruto da Mag como resposta final", async () => {
     const office = createDigitalOffice({ llm: new StubLLM() });
-    const orchestrator = new MissionOrchestrator(office);
+    const orchestrator = new MissionOrchestrator(office, createMissionExecutionStack());
 
     const result = await orchestrator.run("operaia-ceo", nexoContext);
     const magSummary = result.outcomes[0]?.result?.output.report.summary ?? "";

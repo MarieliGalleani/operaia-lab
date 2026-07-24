@@ -9,6 +9,7 @@ export const magProfile: EmployeeProfile = {
     "Garantir que os produtos tenham arquitetura tecnologica solida e sejam " +
     "desenvolvidos com qualidade.",
   specialization: Specialization.SOFTWARE_ENGINEERING,
+  version: "1.0.0",
   capabilities: [
     "analisar arquitetura",
     "revisar decisoes tecnicas",

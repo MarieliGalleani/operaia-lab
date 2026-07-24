@@ -29,10 +29,10 @@ function authorName(id: string): string {
 
 <template>
   <div class="ws">
-    <div class="ws__overview card">
+    <article class="ws__overview panel">
       <div class="ws__head">
         <div>
-          <h2 class="ws__name">{{ project.name }}</h2>
+          <p class="eyebrow">Objetivo</p>
           <p class="ws__objective">{{ project.objective }}</p>
         </div>
         <span class="badge" :class="STATUS[project.status].cls">
@@ -41,56 +41,60 @@ function authorName(id: string): string {
       </div>
 
       <div class="ws__progress">
-        <div class="ws__bar">
-          <div class="ws__bar-fill" :style="{ width: `${project.progress}%` }" />
+        <div class="meter">
+          <span :style="{ width: `${project.progress}%` }" />
         </div>
-        <span class="ws__pct">{{ project.progress }}% concluído</span>
+        <span class="ws__pct">{{ project.progress }}%</span>
       </div>
 
       <div class="ws__team">
-        <span class="ws__label">Equipe envolvida</span>
+        <p class="eyebrow">Equipe envolvida</p>
         <div class="ws__members">
-          <span v-for="member in team" :key="member.id" class="ws__member">
-            {{ member.emoji }} {{ member.role }} — {{ member.name }}
-          </span>
+          <div v-for="member in team" :key="member.id" class="ws__member">
+            <span class="ws__face">{{ member.emoji }}</span>
+            <div>
+              <strong>{{ member.role }} — {{ member.name }}</strong>
+              <span>{{ member.statusLabel }}</span>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </article>
 
-    <div class="ws__decisions card">
-      <span class="ws__label">Últimas decisões</span>
+    <article class="ws__decisions panel">
+      <p class="eyebrow">Últimas decisões</p>
       <ul class="ws__dec-list">
         <li v-for="dec in project.decisions" :key="dec.id" class="ws__dec">
           <p class="ws__dec-text">{{ dec.summary }}</p>
           <span class="ws__dec-meta">
-            {{ authorName(dec.authorId) }} • {{ formatDateTime(dec.date) }}
+            {{ authorName(dec.authorId) }} · {{ formatDateTime(dec.date) }}
           </span>
         </li>
         <li v-if="project.decisions.length === 0" class="ws__dec-empty">
-          Ainda não há decisões registradas.
+          <p class="ws__dec-empty__title">Nenhuma decisão ainda</p>
+          <p class="ws__dec-empty__body">
+            Use a Sala da CEO para registrar o próximo direcionamento deste workspace.
+          </p>
+          <router-link to="/office/sala-ceo" class="btn btn--ghost">Falar com a Opera</router-link>
         </li>
       </ul>
-    </div>
+    </article>
   </div>
 </template>
 
 <style scoped>
 .ws {
   display: grid;
-  grid-template-columns: 1.3fr 1fr;
-  gap: 18px;
-  align-items: start;
-}
-
-@media (max-width: 860px) {
-  .ws {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: 1.2fr 1fr;
+  grid-column-gap: 12px;
+  align-items: stretch;
+  flex-shrink: 0;
 }
 
 .ws__overview,
 .ws__decisions {
-  padding: 22px;
+  padding: 14px 16px;
+  min-height: 0;
 }
 
 .ws__head {
@@ -99,65 +103,45 @@ function authorName(id: string): string {
   justify-content: space-between;
 }
 
-.ws__name {
-  font-size: 22px;
-}
-
 .ws__objective {
   margin-top: 6px;
-  font-size: 14px;
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.45;
+  max-width: 48ch;
+  font-weight: 600;
 }
 
 .ws__progress {
   display: flex;
   align-items: center;
-  margin-top: 20px;
+  margin-top: 14px;
 }
 
-.ws__bar {
+.ws__progress .meter {
   flex: 1;
-  height: 9px;
-  background: var(--surface-2);
-  border-radius: 999px;
-  overflow: hidden;
-  margin-right: 12px;
-}
-
-.ws__bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--brand), #818cf8);
-  border-radius: 999px;
+  margin-right: 10px;
+  height: 6px;
 }
 
 .ws__pct {
-  font-size: 12.5px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--text-muted);
 }
 
-.ws__label {
-  display: block;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-soft);
-  margin-bottom: 12px;
-}
-
 .ws__team {
-  margin-top: 22px;
+  margin-top: 16px;
 }
 
 .ws__members {
-  display: flex;
-  flex-direction: column;
+  margin-top: 8px;
 }
 
 .ws__member {
-  font-size: 13.5px;
-  color: var(--text);
-  padding: 7px 0;
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -165,14 +149,42 @@ function authorName(id: string): string {
   border-bottom: none;
 }
 
+.ws__face {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.ws__member strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ws__member span {
+  display: block;
+  font-size: 11px;
+  color: var(--text-soft);
+  margin-top: 2px;
+}
+
 .ws__dec-list {
   list-style: none;
-  margin: 0;
+  margin: 8px 0 0;
   padding: 0;
 }
 
 .ws__dec {
-  padding: 12px 0;
+  padding: 10px 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -182,16 +194,39 @@ function authorName(id: string): string {
 
 .ws__dec-text {
   color: var(--text);
-  font-size: 13.5px;
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .ws__dec-meta {
-  font-size: 11.5px;
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
   color: var(--text-soft);
 }
 
 .ws__dec-empty {
-  color: var(--text-soft);
+  padding: 12px 0 4px;
+}
+
+.ws__dec-empty__title {
   font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ws__dec-empty__body {
+  margin-top: 6px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+@media (max-width: 860px) {
+  .ws {
+    grid-template-columns: 1fr;
+    grid-row-gap: 12px;
+  }
 }
 </style>

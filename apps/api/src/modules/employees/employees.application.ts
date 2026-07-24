@@ -2,13 +2,15 @@ import {
   EmployeeNotFoundError,
   type EmployeeProfile,
 } from "@operaia/employee-framework";
-import { DeterministicLLMProvider } from "@operaia/ai-core";
+import { DeterministicLLMProvider, RecordingLLMObserver } from "@operaia/ai-core";
 import { NotFoundError, type Priority } from "@operaia/shared";
-import { MissionOrchestrator } from "./mission-orchestrator.js";
-import {
-  presentMissionResult,
-  type EmployeeReplyPayload,
-  type WorkflowPayload,
+import { InMemoryMemoryStore } from "@operaia/workspace-runtime";
+import { createMissionExecutionStack } from "../operations/mission-execution.js";
+import { OperationalMissionService } from "../operations/operational-mission-service.js";
+import { OperationalRunStore } from "../operations/operational-run-store.js";
+import type {
+  EmployeeReplyPayload,
+  WorkflowPayload,
 } from "./mission-presenter.js";
 import { createDigitalOffice, type DigitalOffice } from "./office-composition.js";
 import {
@@ -30,6 +32,8 @@ export interface AskEmployeeInput {
 export interface AskEmployeeResult {
   readonly reply: EmployeeReplyPayload;
   readonly workflow: WorkflowPayload;
+  /** ID do OperationalRun — mesmo registro que Operations. */
+  readonly missionId: string;
 }
 
 export interface EmployeeProfilePayload {
@@ -37,6 +41,9 @@ export interface EmployeeProfilePayload {
   readonly name: string;
   readonly role: string;
   readonly specialization: string;
+  readonly status: "WORKING" | "AVAILABLE" | "HIRING";
+  readonly version: string;
+  readonly executable: true;
   readonly mission: string;
   readonly capabilities: readonly string[];
   readonly permissions: readonly string[];
@@ -78,36 +85,61 @@ export interface EmployeesApplicationDeps {
   readonly office?: DigitalOffice;
   readonly workflows?: WorkflowStore;
   readonly workspaces: WorkspaceSource;
+  /**
+   * Fonte unica de execucao de missao (Operations + Sala da CEO).
+   * Se omitido, cria um OperationalMissionService local (testes isolados).
+   */
+  readonly missions?: OperationalMissionService;
 }
 
 /**
- * Aplicacao da Equipe Digital: WorkspaceSource + MissionOrchestrator +
- * apresentacao. Sem regras de negocio de funcionarios.
- * MissionOrchestrator permanece inalterado.
+ * Aplicacao da Equipe Digital: catalogo + apresentacao.
+ * Execucao de missao: sempre via OperationalMissionService (unica fonte).
  */
 export class EmployeesApplication {
   private readonly office: DigitalOffice;
-  private readonly orchestrator: MissionOrchestrator;
   private readonly workflows: WorkflowStore;
   private readonly workspaces: WorkspaceSource;
+  private readonly missions: OperationalMissionService;
   private readonly lastActivity = new Map<string, string>();
 
   constructor(deps: EmployeesApplicationDeps) {
     this.office =
       deps.office ??
       createDigitalOffice({ llm: new DeterministicLLMProvider() });
-    this.orchestrator = new MissionOrchestrator(this.office);
     this.workflows = deps.workflows ?? new WorkflowStore();
     this.workspaces = deps.workspaces;
+    this.missions =
+      deps.missions ??
+      new OperationalMissionService(
+        this.office,
+        this.workspaces,
+        new RecordingLLMObserver(),
+        new OperationalRunStore(),
+        new InMemoryMemoryStore(),
+        createMissionExecutionStack(),
+      );
+  }
+
+  /** Acesso ao servico de missao (testes / igualdade de canais). */
+  get missionService(): OperationalMissionService {
+    return this.missions;
   }
 
   listProfiles(): readonly EmployeeProfilePayload[] {
-    return this.office.registry.all().map((entry) => toProfileDto(entry.profile));
+    const statusById = new Map(
+      this.listStatuses().map((entry) => [entry.employeeId, entry]),
+    );
+    return this.office.registry.all().map((entry) =>
+      toProfileDto(entry.profile, statusById.get(entry.profile.id)),
+    );
   }
 
   getProfile(id: string): EmployeeProfilePayload | undefined {
     try {
-      return toProfileDto(this.office.registry.require(id).profile);
+      const profile = this.office.registry.require(id).profile;
+      const status = this.listStatuses().find((entry) => entry.employeeId === id);
+      return toProfileDto(profile, status);
     } catch (error) {
       if (error instanceof EmployeeNotFoundError) {
         return undefined;
@@ -157,13 +189,11 @@ export class EmployeesApplication {
     return this.workflows.get(workspaceId);
   }
 
+  /**
+   * Sala da CEO: mesma execucao que Operations (OperationalMissionService).
+   * Retorno HTTP publico permanece `reply` — missionId e interno/testes.
+   */
   async ask(input: AskEmployeeInput): Promise<AskEmployeeResult> {
-    const snapshot = await this.workspaces.toSnapshot(input.workspaceId);
-    const workspace = await this.workspaces.getWorkspace(input.workspaceId);
-    if (!snapshot || !workspace) {
-      throw new NotFoundError("Workspace", input.workspaceId);
-    }
-
     try {
       this.office.registry.require(input.employeeId);
     } catch (error) {
@@ -173,23 +203,30 @@ export class EmployeesApplication {
       throw error;
     }
 
-    const result = await this.orchestrator.run(input.employeeId, {
-      workspace: snapshot,
-      objective: input.question,
-    });
+    let run;
+    try {
+      run = await this.missions.run({
+        workspaceId: input.workspaceId,
+        objective: input.question,
+        employeeId: input.employeeId,
+      });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.startsWith("Workspace nao encontrado")
+      ) {
+        throw new NotFoundError("Workspace", input.workspaceId);
+      }
+      throw error;
+    }
 
-    const presented = presentMissionResult(
-      result,
-      input.workspaceId,
-      workspace.name,
-    );
-    this.workflows.save(presented.workflow);
+    this.workflows.save(run.workflow);
 
     this.lastActivity.set(
-      result.final.employeeId,
+      run.mission.final.employeeId,
       `Missao: ${input.question.slice(0, 80)}`,
     );
-    for (const outcome of result.outcomes) {
+    for (const outcome of run.mission.outcomes) {
       if (outcome.employeeId) {
         this.lastActivity.set(
           outcome.employeeId,
@@ -198,21 +235,26 @@ export class EmployeesApplication {
       }
     }
 
-    return presented;
+    return {
+      reply: run.reply,
+      workflow: run.workflow,
+      missionId: run.id,
+    };
   }
 }
 
-function toProfileDto(profile: EmployeeProfile): EmployeeProfilePayload {
+function toProfileDto(
+  profile: EmployeeProfile,
+  status?: EmployeeStatusPayload,
+): EmployeeProfilePayload {
   return {
     id: profile.id,
-    name: profile.id === "operaia-ceo" ? "Opera" : profile.name,
-    role:
-      profile.specialization === "MANAGEMENT"
-        ? "CEO"
-        : profile.specialization === "SOFTWARE_ENGINEERING"
-          ? "CTO"
-          : profile.role,
+    name: profile.name,
+    role: profile.role,
     specialization: profile.specialization,
+    status: status?.status ?? "AVAILABLE",
+    version: profile.version ?? "1.0.0",
+    executable: true,
     mission: profile.mission,
     capabilities: profile.capabilities,
     permissions: profile.permissions,

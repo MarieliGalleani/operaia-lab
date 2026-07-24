@@ -6,16 +6,19 @@
  * apenas uma nova implementacao de `OfficeService` — sem tocar na UI.
  */
 
-/** Especialidades de negocio (alinhadas ao Employee Framework + Comercial). */
+/** Especialidades de negocio (alinhadas ao Employee Framework). */
 export type Specialization =
   | "MANAGEMENT"
   | "SOFTWARE_ENGINEERING"
-  | "UX_DESIGN"
-  | "PRODUCT"
+  | "PRODUCT_DESIGN"
+  | "PRODUCT_MANAGEMENT"
   | "AUTOMATION"
   | "MARKETING"
   | "FINANCE"
   | "LEGAL"
+  | "OPERATIONS"
+  | "UX_DESIGN"
+  | "PRODUCT"
   | "COMMERCIAL";
 
 /** Situacao operacional de um funcionario no escritorio. */
