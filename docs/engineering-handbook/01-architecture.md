@@ -31,12 +31,12 @@ O OperaIA.lab organiza responsabilidades em três planos distintos:
 | Plano | Responsabilidade | Exemplos no monorepo |
 |---|---|---|
 | **Domínio** | Regras de negócio, contratos, identidade e capacidades dos agentes | `packages/employee-framework`, `packages/agents`, `packages/employees/*` |
-| **Runtime** | Orquestração, delegação, execução e composição operacional | `packages/employee-runtime`, `packages/execution-engine`, `packages/orchestration-engine` |
+| **Runtime** | Orquestração, delegação, execução e composição operacional | `packages/employee-runtime`, `packages/agent-runtime`, `packages/workspace-runtime`, `packages/execution-engine`, `packages/orchestration-engine` |
 | **Infraestrutura** | Persistência, contratos transversais, provedores externos | `packages/database`, `packages/memory`, `packages/ai-core`, `packages/shared` |
 
 O **domínio** define *o que* o sistema representa e *quais decisões* são válidas. O **runtime** define *como* missões fluem e ações são executadas. A **infraestrutura** provê *onde* e *com quais recursos* o sistema persiste dados e se conecta ao mundo externo.
 
-A aplicação `apps/api` atua como **composition root** — o ponto único que monta domínio, runtime e infraestrutura em um sistema operacional coeso.
+A aplicação `apps/api` atua como **composition root** do Digital Office — monta domínio, runtime e infraestrutura no fluxo operacional da Equipe Digital. O pacote `packages/workspace-runtime` atua como camada de composição entre o contexto do Workspace, Agent Runtime, Execution Engine e Orchestration Engine.
 
 ---
 
@@ -47,13 +47,16 @@ O monorepo do OperaIA.lab é organizado em `apps/` (aplicações deployáveis) e
 ```
 operaia-lab/
 ├── apps/
-│   └── api/                        # Digital Office API (composition root)
+│   ├── api/                        # Digital Office API (composition root)
+│   └── web/                        # Interface do escritório digital
 ├── packages/
 │   ├── shared/                     # Tipos, enums e erros transversais
 │   ├── database/                   # Prisma schema, client e migrations
 │   ├── ai-core/                    # Contrato e provedores LLM
 │   ├── memory/                     # Contrato MemoryStore
 │   ├── agents/                     # Opera CEO e definições de agentes
+│   ├── agent-runtime/              # Runtime base para execução de agentes
+│   ├── workspace-runtime/          # Composição Workspace + Agent/Execution/Orchestration
 │   ├── employee-framework/         # Contratos e factory de funcionários
 │   ├── employee-runtime/           # Ativação, delegação e mapeamento de ações
 │   ├── execution-engine/           # Execução controlada de planos
@@ -69,7 +72,7 @@ operaia-lab/
 
 ### `apps/api`
 
-Aplicação Fastify que expõe a **Digital Office API**. É o ponto de entrada HTTP do sistema e o único orquestrador de alto nível.
+Aplicação Fastify que expõe a **Digital Office API**. É o ponto de entrada HTTP do sistema e o composition root do fluxo operacional da Equipe Digital.
 
 Responsabilidades:
 
@@ -79,6 +82,18 @@ Responsabilidades:
 - coordenar o fluxo completo: CEO → orquestração → especialistas → execução → memória.
 
 Cada módulo interno (`src/modules/*`) segue Clean Architecture com camadas `domain`, `application`, `infrastructure` e `routes`.
+
+### `apps/web`
+
+Aplicação de interface do OperaIA.lab (`@operaia/web`). É o front-end do monorepo — camada de experiência do usuário sobre o escritório digital.
+
+Responsabilidades:
+
+- apresentar a interface do escritório digital ao usuário;
+- navegar salas, workspaces e superfícies de interação do produto;
+- consumir a API quando a experiência exigir dados ou missões do backend.
+
+`apps/web` não é composition root do domínio nem da execução. Não concentra regras de decisão, orquestração ou persistência — essas responsabilidades permanecem em `apps/api` e nos pacotes de runtime/domínio.
 
 ### `packages/database`
 
@@ -115,6 +130,53 @@ Responsabilidades:
 - definições declarativas de agentes (`AgentDefinition`, registry).
 
 O Opera CEO é o agente central: recebe objetivos, decide delegações e consolida resultados finais das missões.
+
+### `packages/agent-runtime`
+
+Kernel de execução de agentes (`@operaia/agent-runtime`). Orquestra o pipeline de um agente dependendo apenas de contratos (ports) — sem conhecer provedores concretos de LLM, banco ou ferramentas.
+
+Responsabilidades:
+
+- carregar a definição do agente (`AgentLoader`);
+- montar contexto e recuperar memória (`MemoryStore`);
+- descobrir ferramentas (`ToolProvider`) e construir prompt (`PromptBuilder`);
+- selecionar LLM (`LLMSelector`) e gerar resposta;
+- propor `actions` a partir da saída do modelo (`ActionParser`).
+
+Posicionamento arquitetural:
+
+```
+packages/agents          → define o agente
+        ↓
+packages/agent-runtime   → executa o pipeline do agente (propõe, não executa ações)
+        ↓
+packages/execution-engine → executa ações concretas (quando compostas)
+```
+
+O Agent Runtime **propõe, não executa**. Devolve `RuntimeResponse` com `output`, plano de raciocínio e `actions` propostas. A execução concreta de ações permanece no Execution Engine, tipicamente composta via `workspace-runtime`.
+
+Dependências do pacote: `@operaia/agents`, `@operaia/ai-core`, `@operaia/memory`.
+
+### `packages/workspace-runtime`
+
+Camada de composição do workspace operacional (`@operaia/workspace-runtime`). É o local autorizado a conhecer implementações concretas do Agent Runtime, do Execution Engine e do Orchestration Engine, conectando-os por adapters.
+
+Responsabilidades:
+
+- representar `Workspace` e `WorkspaceSession` (unidade de trabalho de um agente dentro de um workspace);
+- compor Agent Runtime + Execution Engine + Orchestration Engine (`createWorkspaceRuntime`);
+- gerenciar workspaces e sessões (`WorkspaceManager`, stores);
+- mapear planos entre o pipeline de raciocínio do Agent Runtime e o trabalho executável do Execution Engine.
+
+A partir desta camada, o agente trabalha **dentro de um Workspace** — não sobre um prompt solto. O workspace é o ponto de convergência do contexto operacional; memória, tarefas e documentação ricas continuam em suas camadas respectivas.
+
+```
+createWorkspaceRuntime()
+        ↓
+Agent Runtime  ←→  Orchestration Engine  ←→  Execution Engine
+        ↓
+Workspace / Session
+```
 
 ### `packages/employee-framework`
 
@@ -244,7 +306,7 @@ Resultado consolidado retornado ao usuário. Inclui output do especialista, resu
 
 ### Modular Monolith
 
-Um único deploy (`apps/api`) com fronteiras internas explícitas. A simplicidade operacional (um banco, um processo) coexiste com organização de código que permite extração futura de módulos sem reescrita de domínio.
+Artefato deployável da API (`apps/api`) com fronteiras internas explícitas, mais a aplicação de interface (`apps/web`). A simplicidade operacional (um banco, processo de API coeso) coexiste com organização de código que permite extração futura de módulos sem reescrita de domínio.
 
 ### Domain Driven Organization
 
@@ -254,8 +316,10 @@ Cada capacidade pertence a um domínio específico. A estrutura de diretórios r
 
 Funcionários, orquestração, execução e infraestrutura possuem pacotes e responsabilidades separadas:
 
-- funcionários definem *o que* decidir e *quais ações* propor;
-- o runtime define *como* ativar, delegar e mapear tarefas;
+- funcionários e agentes definem *o que* decidir e *quais ações* propor;
+- o `employee-runtime` define *como* ativar, delegar e mapear tarefas de employees;
+- o `agent-runtime` define *como* executar o pipeline de um agente (contexto → LLM → ações propostas);
+- o `workspace-runtime` compõe Agent Runtime, Orchestration e Execution no contexto de um Workspace;
 - o execution engine define *como* executar ações;
 - a infraestrutura define *onde* persistir e *como* conectar serviços externos.
 
@@ -289,7 +353,7 @@ packages/employees/{employee-name}/
 
 ### Núcleo protegido
 
-Alterações em pacotes centrais (`employee-framework`, `agents`, `employee-runtime`, `execution-engine`, `orchestration-engine`) exigem decisão arquitetural documentada neste Handbook antes da implementação.
+Alterações em pacotes centrais (`employee-framework`, `agents`, `employee-runtime`, `agent-runtime`, `workspace-runtime`, `execution-engine`, `orchestration-engine`) exigem decisão arquitetural documentada neste Handbook antes da implementação.
 
 Mudanças no núcleo impactam todos os funcionários e o fluxo operacional — devem ser justificadas, revisadas e registradas.
 
@@ -301,7 +365,9 @@ Toda nova capacidade deve residir no pacote correto:
 |---|---|
 | Contrato ou perfil de funcionário | `employee-framework` |
 | Lógica de um funcionário específico | `packages/employees/{name}` |
-| Ativação, delegação ou mapeamento | `employee-runtime` |
+| Ativação, delegação ou mapeamento de employees | `employee-runtime` |
+| Pipeline de execução de agente (ports) | `agent-runtime` |
+| Composição Workspace + Agent/Execution/Orchestration | `workspace-runtime` |
 | Execução de ações | `execution-engine` |
 | Orquestração de missões | `orchestration-engine` |
 | Análise e consolidação estratégica | `agents` (Opera CEO) |
@@ -309,7 +375,8 @@ Toda nova capacidade deve residir no pacote correto:
 | Memória operacional | `memory` (contrato) |
 | Provedores LLM | `ai-core` |
 | Tipos e erros compartilhados | `shared` |
-| Exposição HTTP e composição | `apps/api` |
+| Exposição HTTP e composição do Digital Office | `apps/api` |
+| Interface do usuário / experiência do escritório | `apps/web` |
 
 Adicionar lógica de domínio em pacotes de infraestrutura, ou lógica de infraestrutura em pacotes de domínio, viola os limites arquiteturais e deve ser rejeitado em revisão.
 
