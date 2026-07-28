@@ -145,9 +145,9 @@ Decisões estratégicas permanecem sob controle humano. O sistema automatiza an�
 
 ---
 
-## 5. Current System Status
+## 5. Capabilities Implemented
 
-Estado atual validado do OperaIA.lab:
+Capacidades atualmente documentadas do OperaIA.lab:
 
 - ✓ Employee Framework
 - ✓ Opera CEO

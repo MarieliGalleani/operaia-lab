@@ -133,7 +133,7 @@ O Opera CEO é o agente central: recebe objetivos, decide delegações e consoli
 
 ### `packages/agent-runtime`
 
-Kernel de execução de agentes (`@operaia/agent-runtime`). Orquestra o pipeline de um agente dependendo apenas de contratos (ports) — sem conhecer provedores concretos de LLM, banco ou ferramentas.
+Runtime base para execução de agentes (`@operaia/agent-runtime`). Orquestra o pipeline de um agente dependendo apenas de contratos (ports) — sem conhecer provedores concretos de LLM, banco ou ferramentas.
 
 Responsabilidades:
 
