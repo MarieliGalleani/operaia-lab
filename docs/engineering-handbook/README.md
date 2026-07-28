@@ -1,169 +1,556 @@
 # OperaIA Engineering Handbook
 
-## 1. Overview
+Documentação técnica oficial do **OperaIA.lab**.
 
-O **OperaIA Engineering Handbook** é a documentação técnica oficial do **OperaIA.lab**. Este documento consolida a visão arquitetural, os princípios de engenharia e o estado atual do sistema, servindo como referência para decisões técnicas e desenvolvimento de novos componentes.
+Este Handbook é a referência de engenharia do repositório. Ele define a arquitetura atual, os princípios técnicos, os limites de responsabilidade entre componentes e as regras para evolução do sistema.
 
-O **OperaIA.lab** é uma infraestrutura de operação digital composta por:
-
-- **agentes especializados** — funcionários digitais com identidade, papel e capacidades definidas;
-- **orquestração de missões** — coordenação de objetivos complexos entre múltiplos agentes;
-- **memória operacional** — registro persistente de contexto, decisões e resultados;
-- **execução controlada** — realização de ações com rastreabilidade e limites explícitos;
-- **regras de decisão** — critérios formais que orientam análise, delegação e consolidação.
-
-O objetivo deste Handbook é registrar como o sistema funciona, documentar suas decisões arquiteturais e estabelecer diretrizes para o desenvolvimento de novos componentes de forma consistente com a visão do OperaIA.lab.
+O documento deve refletir somente capacidades existentes ou arquiteturas formalmente definidas. Funcionalidades futuras devem ser identificadas como evolução, não como implementação concluída.
 
 ---
 
-## 2. Core Philosophy
+# 1. Visão Geral
 
-### Agents are not isolated bots
+## Objetivo do OperaIA.lab
 
-Os agentes digitais não trabalham individualmente. Eles fazem parte de um sistema coordenado, onde cada ação contribui para um objetivo operacional maior.
+O **OperaIA.lab** é uma plataforma de **Digital Office** baseada em agentes digitais.
 
-Missões complexas passam por análise, decisão e delegação antes de qualquer execução. Nenhum agente opera de forma autônoma fora do fluxo orquestrado.
+Seu objetivo é criar uma estrutura operacional capaz de:
 
-### Orchestration before execution
+- receber objetivos;
+- analisar contexto;
+- delegar responsabilidades;
+- executar ações controladas;
+- registrar resultados;
+- manter rastreabilidade operacional.
 
-O fluxo oficial de processamento de missões segue a sequência abaixo:
+O OperaIA.lab não é uma coleção de chatbots independentes.
 
-```
-Objetivo
+A arquitetura utiliza:
+
+- Modular Monolith;
+- Runtime de Employees;
+- Mission Orchestration;
+- LLM Infrastructure;
+- Workspace Context;
+- Execução controlada.
+
+---
+
+# 2. Conceito de Digital Office
+
+O Digital Office representa uma organização operacional composta por:
+
+## Workspace
+
+Contexto de trabalho contendo:
+
+- projeto;
+- informações operacionais;
+- tarefas;
+- histórico;
+- estado atual.
+
+## Employees
+
+Funcionários digitais com:
+
+- identidade;
+- papel;
+- especialização;
+- capabilities;
+- limites de atuação.
+
+## Missions
+
+Unidades operacionais que transformam objetivos em ciclos executáveis.
+
+Fluxo conceitual:
+
+Workspace
 ↓
-CEO Analysis
+Mission
 ↓
-Delegation Decision
+Employee
 ↓
-Specialist Execution
-↓
-Execution Plan
+Execution
 ↓
 Result
-↓
-CEO Consolidation
-```
 
-Cada etapa possui responsabilidade definida. A análise precede a delegação; a delegação precede a execução; a consolidação encerra o ciclo com um resultado rastreável.
-
-### Specialized employees
-
-Cada funcionário digital possui:
-
-- **identidade** — nome, perfil e presença no sistema;
-- **papel** — função dentro da organização digital;
-- **especialização** — domínio de conhecimento e atuação;
-- **capacidades** — ações que o agente pode executar;
-- **limites** — restrições explícitas de atuação;
-- **contexto operacional** — informações necessárias para decisões informadas.
-
-Novos funcionários devem ser adicionados como pacotes independentes, sem alterar o núcleo do sistema.
-
-### Auditability
-
-Toda operação deve ser rastreável. O sistema registra:
-
-- missão executada;
-- agente responsável;
-- decisões tomadas;
-- ações realizadas;
-- resultado produzido.
-
-A auditabilidade não é opcional — é requisito fundamental para operação confiável e supervisão humana.
 
 ---
 
-## 3. System Architecture Overview
+# 3. Princípios de Engenharia
 
-O OperaIA.lab é organizado em camadas com responsabilidades bem definidas:
+## Modular Monolith
 
-```
-User
-↓
-Digital Office API
-↓
-Opera CEO
-↓
-Specialists / Operations Engine
-↓
-Execution Runtime
-↓
-Memory System
-```
+O padrão arquitetural principal é um monorepo modular utilizando fronteiras claras entre domínios.
 
-### User
+Características:
 
-Ponto de entrada humano. O usuário define objetivos, acompanha missões e mantém supervisão sobre decisões estratégicas.
-
-### Digital Office API
-
-Camada de interface entre o usuário e o sistema interno. Expõe endpoints para criação de missões, consulta de status e interação com o escritório digital.
-
-### Opera CEO
-
-Agente central de análise e orquestração. Recebe objetivos, realiza análise estratégica, decide delegações e consolida resultados finais.
-
-### Specialists / Operations Engine
-
-Camada de funcionários especializados e motor de operações. Executa tarefas delegadas pelo CEO, aplica regras de domínio e produz planos de execução.
-
-### Execution Runtime
-
-Ambiente de execução controlada. Realiza ações concretas definidas nos planos de execução, respeitando limites e políticas do sistema.
-
-### Memory System
-
-Sistema de memória operacional. Persiste contexto, histórico de decisões, resultados de missões e estado operacional para consulta e continuidade.
+- módulos independentes;
+- contratos explícitos;
+- baixo acoplamento;
+- evolução incremental.
 
 ---
 
-## 4. Architectural Principles
+## TypeScript como linguagem principal
 
-### Modular Architecture
+O código utiliza TypeScript como linguagem principal.
 
-O sistema segue uma arquitetura modular onde novos domínios e funcionários podem ser adicionados como pacotes independentes.
+Preferências:
 
-Exemplo de organização:
-
-```
-packages/employees/{employee-name}
-```
-
-Cada pacote encapsula identidade, capacidades e lógica de domínio do funcionário digital, sem acoplamento ao núcleo do sistema.
-
-### Domain Driven Organization
-
-Cada capacidade pertence a um domínio específico. A organização do código reflete os limites de negócio e operacionais, facilitando evolução independente de cada área.
-
-### Runtime Separation
-
-Funcionários, execução e infraestrutura possuem responsabilidades separadas. Agentes definem *o que* fazer; o runtime define *como* executar; a infraestrutura provê *onde* e *com quais recursos* operar.
-
-### Human Oversight
-
-Decisões estratégicas permanecem sob controle humano. O sistema automatiza análise, delegação e execução operacional, mas a supervisão humana é mantida em pontos críticos de decisão.
+- contratos tipados;
+- interfaces claras;
+- validações explícitas;
+- redução de acoplamento.
 
 ---
 
-## 5. Capabilities Implemented
+## Organização por packages
 
-Capacidades atualmente documentadas do OperaIA.lab:
+Responsabilidades devem permanecer separadas.
 
-- ✓ Employee Framework
-- ✓ Opera CEO
-- ✓ Mag CTO
-- ✓ Mission Orchestrator
-- ✓ Execution Engine
-- ✓ Memory Integration
-- ✓ Digital Office E2E
-- ✓ Operational Missions
-- ✓ Prisma Runtime
-- ✓ Automated test suite validated
+Estrutura:
+apps/
+packages/
+
+
+Apps representam aplicações finais.
+
+Packages representam capacidades reutilizáveis e domínios internos.
 
 ---
 
-## 6. Development Rule
+## Código orientado a domínio
 
-> Antes de criar novas funcionalidades, decisões arquiteturais devem ser documentadas neste Handbook.
+Cada domínio deve possuir responsabilidades claras.
 
-Toda nova capacidade, componente ou mudança estrutural deve ser precedida de registro neste documento. Isso garante consistência arquitetural, rastreabilidade de decisões e alinhamento entre equipe e sistema.
+Evitar:
+
+- lógica de negócio espalhada;
+- dependência direta entre camadas;
+- regras críticas dentro de controllers.
+
+---
+
+## Mudanças pequenas e rastreáveis
+
+Toda alteração deve:
+
+- possuir objetivo claro;
+- ser testável;
+- manter histórico compreensível.
+
+---
+
+## Documentação antes de grandes mudanças
+
+Alterações arquiteturais importantes devem possuir documentação antes ou durante sua implementação.
+
+Decisões relevantes devem ser registradas em ADRs.
+
+---
+
+# 4. Arquitetura Atual
+
+Estrutura principal:
+operaia-lab/
+
+apps/
+├── api/
+└── web/
+
+packages/
+├── shared/
+├── database/
+├── ai-core/
+├── agents/
+├── memory/
+├── agent-runtime/
+├── workspace-runtime/
+├── employee-framework/
+├── employee-runtime/
+├── execution-engine/
+├── orchestration-engine/
+└── employees/
+
+
+---
+
+# 5. Componentes Principais
+
+## API
+
+Local:
+apps/api
+
+
+Responsabilidade:
+
+- composition root;
+- exposição HTTP;
+- integração dos módulos;
+- execução operacional do Digital Office.
+
+---
+
+## Database
+
+Local:
+packages/database
+
+
+Responsabilidade:
+
+- Prisma;
+- schema;
+- migrations;
+- acesso persistente.
+
+---
+
+## AI Core
+
+Local:
+packages/database
+
+Responsabilidade:
+
+- Prisma;
+- schema;
+- migrations;
+- acesso persistente.
+
+---
+
+## AI Core
+
+Local: 
+packages/ai-core
+
+
+Responsabilidade:
+
+- contratos LLM;
+- providers;
+- Gemini;
+- fallback;
+- policies;
+- observabilidade.
+
+---
+
+## Employee Framework
+
+Local:
+packages/employee-framework
+
+
+Responsabilidade:
+
+- contratos de Employees;
+- registry;
+- lifecycle;
+- capabilities.
+
+---
+
+## Employee Runtime
+
+Local:
+packages/employee-runtime
+
+
+Responsabilidade:
+
+- ativação;
+- briefing;
+- delegação;
+- resolução de employees.
+
+---
+
+## Mission System
+
+Responsabilidade:
+
+Transformar objetivos em ciclos operacionais.
+
+Componentes:
+
+- Mission;
+- Execution Plan;
+- Actions;
+- Executors;
+- Mission Queue;
+- Mission Orchestrator.
+
+Fluxo:
+Mission
+↓
+Opera
+↓
+Delegation
+↓
+Employee Matcher
+↓
+Employee Execution
+↓
+Result
+
+
+---
+
+# 6. Employee Framework
+
+## O que é um Employee
+
+Um Employee é uma unidade operacional digital.
+
+Possui:
+
+- identidade;
+- função;
+- capabilities;
+- limites;
+- contrato de execução.
+
+Um Employee não deve conhecer diretamente:
+
+- HTTP;
+- banco;
+- detalhes de infraestrutura.
+
+Ele recebe contexto e produz decisões estruturadas.
+
+---
+
+# Employees atuais
+
+## Opera
+
+Função:
+
+CEO / Management
+
+Responsabilidade:
+
+- análise;
+- coordenação;
+- decisões estratégicas.
+
+---
+
+## Mag
+
+Função:
+
+CTO / Software Engineering
+
+Responsabilidade:
+
+- análise técnica;
+- planejamento de engenharia;
+- decisões dentro do domínio técnico.
+
+---
+
+Outros Employees existem no roster e representam futuras especializações executáveis.
+
+---
+
+# 7. Agent Runtime
+
+O Agent Runtime é responsável pela execução base dos agentes.
+
+Responsabilidades:
+
+- carregar agente;
+- preparar contexto;
+- executar processamento;
+- integrar LLM;
+- registrar resultado.
+
+Fluxo:
+Context
+↓
+Agent
+↓
+LLM
+↓
+Response
+↓
+Execution Result
+
+
+---
+
+# 8. LLM Architecture
+
+Camada:
+packages/ai-core
+
+
+Responsabilidades:
+
+## Provider
+
+Contrato abstrato para modelos de linguagem.
+
+## Gemini
+
+Provider atualmente integrado.
+
+## Fallback
+
+Permite recuperação quando um provider falha.
+
+## Policies
+
+Controle técnico de execução:
+
+- validações;
+- limites;
+- segurança operacional.
+
+## Observabilidade
+
+Registro de:
+
+- chamadas;
+- erros;
+- uso;
+- métricas.
+
+---
+
+# 9. Regras Operacionais
+
+## Agentes não alteram arquitetura sem aprovação
+
+Mudanças estruturais precisam ser documentadas e aprovadas.
+
+---
+
+## Decisões estratégicas pertencem à Opera
+
+Outros componentes:
+
+- Supervisor;
+- Runtime;
+- Matcher;
+- Engines;
+
+não tomam decisões estratégicas.
+
+---
+
+## Código precisa passar pelos testes
+
+Toda alteração deve manter a qualidade do sistema.
+
+---
+
+## Mudanças precisam ser documentadas
+
+Novas capacidades ou mudanças arquiteturais devem atualizar:
+
+- Handbook;
+- ADRs;
+- documentação relacionada.
+
+---
+
+# 10. Development Workflow
+
+Fluxo padrão:
+Alteração
+↓
+Teste
+↓
+Review
+↓
+Commit
+↓
+Deploy
+
+
+Práticas:
+
+- commits pequenos;
+- não versionar segredos;
+- manter testes funcionando;
+- documentar mudanças relevantes.
+
+---
+
+# 11. Evolução Planejada
+
+Próximas evoluções:
+
+## Operational Supervisor
+
+Arquitetura definida para supervisão contínua da operação.
+
+Objetivo:
+
+- observar estado do sistema;
+- identificar necessidade de coordenação;
+- iniciar ciclos operacionais.
+
+O Supervisor não substitui a Opera e não toma decisões estratégicas.
+
+---
+
+## Memory System Evolution
+
+Evolução da capacidade de:
+
+- armazenar contexto;
+- recuperar informações;
+- melhorar ciclos operacionais.
+
+---
+
+## Human Approval Workflow
+
+Fluxo formal para aprovação humana antes de:
+
+- mudanças estruturais;
+- alterações críticas;
+- decisões sensíveis.
+
+---
+
+## Novos Employees Executáveis
+
+Evolução do roster atual para funcionários digitais com:
+
+- runtime próprio;
+- capabilities;
+- execução real.
+
+---
+
+# Estado Atual Documentado
+
+Capacidades existentes:
+
+- Modular Monolith;
+- Employee Framework;
+- Opera CEO;
+- Mag CTO;
+- Mission System;
+- Mission Queue;
+- Execution Engine;
+- Agent Runtime;
+- LLM Stack;
+- Digital Office API;
+- Workspace Runtime.
+
+---
+
+**OperaIA Engineering Handbook**
+
+Referência oficial de engenharia do OperaIA.lab.
