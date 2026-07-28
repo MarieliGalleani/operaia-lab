@@ -253,11 +253,15 @@ Um Digital Office apenas reativo (só responde quando o humano pede) deixa works
 
 O **Operational Supervisor** é **infraestrutura operacional**, não Employee:
 
-- implementado via `ContinuousRuntime` + `MissionScheduler` (+ queue/workers);
-- observa portfolio, gera insights, enfileira missões (`COORDINATE`) para a Opera;
-- **não** toma decisões estratégicas, **não** substitui o CEO, **não** cria regras de negócio.
+- implementado via `ContinuousRuntime` + `SupervisorLoop` (+ queue/workers);
+- componentes: HealthMonitor, WorkspaceScanner, MissionScanner, QueueMonitor, RecoveryCoordinator, CoordinationDispatcher;
+- observa, detecta, agenda `COORDINATE` para a Opera, recupera estados e dispara ciclos;
+- **não** contém regras de negócio;
+- **não** interpreta objetivos, **não** escolhe especialistas, **não** cria planos, **não** toma decisões.
 
-Ciclo: verificar estado → analisar pendências → identificar missões → iniciar ciclos → registrar → aguardar próximo tick.
+Ciclo: Health → Workspace Scan → Mission Scan → Queue Scan → Recovery → Coordination Dispatch → Sleep.
+
+Decisão de negócio permanece na Opera (CEO), nos specialists ou em políticas de domínio configuráveis.
 
 ### Motivo da decisão
 

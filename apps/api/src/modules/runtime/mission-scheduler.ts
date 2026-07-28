@@ -1,4 +1,3 @@
-import { prisma } from "@operaia/database";
 import type {
   ImprovementEngine,
   ImprovementInsight,
@@ -15,6 +14,7 @@ import type { TaskRepository } from "../tasks/domain/task.repository.js";
 import type { EmployeeWorkerLogger } from "./employee-worker.js";
 import type { MissionQueue } from "./mission-queue.js";
 import { CEO_EMPLOYEE_ID } from "./mission-states.js";
+import type { LearningStatsPort, ScheduleRulePort } from "./supervisor/ports.js";
 
 export interface MissionSchedulerOptions {
   readonly queue: MissionQueue;
@@ -25,12 +25,20 @@ export interface MissionSchedulerOptions {
   readonly logger: EmployeeWorkerLogger;
   readonly improvement: ImprovementEngine;
   readonly governance: GovernanceService;
+  readonly learningStats: LearningStatsPort;
+  readonly scheduleRules: ScheduleRulePort;
   readonly onInsights?: (insights: readonly ImprovementInsight[]) => void;
 }
 
+export interface CoordinationCycleResult {
+  readonly enqueued: number;
+  readonly details: readonly string[];
+}
+
 /**
- * Scheduler: Snapshot → Health → Improvement Engine → Opera (COORDINATE).
- * Nao decide — so inicia o ciclo e alimenta a Opera com Insights.
+ * MissionScheduler — ciclo de portfolio/planning sob demanda da Opera.
+ * Nao e invocado pelo Operational Supervisor.
+ * Sem timer proprio no ContinuousRuntime v2.
  */
 export class MissionScheduler {
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -42,6 +50,7 @@ export class MissionScheduler {
 
   constructor(private readonly options: MissionSchedulerOptions) {}
 
+  /** @deprecated Prefer Operational Supervisor v2 loop; mantido para compat. */
   start(): void {
     if (this.timer) {
       return;
@@ -51,8 +60,11 @@ export class MissionScheduler {
       { component: "mission-scheduler", event: "started" },
       "Scheduler iniciado",
     );
-    void this.tick();
-    this.timer = setInterval(() => void this.tick(), this.options.intervalMs);
+    void this.runCycle();
+    this.timer = setInterval(
+      () => void this.runCycle(),
+      this.options.intervalMs,
+    );
   }
 
   async stop(): Promise<void> {
@@ -87,12 +99,14 @@ export class MissionScheduler {
     };
   }
 
-  private async tick(): Promise<void> {
+  /** Ciclo de coordenacao — usado pelo Operational Supervisor (Dispatch). */
+  async runCycle(): Promise<CoordinationCycleResult> {
     if (this.ticking) {
-      return;
+      return { enqueued: 0, details: ["cycle already running"] };
     }
     this.ticking = true;
     let enqueued = 0;
+    const details: string[] = [];
 
     try {
       const portfolio = await buildWorkspacePortfolioSnapshot({
@@ -108,7 +122,7 @@ export class MissionScheduler {
         ) ?? null;
 
       const [learningCount, pendingApprovals, depths] = await Promise.all([
-        prisma.missionLearning.count(),
+        this.options.learningStats.count(),
         this.options.governance.countPending(),
         this.options.queue.depths(),
       ]);
@@ -141,6 +155,7 @@ export class MissionScheduler {
           5;
 
       if (throttled) {
+        details.push("capacity_throttle");
         this.options.logger.info(
           {
             component: "mission-scheduler",
@@ -150,7 +165,6 @@ export class MissionScheduler {
           "Capacidade saturada — adiando novo COORDINATE",
         );
       } else {
-        // 1) COORDINATE de portfolio cobrindo TODOS os ACTIVE (sem hardcode)
         const allNames = portfolio.activeProjects.map((p) => p.name);
         const anchor = pickPortfolioAnchorProject(portfolio);
         if (anchor && allNames.length > 0) {
@@ -183,10 +197,10 @@ export class MissionScheduler {
           });
           if (created) {
             enqueued += 1;
+            details.push(`coordinate:${anchor.name}`);
           }
         }
 
-        // 2) Projetos ACTIVE sem missao aberta — propostas para Opera (dedupe)
         for (const project of portfolio.activeProjects) {
           if (project.openMissions > 0 || project.pendingTasks === 0) {
             continue;
@@ -211,13 +225,12 @@ export class MissionScheduler {
           });
           if (created) {
             enqueued += 1;
+            details.push(`active-without-mission:${project.name}`);
           }
         }
       }
 
-      const rules = await prisma.scheduleRule.findMany({
-        where: { enabled: true },
-      });
+      const rules = await this.options.scheduleRules.listEnabled();
       const now = Date.now();
       for (const rule of rules) {
         const due =
@@ -226,9 +239,8 @@ export class MissionScheduler {
         if (!due || !rule.workspaceId) {
           continue;
         }
-        const config = (rule.configJson ?? {}) as { objective?: string };
         const objective =
-          config.objective ??
+          rule.objective ??
           `Verificacao recorrente do workspace ${rule.workspaceId}`;
         const { created } = await this.options.queue.enqueue({
           workspaceId: rule.workspaceId,
@@ -236,17 +248,18 @@ export class MissionScheduler {
           ownerEmployeeId: CEO_EMPLOYEE_ID,
           dedupe: true,
         });
-        await prisma.scheduleRule.update({
-          where: { id: rule.id },
-          data: { lastEnqueuedAt: new Date() },
-        });
+        await this.options.scheduleRules.markEnqueued(rule.id, new Date());
         if (created) {
           enqueued += 1;
+          details.push(`schedule-rule:${rule.id}`);
         }
       }
 
       this.lastEnqueued = enqueued;
       this.lastTickAt = new Date().toISOString();
+      if (!this.startedAt) {
+        this.startedAt = Date.now();
+      }
       this.options.logger.info(
         {
           component: "mission-scheduler",
@@ -257,6 +270,7 @@ export class MissionScheduler {
         },
         "Ciclo do scheduler",
       );
+      return { enqueued, details };
     } catch (error) {
       this.options.logger.error(
         {
@@ -266,6 +280,12 @@ export class MissionScheduler {
         },
         "Falha no scheduler",
       );
+      return {
+        enqueued,
+        details: [
+          `error:${error instanceof Error ? error.message : String(error)}`,
+        ],
+      };
     } finally {
       this.ticking = false;
     }

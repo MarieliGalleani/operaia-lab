@@ -1,5 +1,4 @@
 import type { MemoryStore } from "@operaia/memory";
-import { prisma } from "@operaia/database";
 import type { DigitalOffice } from "../employees/office-composition.js";
 import type { WorkspaceSource } from "../employees/workspace-source.js";
 import {
@@ -23,6 +22,11 @@ import {
   type ProductionReadinessReport,
 } from "./production-readiness.js";
 import { QueuedMissionExecutor } from "./queued-mission-executor.js";
+import { createOperationalSupervisor } from "./supervisor/create-operational-supervisor.js";
+import { PrismaLearningStatsAdapter } from "./supervisor/infrastructure/prisma-learning-stats-adapter.js";
+import { PrismaScheduleRuleAdapter } from "./supervisor/infrastructure/prisma-schedule-rule-adapter.js";
+import type { SupervisorLoop } from "./supervisor/supervisor-loop.js";
+import type { OperationalSnapshot } from "./supervisor/types.js";
 import { WorkerManager } from "./worker-manager.js";
 
 export interface ContinuousRuntimeConfig {
@@ -41,15 +45,21 @@ export interface ContinuousRuntimeConfig {
 }
 
 /**
- * Runtime continuo: readiness → recovery → workers → scheduler.
+ * Runtime continuo: readiness → recovery → workers → Operational Supervisor v2.
  */
 export class ContinuousRuntime {
   readonly queue = new MissionQueue();
   readonly executor: QueuedMissionExecutor;
   readonly workers: WorkerManager;
   readonly scheduler: MissionScheduler;
+  readonly supervisor: SupervisorLoop;
+  readonly eventStore: ReturnType<
+    typeof createOperationalSupervisor
+  >["eventStore"];
   readonly improvement: ImprovementEngine;
   readonly governance = new GovernanceService();
+  private readonly learningStats = new PrismaLearningStatsAdapter();
+  private readonly scheduleRules = new PrismaScheduleRuleAdapter();
   private readonly startedAt = Date.now();
   private started = false;
   private lastReadiness: ProductionReadinessReport | null = null;
@@ -82,10 +92,27 @@ export class ContinuousRuntime {
       logger: config.logger,
       improvement: this.improvement,
       governance: this.governance,
+      learningStats: this.learningStats,
+      scheduleRules: this.scheduleRules,
       onInsights: (insights) => {
         this.lastInsights = insights;
       },
     });
+    const bundle = createOperationalSupervisor({
+      office: config.office,
+      workspaces: config.workspaces,
+      queue: this.queue,
+      workers: this.workers,
+      execution: config.execution,
+      memory: config.memory,
+      scheduler: this.scheduler,
+      learningStats: this.learningStats,
+      intervalMs: config.schedulerIntervalMs,
+      staleRunningMs: config.staleRunningMs,
+      logger: config.logger,
+    });
+    this.supervisor = bundle.supervisor;
+    this.eventStore = bundle.eventStore;
     this.executor.setPortfolioProvider(async () => {
       if (this.scheduler.getLastSnapshot()) {
         return this.scheduler.getLastSnapshot();
@@ -110,6 +137,10 @@ export class ContinuousRuntime {
     return this.lastInsights.length > 0
       ? this.lastInsights
       : this.improvement.getLastInsights();
+  }
+
+  getLastOperationalSnapshot(): OperationalSnapshot | null {
+    return this.supervisor.getLastSnapshot();
   }
 
   async start(): Promise<void> {
@@ -163,16 +194,19 @@ export class ContinuousRuntime {
     );
 
     await this.workers.start();
-    this.scheduler.start();
+    // Supervisor v2: Health → Scan → Recover → Dispatch COORDINATE → Snapshot.
+    // MissionScheduler nao e chamado pelo Supervisor — permanece disponivel para a Opera.
+    this.supervisor.start();
     this.started = true;
     this.config.logger.info(
       {
         component: "continuous-runtime",
         event: "started",
         workers: this.workers.list().length,
+        supervisor: true,
         improvementObservers: this.improvement.getObservers(),
       },
-      "Runtime continuo iniciado",
+      "Runtime continuo + Operational Supervisor v2 iniciado",
     );
   }
 
@@ -180,7 +214,7 @@ export class ContinuousRuntime {
     if (!this.started) {
       return;
     }
-    await this.scheduler.stop();
+    await this.supervisor.stop();
     await this.workers.stop();
     this.started = false;
     this.config.logger.info(
@@ -192,8 +226,10 @@ export class ContinuousRuntime {
   async snapshot() {
     const depths = await this.queue.depths();
     const scheduler = this.scheduler.snapshot();
-    const learningCount = await prisma.missionLearning.count();
+    const supervisor = this.supervisor.status();
+    const learningCount = await this.learningStats.count();
     const pendingApprovals = await this.governance.countPending();
+    const events = await this.eventStore.list(30);
     return {
       enabled: this.config.enabled,
       started: this.started,
@@ -201,7 +237,14 @@ export class ContinuousRuntime {
       workersAlive: this.workers.aliveCount(),
       workers: this.workers.list(),
       queue: depths,
-      scheduler,
+      scheduler: {
+        ...scheduler,
+        // Sob Supervisor v2 o timer do scheduler fica off; o loop e do supervisor.
+        running: supervisor.running,
+      },
+      supervisor,
+      operationalSnapshot: this.supervisor.getLastSnapshot(),
+      operationalEvents: events,
       readiness: this.lastReadiness,
       portfolio: this.scheduler.getLastSnapshot(),
       insights: this.getLastInsights(),

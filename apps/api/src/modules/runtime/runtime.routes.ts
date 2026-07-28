@@ -318,10 +318,11 @@ export function createRuntimeRoutes(
         const snap = await runtime.snapshot();
         const expected = snap.workers.length;
         const alive = snap.workersAlive;
+        const supervisorRunning = snap.supervisor?.running === true;
         let status: "ok" | "degraded" | "down" = "ok";
         if (!snap.started && snap.enabled) {
           status = "down";
-        } else if (alive < expected || !snap.scheduler.running) {
+        } else if (alive < expected || (snap.enabled && !supervisorRunning)) {
           status = "degraded";
         }
         return {
@@ -332,8 +333,9 @@ export function createRuntimeRoutes(
           workersExpected: expected,
           queue: snap.queue,
           scheduler: {
-            running: snap.scheduler.running,
-            lastTickAt: snap.scheduler.lastTickAt,
+            running: supervisorRunning,
+            lastTickAt:
+              snap.supervisor?.lastSnapshotAt ?? snap.scheduler.lastTickAt,
           },
         };
       },

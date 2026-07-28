@@ -11,8 +11,10 @@ async function start(): Promise<void> {
       {
         continuous: continuous.enabled,
         workers: continuous.workers.list().length,
+        supervisor: continuous.supervisor.isRunning,
+        intervalMs: env.SCHEDULER_INTERVAL_MS,
       },
-      "API + runtime continuo no ar",
+      "API + Operational Supervisor v2 no ar",
     );
   } catch (error) {
     app.log.error(error);
@@ -25,10 +27,17 @@ async function start(): Promise<void> {
       return;
     }
     shuttingDown = true;
-    app.log.info(`Recebido ${signal}, encerrando workers e API...`);
+    app.log.info(
+      { signal, component: "graceful-shutdown" },
+      "Recebido sinal — encerrando Supervisor, workers e API...",
+    );
     try {
       await continuous.stop();
       await app.close();
+      app.log.info(
+        { component: "graceful-shutdown" },
+        "Shutdown completo",
+      );
       process.exit(0);
     } catch (error) {
       app.log.error(error);

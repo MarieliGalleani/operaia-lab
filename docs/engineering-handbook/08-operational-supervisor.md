@@ -10,26 +10,66 @@ Este documento registra oficialmente o **Operational Supervisor** do OperaIA.lab
 
 O **Operational Supervisor** é o mecanismo de **supervisão operacional contínua** do OperaIA.lab. Sua função é manter o escritório digital em movimento: verificar estado, detectar pendências, iniciar missões quando necessário e registrar a execução — em ciclos recorrentes.
 
-Na implementação atual, esse papel é realizado pela composição de runtime contínuo em `apps/api`:
+Na implementação atual (Operational Supervisor **v2**), esse papel é um **serviço operacional permanente** do Digital Office:
 
-| Componente | Papel no Supervisor |
+| Componente | Papel |
 |---|---|
-| **ContinuousRuntime** | Orquestra readiness, recovery, workers e scheduler |
-| **MissionScheduler** | Ciclo periódico: snapshot → health → insights → enqueue |
-| **MissionQueue / Workers** | Fila e execução assíncrona das missões iniciadas |
-| **Improvement Engine** | Observa portfolio e gera insights (não decide) |
+| **ContinuousRuntime** | Boot, readiness, workers e composição do Supervisor |
+| **SupervisorLoop** | Loop: Health → Workspace → Mission → Queue → Recovery → Coordination → Sleep |
+| **HealthMonitor** | Runtime, Registry, Memory, Queue, Execution, Mission Engine |
+| **WorkspaceScanner** | Detecta atenção (bloqueada, waiting, backlog…) sem executar missão |
+| **MissionScanner** | CREATED/WAITING/RUNNING/BLOCKED/FAILED/COMPLETED + stale/retry |
+| **QueueMonitor** | Depth, congestão, workers disponíveis/ocupados |
+| **RecoveryCoordinator** | Recupera stale/waiting/blocked e solicita coordenação |
+| **CoordinationDispatcher** | Cria `COORDINATE` para a **Opera** (nunca decide) |
+| **MissionQueue / Workers** | Workers processam a fila; Opera decide |
 
-O Supervisor **não é uma interface de usuário**. É infraestrutura operacional que garante continuidade entre missões solicitadas pelo humano e o acompanhamento automático do estado dos workspaces.
+### Ciclo SupervisorLoop (v2)
+
+```
+while (running)
+↓
+Health Check
+↓
+Workspace Scan
+↓
+Mission Scan
+↓
+Queue Scan
+↓
+Recover stale executions
+↓
+Dispatch coordination (Opera)
+↓
+Sleep
+```
+
+Eventos: `SUPERVISOR_STARTED`, `HEALTH_CHECK`, `WORKSPACE_SCANNED`, `MISSION_SCANNED`, `QUEUE_SCANNED`, `RECOVERY_CREATED`, `COORDINATION_CREATED`, `SUPERVISOR_SLEEP`, `SUPERVISOR_STOPPED`.
+
+Intervalo: `SCHEDULER_INTERVAL_MS`. Gate: `CONTINUOUS_RUNTIME_ENABLED`. Shutdown: `SIGINT`/`SIGTERM` → `continuous.stop()`.
 
 ### Princípio
 
 ```
-Supervisor observa e inicia
+Supervisor observa, agenda, recupera e coordena
 CEO analisa e decide
 Specialists executam domínio
 Engine realiza ações
 ```
 
+### Invariante — sem regras de negócio
+
+O Supervisor **nunca** contém regras de negócio.
+
+| Supervisor pode | Supervisor não pode |
+|---|---|
+| Observar health, fila, workers, workspaces | Priorizar produto ou roadmap |
+| Agendar ciclo de coordenação (`COORDINATE`) | Escolher especialista ou especialização |
+| Recuperar missões stale / blocked / waiting | Interpretar objetivo do usuário |
+| Persistir snapshots e logs | Criar ou alterar regras de domínio |
+| Aplicar políticas **operacionais** configuráveis | Substituir julgamento da Opera ou specialists |
+
+Toda decisão de negócio continua pertencendo à **Opera (CEO)**, aos **funcionários especializados** ou a **políticas de domínio configuráveis** fora deste módulo. Políticas do Supervisor (`AutoRetryPolicy`, `QueueRecoveryPolicy`, etc.) são apenas políticas de **infraestrutura operacional**.
 ---
 
 ## 2. O que é o Operational Supervisor
@@ -64,7 +104,7 @@ O Operational Supervisor **não é um Employee** e não implementa os contratos 
 | Possui `EmployeeProfile` e `EmployeeBrain` | Não possui perfil nem brain |
 | Decide sobre briefing de missão | Observa estado e inicia ciclos |
 | Produz `EmployeeDecision` | Produz enqueue + insights + métricas |
-| Vive em `packages/employees/*` ou `agents` | Vive na camada de runtime da API (`ContinuousRuntime`, `MissionScheduler`) |
+| Vive em `packages/employees/*` ou `agents` | Vive na camada de runtime da API (`ContinuousRuntime`, `SupervisorLoop`) |
 | Especializa domínio | Especializa operação contínua |
 
 ### Razão arquitetural
@@ -258,9 +298,13 @@ Memória informa o CEO na missão. O Supervisor apenas garante que missões cont
 
 Limites arquiteturais obrigatórios do Operational Supervisor:
 
+### Não contém regras de negócio
+
+O Supervisor apenas **observa, agenda, recupera e coordena**. Não interpreta objetivos, não prioriza backlog de produto e não define o que os specialists devem fazer.
+
 ### Não toma decisões estratégicas
 
-Não prioriza produto, não escolhe roadmap, não define visão. Pode enfileirar "acompanhar / priorizar workspace" — a Opera decide o conteúdo estratégico da resposta.
+Não prioriza produto, não escolhe roadmap, não define visão. Pode agendar coordenação (`COORDINATE`) — a Opera decide o conteúdo estratégico da resposta.
 
 ### Não substitui o CEO
 
@@ -268,7 +312,7 @@ Missões contínuas têm a Opera como owner (`CEO_EMPLOYEE_ID`). O Supervisor in
 
 ### Não cria regras de negócio
 
-Não altera políticas de domínio, contratos de employee, especializações ou limites de especialistas. Improvement Engine gera insights; Governance trata mudanças estruturais sob processo próprio — fora do papel de "decidir como o negócio opera".
+Não altera políticas de domínio, contratos de employee, especializações ou limites de especialistas. Suas “policies” são só operacionais (retry, timeout, recovery). Decisão de negócio permanece na Opera, nos specialists ou em políticas de domínio configuráveis fora deste módulo.
 
 ### Limites adicionais
 
@@ -280,11 +324,11 @@ Não altera políticas de domínio, contratos de employee, especializações ou 
 ```
 Permitido                         Proibido
 ─────────                         ────────
-Observar portfolio                Decidir estratégia
-Gerar insights                    Substituir Opera
-Enfileirar COORDINATE             Delegar a especialistas
-Throttle por capacidade           Inventar regras de domínio
-Recuperar missões órfãs           Executar infraestrutura de negócio
+Observar estado operacional       Decidir estratégia / negócio
+Agendar COORDINATE para Opera     Escolher especialista
+Recuperar fila / workers          Interpretar objetivo do usuário
+Snapshot e logs estruturados      Inventar regras de domínio
+Políticas operacionais            Substituir Opera ou specialists
 ```
 
 ---
@@ -292,7 +336,8 @@ Recuperar missões órfãs           Executar infraestrutura de negócio
 ## 11. Regras Arquiteturais
 
 - o Operational Supervisor é runtime contínuo, **não** Employee;
-- autoridade estratégica permanece no Opera CEO e na supervisão humana;
+- o Supervisor **nunca** contém regras de negócio — só observa, agenda, recupera e coordena;
+- autoridade estratégica e de domínio permanece no Opera CEO, nos specialists e em políticas de domínio configuráveis;
 - missões iniciadas pelo Supervisor seguem o mesmo fluxo auditável de qualquer missão;
 - insights observam — não mandam;
 - composição do Digital Office e contratos do Employee Framework permanecem intactos;
