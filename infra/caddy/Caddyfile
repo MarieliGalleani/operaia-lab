@@ -1,0 +1,108 @@
+# OperaIA.lab — Caddy (produção Oracle Cloud VM)
+# Domínios oficiais:
+#   operaia.com.br       → site institucional (estático mínimo)
+#   lab.operaia.com.br   → OperaIA.lab (apps/web build)
+#   api.operaia.com.br   → API + Continuous Runtime
+#   status.operaia.com.br → observabilidade (JSON production-readiness)
+#
+# Requisitos:
+#   - DNS A/AAAA apontando para o IP público da VM
+#   - Portas 80/443 liberadas no Security List / firewalld
+#   - Caddy com permissão de bind em 80/443
+
+{
+	email admin@operaia.com.br
+	servers {
+		protocols h1 h2 h3
+	}
+}
+
+# --- API (Equipe Digital) ----------------------------------------------------
+api.operaia.com.br {
+	encode gzip zstd
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		-Server
+	}
+
+	reverse_proxy 127.0.0.1:3333 {
+		header_up Host {host}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	log {
+		output file /var/log/caddy/api.operaia.com.br.log
+		format console
+	}
+}
+
+# --- Status / observabilidade (sem tela nova — JSON da API) -------------------
+status.operaia.com.br {
+	encode gzip zstd
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+
+	# Painel operacional consolidado
+	rewrite * /api/v1/production-readiness
+	reverse_proxy 127.0.0.1:3333
+
+	log {
+		output file /var/log/caddy/status.operaia.com.br.log
+	}
+}
+
+# --- Lab (apps/web) ----------------------------------------------------------
+lab.operaia.com.br {
+	encode gzip zstd
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	root * /opt/operaia-lab/apps/web/dist
+	try_files {path} /index.html
+	file_server
+
+	log {
+		output file /var/log/caddy/lab.operaia.com.br.log
+	}
+}
+
+# --- Institucional -----------------------------------------------------------
+operaia.com.br, www.operaia.com.br {
+	encode gzip zstd
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	@www host www.operaia.com.br
+	redir @www https://operaia.com.br{uri} permanent
+
+	root * /opt/operaia-lab/infra/www
+	file_server
+
+	log {
+		output file /var/log/caddy/operaia.com.br.log
+	}
+}

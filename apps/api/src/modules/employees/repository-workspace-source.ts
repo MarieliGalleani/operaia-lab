@@ -10,17 +10,15 @@ import type {
   WorkspaceSource,
 } from "./workspace-source.js";
 
-const DEFAULT_TEAM = ["operaia-ceo", "cto-mag"] as const;
-
 /**
  * Carrega Workspaces a partir dos repositorios de Project/Task existentes.
- * Nao cria modelo paralelo — apenas adapta o dominio ja persistido.
+ * teamIds deve vir do roster (composition) — sem hardcode NEXO/Mag-only.
  */
 export class RepositoryWorkspaceSource implements WorkspaceSource {
   constructor(
     private readonly projects: ProjectRepository,
     private readonly tasks: TaskRepository,
-    private readonly teamIds: readonly string[] = DEFAULT_TEAM,
+    private readonly teamIds: readonly string[],
   ) {}
 
   async listWorkspaces(): Promise<readonly OfficeWorkspaceRecord[]> {

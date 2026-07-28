@@ -38,6 +38,24 @@ const envSchema = z.object({
   VPS_REGION: z.string().default("dev"),
   VPS_MONTHLY_COST_BRL: z.coerce.number().nonnegative().default(0),
   VPS_COST_CURRENCY: z.string().default("BRL"),
+
+  /** Runtime continuo (workers + scheduler + fila). */
+  CONTINUOUS_RUNTIME_ENABLED: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((value) => value === "true"),
+  WORKER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
+  WORKER_HEARTBEAT_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(5000),
+  SCHEDULER_INTERVAL_MS: z.coerce.number().int().positive().default(60000),
+  MISSION_STALE_RUNNING_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(15 * 60 * 1000),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -6,6 +6,7 @@ export interface CreateProjectInput {
   description?: string | null;
   status?: ProjectStatus;
   priority?: Priority;
+  goalId?: string | null;
 }
 
 export interface UpdateProjectInput {
@@ -13,6 +14,7 @@ export interface UpdateProjectInput {
   description?: string | null;
   status?: ProjectStatus;
   priority?: Priority;
+  goalId?: string | null;
 }
 
 /**

@@ -9,8 +9,8 @@ import {
 import type { OperationalRun } from "./operational-run.js";
 
 const runMissionBodySchema = z.object({
-  workspaceId: z.string().min(1).default(NEXO_OPERATIONAL_MISSION.workspaceId),
-  objective: z.string().min(1).default(NEXO_OPERATIONAL_MISSION.objective),
+  workspaceId: z.string().min(1),
+  objective: z.string().min(1),
   employeeId: z.string().min(1).optional(),
 });
 

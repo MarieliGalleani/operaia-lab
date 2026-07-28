@@ -18,6 +18,7 @@ describe("Etapa 4 — workspace-mappers", () => {
       description: "Finalizar desenvolvimento da NEXO",
       status: ProjectStatus.ACTIVE,
       priority: Priority.HIGH,
+      goalId: null,
       createdAt: now,
       updatedAt: now,
     };

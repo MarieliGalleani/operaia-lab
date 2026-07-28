@@ -32,6 +32,33 @@ enum Priority {
   URGENT
 }
 
+enum GoalStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum MissionReadiness {
+  BLOCKED
+  READY
+}
+
+/// Objetivos organizacionais acima dos projetos (Workspace).
+model OrganizationalGoal {
+  id          String     @id @default(uuid())
+  title       String
+  description String?
+  status      GoalStatus @default(ACTIVE)
+  priority    Priority   @default(MEDIUM)
+  projects    Project[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([status, priority])
+  @@map("organizational_goals")
+}
+
 /// Projetos gerenciados pelo escritorio virtual (NEXO, MenuFlow, etc.).
 model Project {
   id          String        @id @default(uuid())
@@ -39,11 +66,14 @@ model Project {
   description String?
   status      ProjectStatus @default(PLANNED)
   priority    Priority      @default(MEDIUM)
+  goalId      String?
+  goal        OrganizationalGoal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
   tasks       Task[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
   @@index([status])
+  @@index([goalId])
   @@map("projects")
 }
 
@@ -82,4 +112,182 @@ model Agent {
   updatedAt          DateTime @updatedAt
 
   @@map("agents")
+}
+
+/// Estados da fila operacional de missoes (Equipe Digital continua).
+enum MissionStatus {
+  CREATED
+  QUEUED
+  RUNNING
+  WAITING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+/// Tipo de missao na fila distribuida.
+enum MissionKind {
+  COORDINATE
+  EXECUTE
+  CONSOLIDATE
+}
+
+/// Missao persistente — fonte de verdade da fila (sobrevive a restart).
+model Mission {
+  id                     String           @id @default(uuid())
+  workspaceId            String
+  projectId              String?
+  objective              String
+  /// Hash curto workspaceId+objective para dedupe do scheduler.
+  objectiveHash          String
+  missionKind            MissionKind      @default(COORDINATE)
+  priority               Priority         @default(MEDIUM)
+  status                 MissionStatus    @default(CREATED)
+  readiness              MissionReadiness @default(READY)
+  ownerEmployeeId        String
+  requiredSpecialization String?
+  parentMissionId        String?
+  progress               Int              @default(0)
+  attempt                Int              @default(0)
+  maxAttempts            Int              @default(3)
+  scheduledAt            DateTime?
+  startedAt              DateTime?
+  finishedAt             DateTime?
+  lastError              String?
+  resultJson             Json?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  events       MissionEvent[]
+  dependsOn    MissionDependency[] @relation("MissionDependents")
+  dependedBy   MissionDependency[] @relation("MissionDependencies")
+  learning     MissionLearning?
+
+  @@index([status, scheduledAt])
+  @@index([ownerEmployeeId, status])
+  @@index([requiredSpecialization, status])
+  @@index([missionKind, status])
+  @@index([workspaceId, objectiveHash, status])
+  @@index([parentMissionId])
+  @@index([readiness, status])
+  @@map("missions")
+}
+
+/// DAG de dependencias entre missoes (EXECUTE → EXECUTE).
+model MissionDependency {
+  id                 String  @id @default(uuid())
+  missionId          String
+  dependsOnMissionId String
+  mission            Mission @relation("MissionDependents", fields: [missionId], references: [id], onDelete: Cascade)
+  dependsOn          Mission @relation("MissionDependencies", fields: [dependsOnMissionId], references: [id], onDelete: Cascade)
+  createdAt          DateTime @default(now())
+
+  @@unique([missionId, dependsOnMissionId])
+  @@index([dependsOnMissionId])
+  @@map("mission_dependencies")
+}
+
+/// Memoria organizacional reutilizavel apos cada missao.
+model MissionLearning {
+  id              String   @id @default(uuid())
+  missionId       String   @unique
+  mission         Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  workspaceId     String
+  projectId       String?
+  context         String
+  decision        String
+  justification   String
+  result          String
+  impact          String?
+  risksFound      Json?
+  lessonsLearned  String
+  reuseWhen       String?
+  avoidWhen       String?
+  durationMs      Int?
+  metricsJson     Json?
+  createdAt       DateTime @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([projectId])
+  @@map("mission_learnings")
+}
+
+/// Historico / logs estruturados por missao.
+model MissionEvent {
+  id        String   @id @default(uuid())
+  missionId String
+  mission   Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  type      String
+  message   String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([missionId, createdAt])
+  @@map("mission_events")
+}
+
+/// Heartbeat + metricas por Employee worker logico.
+model WorkerHeartbeat {
+  employeeId       String   @id
+  status           String
+  currentMissionId String?
+  metricsJson      Json?
+  startedAt        DateTime
+  lastSeenAt       DateTime
+  updatedAt        DateTime @updatedAt
+
+  @@map("worker_heartbeats")
+}
+
+/// Regras de verificacao recorrente (scheduler).
+model ScheduleRule {
+  id              String    @id @default(uuid())
+  workspaceId     String?
+  intervalSec     Int
+  enabled         Boolean   @default(true)
+  lastEnqueuedAt  DateTime?
+  configJson      Json?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([enabled])
+  @@map("schedule_rules")
+}
+
+enum ApprovalStatus {
+  DRAFT
+  PROPOSED
+  WAITING_APPROVAL
+  APPROVED
+  REJECTED
+  IMPLEMENTING
+  COMPLETED
+}
+
+/// Propostas estruturais — aprovacao humana obrigatoria (sem apply automatico).
+model ChangeProposal {
+  id                   String         @id @default(uuid())
+  projectId            String?
+  title                String
+  description          String
+  justification        String
+  evidenceJson         Json?
+  expectedImpact       String
+  affectedComponents   Json
+  risksJson            Json?
+  implementationPlan   String
+  rollbackPlan         String
+  diffRef              String?
+  approvalStatus       ApprovalStatus @default(PROPOSED)
+  approvedBy           String?
+  approvedAt           DateTime?
+  rejectedBy           String?
+  rejectedAt           DateTime?
+  rejectionReason      String?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  @@index([approvalStatus, createdAt])
+  @@index([projectId])
+  @@map("change_proposals")
 }

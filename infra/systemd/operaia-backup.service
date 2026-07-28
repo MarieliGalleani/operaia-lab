@@ -1,0 +1,11 @@
+[Unit]
+Description=OperaIA.lab PostgreSQL backup (pg_dump)
+After=network.target postgresql.service docker.service
+
+[Service]
+Type=oneshot
+User=operaia
+Group=operaia
+EnvironmentFile=-/opt/operaia-lab/.env
+ExecStart=/opt/operaia-lab/infra/scripts/backup-postgres.sh
+Nice=10

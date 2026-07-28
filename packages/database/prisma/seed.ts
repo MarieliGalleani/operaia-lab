@@ -4,12 +4,15 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+const EVOLUTION_PROJECT_NAME = "OperaIA.lab";
+
 const projects = [
   {
     name: "NEXO",
     description: "Finalizar desenvolvimento da NEXO",
     status: ProjectStatus.ACTIVE,
     priority: Priority.HIGH,
+    goalTitle: "Lancar produtos digitais com qualidade e conformidade",
     tasks: [
       {
         title: "Implementar autenticacao",
@@ -36,8 +39,9 @@ const projects = [
   {
     name: "MenuFlow",
     description: "Definir e validar o MVP do MenuFlow",
-    status: ProjectStatus.PLANNED,
+    status: ProjectStatus.ACTIVE,
     priority: Priority.MEDIUM,
+    goalTitle: "Lancar produtos digitais com qualidade e conformidade",
     tasks: [
       {
         title: "Definir escopo do MVP",
@@ -47,10 +51,31 @@ const projects = [
     ],
   },
   {
+    name: EVOLUTION_PROJECT_NAME,
+    description:
+      "Evolucao continua da Equipe Digital — infraestrutura, processos e operacao",
+    status: ProjectStatus.ACTIVE,
+    priority: Priority.HIGH,
+    goalTitle: "Evoluir a autonomia operacional da Equipe Digital",
+    tasks: [
+      {
+        title: "Monitorar saude organizacional do Workspace",
+        status: TaskStatus.TODO,
+        priority: Priority.HIGH,
+      },
+      {
+        title: "Revisar capacidade operacional dos Workers",
+        status: TaskStatus.TODO,
+        priority: Priority.MEDIUM,
+      },
+    ],
+  },
+  {
     name: "Plataforma",
     description: "Estruturar a plataforma OperaIA.lab",
     status: ProjectStatus.PAUSED,
     priority: Priority.MEDIUM,
+    goalTitle: null,
     tasks: [
       {
         title: "Levantar referencias de mercado",
@@ -83,8 +108,34 @@ async function seedAgents(): Promise<void> {
   }
 }
 
+async function ensureGoal(title: string, priority: Priority): Promise<string> {
+  const existing = await prisma.organizationalGoal.findFirst({
+    where: { title },
+  });
+  if (existing) {
+    return existing.id;
+  }
+  const created = await prisma.organizationalGoal.create({
+    data: {
+      title,
+      description: title,
+      status: "ACTIVE",
+      priority,
+    },
+  });
+  console.log(`Objetivo organizacional criado: ${title}`);
+  return created.id;
+}
+
 async function seedProjectsAndTasks(): Promise<void> {
   for (const project of projects) {
+    const goalId = project.goalTitle
+      ? await ensureGoal(
+          project.goalTitle,
+          project.priority === Priority.HIGH ? Priority.HIGH : Priority.MEDIUM,
+        )
+      : null;
+
     let existing = await prisma.project.findFirst({
       where: { name: project.name },
     });
@@ -96,6 +147,7 @@ async function seedProjectsAndTasks(): Promise<void> {
           description: project.description,
           status: project.status,
           priority: project.priority,
+          goalId,
         },
       });
       console.log(`Projeto criado: ${project.name}`);
@@ -106,6 +158,7 @@ async function seedProjectsAndTasks(): Promise<void> {
           description: project.description,
           status: project.status,
           priority: project.priority,
+          goalId,
         },
       });
       console.log(`Projeto atualizado: ${project.name}`);

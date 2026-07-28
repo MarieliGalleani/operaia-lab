@@ -1,0 +1,41 @@
+# TEMPLATE — NÃO instalar / NÃO enable / NÃO start nesta missão.
+#
+# RESERVADO para split futuro do Continuous Runtime.
+# Hoje o monorepo NÃO expõe processo separado: NÃO habilitar junto com
+# operaia-api (OPERAIA_PROCESS_ROLE=all) — causaria duplicação de workers.
+#
+# Pré-requisito de ativação: app respeitar OPERAIA_PROCESS_ROLE=runtime.
+
+[Unit]
+Description=OperaIA.lab Continuous Runtime (template futuro)
+Documentation=file:/opt/operaia-lab/current/docs/production/architecture.md
+After=network-online.target postgresql.service operaia-api.service
+Wants=network-online.target
+RequiresMountsFor=/opt/operaia-lab
+
+# Impede start acidental até a missão que implementar o split.
+ConditionPathExists=/opt/operaia-lab/shared/flags/enable-process-split
+
+[Service]
+Type=simple
+User=operaia
+Group=operaia
+WorkingDirectory=/opt/operaia-lab/current
+Environment=NODE_ENV=production
+Environment=OPERAIA_PROCESS_ROLE=runtime
+Environment=CONTINUOUS_RUNTIME_ENABLED=true
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-/opt/operaia-lab/shared/.env
+ExecStartPre=/usr/bin/test -f /opt/operaia-lab/shared/.env
+# Placeholder: substituir quando houver entrypoint dedicado.
+ExecStart=/usr/bin/pnpm --filter @operaia/api start
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=90
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=operaia-runtime
+
+[Install]
+WantedBy=multi-user.target

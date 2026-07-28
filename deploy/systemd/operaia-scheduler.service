@@ -1,0 +1,37 @@
+# TEMPLATE — NÃO instalar / NÃO enable / NÃO start nesta missão.
+#
+# RESERVADO para Mission Scheduler dedicado (split futuro).
+# NÃO habilitar enquanto operaia-api rodar com OPERAIA_PROCESS_ROLE=all.
+#
+# Pré-requisito: app respeitar OPERAIA_PROCESS_ROLE=scheduler.
+
+[Unit]
+Description=OperaIA.lab Mission Scheduler (template futuro)
+Documentation=file:/opt/operaia-lab/current/docs/production/architecture.md
+After=network-online.target postgresql.service
+Wants=network-online.target
+RequiresMountsFor=/opt/operaia-lab
+ConditionPathExists=/opt/operaia-lab/shared/flags/enable-process-split
+
+[Service]
+Type=simple
+User=operaia
+Group=operaia
+WorkingDirectory=/opt/operaia-lab/current
+Environment=NODE_ENV=production
+Environment=OPERAIA_PROCESS_ROLE=scheduler
+Environment=CONTINUOUS_RUNTIME_ENABLED=true
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-/opt/operaia-lab/shared/.env
+ExecStartPre=/usr/bin/test -f /opt/operaia-lab/shared/.env
+ExecStart=/usr/bin/pnpm --filter @operaia/api start
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=60
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=operaia-scheduler
+
+[Install]
+WantedBy=multi-user.target

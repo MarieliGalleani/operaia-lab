@@ -1,0 +1,40 @@
+# PostgreSQL de produção — Docker Compose (Missão 3 / Deploy)
+# Uso na VM (localhost only — SEM exposição pública):
+#   cd /opt/operaia-lab/current/infra/production
+#   docker compose -f docker-compose.postgres.yml --env-file /opt/operaia-lab/shared/.env up -d
+#
+# Não altera n8n nem outros containers.
+# Porta no HOST: apenas 127.0.0.1:5432
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: operaia-lab-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-operaia}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD obrigatorio}
+      POSTGRES_DB: ${POSTGRES_DB:-operaia_lab}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - operaia_lab_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-operaia} -d ${POSTGRES_DB:-operaia_lab}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  operaia_lab_pgdata:
+    name: operaia_lab_pgdata

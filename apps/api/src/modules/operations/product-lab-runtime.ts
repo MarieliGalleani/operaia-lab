@@ -1,17 +1,35 @@
 import { parseLLMProviderList } from "@operaia/ai-core";
+import { DIGITAL_TEAM_EMPLOYEES } from "@operaia/digital-team";
 import { env } from "../../config/env.js";
 import { RepositoryWorkspaceSource } from "../employees/repository-workspace-source.js";
+import {
+  createLabRuntime,
+  type LabRuntime,
+} from "../operations/lab-runtime.js";
 import { PrismaProjectRepository } from "../projects/infrastructure/prisma-project.repository.js";
 import { PrismaTaskRepository } from "../tasks/infrastructure/prisma-task.repository.js";
-import { createLabRuntime, type LabRuntime } from "./lab-runtime.js";
+import { ContinuousRuntime } from "../runtime/continuous-runtime.js";
+
+export interface ProductRuntime {
+  readonly lab: LabRuntime;
+  readonly continuous: ContinuousRuntime;
+}
 
 /**
- * Bootstrap de produto (API): Prisma + stack LLM do env.
+ * Bootstrap de produto (API): Prisma + LLM + runtime continuo.
  * Separado de lab-runtime.ts para nao carregar env nos testes unitarios.
  */
-export function createProductLabRuntime(): LabRuntime {
+export function createProductLabRuntime(): ProductRuntime {
   const taskRepository = new PrismaTaskRepository();
-  return createLabRuntime({
+  const projectRepository = new PrismaProjectRepository();
+  const teamIds = DIGITAL_TEAM_EMPLOYEES.map((entry) => entry.profile.id);
+  const workspaces = new RepositoryWorkspaceSource(
+    projectRepository,
+    taskRepository,
+    teamIds,
+  );
+
+  const lab = createLabRuntime({
     stack: {
       provider: env.LLM_PROVIDER,
       model: env.LLM_MODEL,
@@ -22,11 +40,39 @@ export function createProductLabRuntime(): LabRuntime {
       fallbackProviders: parseLLMProviderList(env.LLM_FALLBACK_PROVIDERS),
       maxTokensClamp: env.LLM_MAX_TOKENS_CLAMP,
     },
-    workspaces: new RepositoryWorkspaceSource(
-      new PrismaProjectRepository(),
-      taskRepository,
-    ),
+    workspaces,
     taskRepository,
     enableConsoleObservability: env.LLM_OBSERVABILITY,
   });
+
+  const continuous = new ContinuousRuntime({
+    office: lab.office,
+    workspaces,
+    projects: projectRepository,
+    tasks: taskRepository,
+    execution: lab.execution,
+    memory: lab.memory,
+    logger: createPinoLikeLogger(),
+    enabled: env.CONTINUOUS_RUNTIME_ENABLED,
+    pollIntervalMs: env.WORKER_POLL_INTERVAL_MS,
+    heartbeatIntervalMs: env.WORKER_HEARTBEAT_INTERVAL_MS,
+    schedulerIntervalMs: env.SCHEDULER_INTERVAL_MS,
+    staleRunningMs: env.MISSION_STALE_RUNNING_MS,
+  });
+
+  return { lab, continuous };
+}
+
+function createPinoLikeLogger() {
+  return {
+    info(obj: Record<string, unknown>, msg?: string) {
+      console.log(JSON.stringify({ level: "info", msg, ...obj }));
+    },
+    warn(obj: Record<string, unknown>, msg?: string) {
+      console.warn(JSON.stringify({ level: "warn", msg, ...obj }));
+    },
+    error(obj: Record<string, unknown>, msg?: string) {
+      console.error(JSON.stringify({ level: "error", msg, ...obj }));
+    },
+  };
 }

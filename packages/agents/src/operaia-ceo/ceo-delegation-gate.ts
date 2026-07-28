@@ -1,3 +1,5 @@
+import { isBroadLaunchObjective } from "./ceo-specialization-resolver.js";
+
 /**
  * Gate de delegacao da CEO: decide se a missao exige especialista
  * ou se a Opera responde sozinha (caminho rapido).
@@ -14,7 +16,7 @@ const TECHNICAL_EXECUTION_PATTERN =
 
 /** Pedidos explicitos de execucao / progresso operacional. */
 const EXECUTION_PROGRESS_PATTERN =
-  /\b(finalizar|completar|entregar|avan[cç]ar|avance|desbloquear|executar|resolver|construir|adicionar|fechar|trabalh[ae]|trabalhar|atacar|cuidar|mexer|quero\s+|fa[cz]a?\b|faz\b|pr[oó]xim[ao]s?\s+a[cç][oõ]es?)\b/i;
+  /\b(finalizar|completar|entregar|avan[cç]ar|avance|desbloquear|executar|resolver|construir|adicionar|fechar|trabalh[ae]|trabalhar|atacar|cuidar|mexer|quero\s+|fa[cz]a?\b|faz\b|pr[oó]xim[ao]s?\s+a[cç][oõ]es?|lan[cç]ar|lan[cç]amento|go[\s-]?live|release|publicar)\b/i;
 
 /** Referencia as pendencias/tarefas ja conhecidas no workspace. */
 const PENDING_WORK_REFERENCE_PATTERN =
@@ -34,9 +36,6 @@ export function needsSpecialistDelegation(input: DelegationGateInput): boolean {
   if (input.pendingTitles.length === 0) {
     return false;
   }
-  if (!input.planRequestsDelegate) {
-    return false;
-  }
 
   const objective = input.objective.trim();
   if (objective.length === 0) {
@@ -44,6 +43,15 @@ export function needsSpecialistDelegation(input: DelegationGateInput): boolean {
   }
 
   if (isAdvisoryOnly(objective)) {
+    return false;
+  }
+
+  // Lancamento / go-live: multi-delegacao mesmo se o planner ainda nao pediu DELEGATE.
+  if (isBroadLaunchObjective(objective)) {
+    return true;
+  }
+
+  if (!input.planRequestsDelegate) {
     return false;
   }
 
@@ -55,8 +63,6 @@ export function needsSpecialistDelegation(input: DelegationGateInput): boolean {
     return true;
   }
 
-  // "trabalha em cima dessas duas pendencias" — ordem de execucao sem
-  // repetir o titulo tecnico, mas com pendencias reais no quadro.
   if (PENDING_WORK_REFERENCE_PATTERN.test(objective)) {
     return true;
   }

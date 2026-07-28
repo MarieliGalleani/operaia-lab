@@ -11,7 +11,14 @@ export {
   type DelegationGateInput,
 } from "./ceo-delegation-gate.js";
 export { buildDirectExecutiveReply } from "./ceo-direct-reply.js";
-export { resolveRequiredSpecialization } from "./ceo-specialization-resolver.js";
+export { resolveRequiredSpecialization, resolveAllRequiredSpecializations, isBroadLaunchObjective } from "./ceo-specialization-resolver.js";
+export {
+  buildStrategicPlan,
+  inferDefaultEdges,
+  type StrategicPlan,
+  type DelegationEdge,
+  type CapacityHint,
+} from "./ceo-strategic-plan.js";
 export {
   CeoBrain,
   type CeoBrainDependencies,

@@ -1,0 +1,635 @@
+import { createHash } from "node:crypto";
+import {
+  MissionKind as PrismaMissionKind,
+  MissionStatus,
+  prisma,
+  type Mission,
+  type Priority,
+  type Prisma,
+} from "@operaia/database";
+import {
+  CEO_EMPLOYEE_ID,
+  MissionKind,
+  MissionQueueStatus,
+} from "./mission-states.js";
+
+export interface EnqueueMissionInput {
+  readonly workspaceId: string;
+  readonly projectId?: string;
+  readonly objective: string;
+  readonly priority?: Priority;
+  readonly ownerEmployeeId?: string;
+  readonly requiredSpecialization?: string;
+  readonly parentMissionId?: string;
+  readonly missionKind?: MissionKind;
+  readonly scheduledAt?: Date;
+  readonly maxAttempts?: number;
+  readonly readiness?: "READY" | "BLOCKED";
+  /** Se true, nao cria se ja existir ativa com mesmo hash (so COORDINATE raiz). */
+  readonly dedupe?: boolean;
+}
+
+export interface ClaimCriteria {
+  readonly employeeId: string;
+  readonly specialization: string;
+}
+
+export interface QueueDepths {
+  readonly queued: number;
+  readonly running: number;
+  readonly waiting: number;
+  readonly failed: number;
+}
+
+export interface MissionTreeNode {
+  readonly id: string;
+  readonly workspaceId: string;
+  readonly projectId: string | null;
+  readonly objective: string;
+  readonly missionKind: string;
+  readonly status: string;
+  readonly ownerEmployeeId: string;
+  readonly requiredSpecialization: string | null;
+  readonly parentMissionId: string | null;
+  readonly progress: number;
+  readonly attempt: number;
+  readonly startedAt: string | null;
+  readonly finishedAt: string | null;
+  readonly createdAt: string;
+  readonly children: MissionTreeNode[];
+}
+
+const OPEN_STATUSES: MissionStatus[] = [
+  MissionStatus.CREATED,
+  MissionStatus.QUEUED,
+  MissionStatus.RUNNING,
+  MissionStatus.WAITING,
+];
+
+export function hashObjective(workspaceId: string, objective: string): string {
+  return createHash("sha256")
+    .update(`${workspaceId}\0${objective.trim()}`)
+    .digest("hex")
+    .slice(0, 32);
+}
+
+/**
+ * Fila persistente de missoes (Postgres + SKIP LOCKED).
+ */
+export class MissionQueue {
+  async enqueue(
+    input: EnqueueMissionInput,
+  ): Promise<{ mission: Mission; created: boolean }> {
+    const objectiveHash = hashObjective(input.workspaceId, input.objective);
+    const ownerEmployeeId = input.ownerEmployeeId ?? CEO_EMPLOYEE_ID;
+    const missionKind = input.missionKind ?? MissionKind.COORDINATE;
+    const shouldDedupe =
+      input.dedupe === true &&
+      missionKind === MissionKind.COORDINATE &&
+      !input.parentMissionId;
+
+    if (shouldDedupe) {
+      const existing = await prisma.mission.findFirst({
+        where: {
+          workspaceId: input.workspaceId,
+          objectiveHash,
+          missionKind: PrismaMissionKind.COORDINATE,
+          status: { in: OPEN_STATUSES },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      if (existing) {
+        return { mission: existing, created: false };
+      }
+    }
+
+    const mission = await prisma.mission.create({
+      data: {
+        workspaceId: input.workspaceId,
+        projectId: input.projectId,
+        objective: input.objective,
+        objectiveHash,
+        missionKind: missionKind as PrismaMissionKind,
+        priority: input.priority ?? "MEDIUM",
+        status: MissionStatus.QUEUED,
+        readiness: input.readiness ?? "READY",
+        ownerEmployeeId,
+        requiredSpecialization: input.requiredSpecialization,
+        parentMissionId: input.parentMissionId,
+        maxAttempts: input.maxAttempts ?? 3,
+        scheduledAt: input.scheduledAt ?? new Date(),
+        progress: 0,
+        attempt: 0,
+      },
+    });
+
+    await this.appendEvent(mission.id, "enqueued", "Missao enfileirada", {
+      ownerEmployeeId,
+      workspaceId: input.workspaceId,
+      missionKind,
+      parentMissionId: input.parentMissionId,
+      requiredSpecialization: input.requiredSpecialization,
+    });
+
+    return { mission, created: true };
+  }
+
+  /**
+   * CEO: COORDINATE ou CONSOLIDATE.
+   * Especialistas: EXECUTE por specialization.
+   */
+  async claim(criteria: ClaimCriteria): Promise<Mission | null> {
+    const isCeo = criteria.employeeId === CEO_EMPLOYEE_ID;
+
+    return prisma.$transaction(async (tx) => {
+      const rows = isCeo
+        ? await tx.$queryRaw<Mission[]>`
+            SELECT * FROM missions
+            WHERE status = 'QUEUED'::"MissionStatus"
+              AND "ownerEmployeeId" = ${CEO_EMPLOYEE_ID}
+              AND "missionKind" IN ('COORDINATE'::"MissionKind", 'CONSOLIDATE'::"MissionKind")
+              AND ("scheduledAt" IS NULL OR "scheduledAt" <= NOW())
+            ORDER BY
+              CASE "priority"
+                WHEN 'URGENT' THEN 0
+                WHEN 'HIGH' THEN 1
+                WHEN 'MEDIUM' THEN 2
+                ELSE 3
+              END,
+              "createdAt" ASC
+            FOR UPDATE SKIP LOCKED
+            LIMIT 1
+          `
+        : await tx.$queryRaw<Mission[]>`
+            SELECT * FROM missions
+            WHERE status = 'QUEUED'::"MissionStatus"
+              AND "missionKind" = 'EXECUTE'::"MissionKind"
+              AND "readiness" = 'READY'::"MissionReadiness"
+              AND "requiredSpecialization" = ${criteria.specialization}
+              AND ("scheduledAt" IS NULL OR "scheduledAt" <= NOW())
+            ORDER BY
+              CASE "priority"
+                WHEN 'URGENT' THEN 0
+                WHEN 'HIGH' THEN 1
+                WHEN 'MEDIUM' THEN 2
+                ELSE 3
+              END,
+              "createdAt" ASC
+            FOR UPDATE SKIP LOCKED
+            LIMIT 1
+          `;
+
+      const row = rows[0];
+      if (!row) {
+        return null;
+      }
+
+      const updated = await tx.mission.update({
+        where: { id: row.id },
+        data: {
+          status: MissionStatus.RUNNING,
+          startedAt: new Date(),
+          attempt: { increment: 1 },
+          progress: 10,
+          ownerEmployeeId: criteria.employeeId,
+        },
+      });
+
+      await tx.missionEvent.create({
+        data: {
+          missionId: updated.id,
+          type: "claimed",
+          message: `Claim por ${criteria.employeeId}`,
+          payload: {
+            employeeId: criteria.employeeId,
+            specialization: criteria.specialization,
+            missionKind: updated.missionKind,
+          } as Prisma.InputJsonValue,
+        },
+      });
+
+      return updated;
+    });
+  }
+
+  async markWaiting(
+    missionId: string,
+    partialResult: Prisma.InputJsonValue,
+  ): Promise<Mission> {
+    const mission = await prisma.mission.update({
+      where: { id: missionId },
+      data: {
+        status: MissionStatus.WAITING,
+        progress: 50,
+        resultJson: partialResult,
+      },
+    });
+    await this.appendEvent(missionId, "waiting", "Aguardando filhos", {
+      childCount: await prisma.mission.count({
+        where: { parentMissionId: missionId },
+      }),
+    });
+    return mission;
+  }
+
+  async complete(
+    missionId: string,
+    result: Prisma.InputJsonValue,
+  ): Promise<Mission> {
+    const mission = await prisma.mission.update({
+      where: { id: missionId },
+      data: {
+        status: MissionStatus.COMPLETED,
+        progress: 100,
+        finishedAt: new Date(),
+        resultJson: result,
+        lastError: null,
+      },
+    });
+    await this.appendEvent(missionId, "completed", "Missao concluida");
+    await this.promoteReadyDependents(missionId);
+    return mission;
+  }
+
+  async linkDependency(
+    missionId: string,
+    dependsOnMissionId: string,
+  ): Promise<void> {
+    if (missionId === dependsOnMissionId) {
+      return;
+    }
+    await prisma.missionDependency.upsert({
+      where: {
+        missionId_dependsOnMissionId: {
+          missionId,
+          dependsOnMissionId,
+        },
+      },
+      create: { missionId, dependsOnMissionId },
+      update: {},
+    });
+    await prisma.mission.update({
+      where: { id: missionId },
+      data: { readiness: "BLOCKED" },
+    });
+  }
+
+  /** Promove sucessoras cujas predecessoras estao COMPLETED. */
+  async promoteReadyDependents(completedMissionId: string): Promise<number> {
+    const dependents = await prisma.missionDependency.findMany({
+      where: { dependsOnMissionId: completedMissionId },
+    });
+    let promoted = 0;
+    for (const edge of dependents) {
+      const preds = await prisma.missionDependency.findMany({
+        where: { missionId: edge.missionId },
+        include: { dependsOn: true },
+      });
+      const allDone = preds.every(
+        (pred) => pred.dependsOn.status === MissionStatus.COMPLETED,
+      );
+      if (!allDone) {
+        continue;
+      }
+      await prisma.mission.update({
+        where: { id: edge.missionId },
+        data: { readiness: "READY", scheduledAt: new Date() },
+      });
+      await this.appendEvent(
+        edge.missionId,
+        "unblocked",
+        "Dependencias concluidas — missao READY",
+      );
+      promoted += 1;
+    }
+    return promoted;
+  }
+
+  async completeConsolidation(
+    consolidateMissionId: string,
+    rootMissionId: string,
+    result: Prisma.InputJsonValue,
+  ): Promise<{ consolidate: Mission; root: Mission }> {
+    const consolidate = await this.complete(consolidateMissionId, result);
+    const root = await prisma.mission.update({
+      where: { id: rootMissionId },
+      data: {
+        status: MissionStatus.COMPLETED,
+        progress: 100,
+        finishedAt: new Date(),
+        resultJson: result,
+        lastError: null,
+      },
+    });
+    await this.appendEvent(rootMissionId, "completed", "Raiz consolidada");
+    return { consolidate, root };
+  }
+
+  async fail(missionId: string, error: string): Promise<Mission> {
+    const current = await prisma.mission.findUniqueOrThrow({
+      where: { id: missionId },
+    });
+
+    const canRetry = current.attempt < current.maxAttempts;
+    const mission = await prisma.mission.update({
+      where: { id: missionId },
+      data: canRetry
+        ? {
+            status: MissionStatus.QUEUED,
+            lastError: error,
+            scheduledAt: new Date(Date.now() + backoffMs(current.attempt)),
+            startedAt: null,
+            progress: 0,
+          }
+        : {
+            status: MissionStatus.FAILED,
+            lastError: error,
+            finishedAt: new Date(),
+            progress: 100,
+          },
+    });
+
+    await this.appendEvent(
+      missionId,
+      canRetry ? "requeued" : "failed",
+      canRetry ? `Retry agendado: ${error}` : `Falha final: ${error}`,
+      { attempt: current.attempt, maxAttempts: current.maxAttempts },
+    );
+
+    return mission;
+  }
+
+  /**
+   * Quando um filho EXECUTE termina, verifica se pode enfileirar CONSOLIDATE.
+   */
+  async maybeEnqueueConsolidation(rootMissionId: string): Promise<boolean> {
+    const root = await prisma.mission.findUnique({
+      where: { id: rootMissionId },
+    });
+    if (!root || root.status !== MissionStatus.WAITING) {
+      return false;
+    }
+
+    const children = await prisma.mission.findMany({
+      where: {
+        parentMissionId: rootMissionId,
+        missionKind: PrismaMissionKind.EXECUTE,
+      },
+    });
+    if (children.length === 0) {
+      return false;
+    }
+
+    const allDone = children.every(
+      (child) =>
+        child.status === MissionStatus.COMPLETED ||
+        child.status === MissionStatus.FAILED,
+    );
+    if (!allDone) {
+      return false;
+    }
+
+    const existing = await prisma.mission.findFirst({
+      where: {
+        parentMissionId: rootMissionId,
+        missionKind: PrismaMissionKind.CONSOLIDATE,
+        status: { in: OPEN_STATUSES },
+      },
+    });
+    if (existing) {
+      return false;
+    }
+
+    const { created } = await this.enqueue({
+      workspaceId: root.workspaceId,
+      projectId: root.projectId ?? undefined,
+      objective: `[CONSOLIDATE] ${root.objective}`,
+      parentMissionId: rootMissionId,
+      missionKind: MissionKind.CONSOLIDATE,
+      ownerEmployeeId: CEO_EMPLOYEE_ID,
+      requiredSpecialization: "MANAGEMENT",
+      priority: root.priority,
+      dedupe: false,
+    });
+
+    if (created) {
+      await this.appendEvent(
+        rootMissionId,
+        "consolidation_enqueued",
+        "Consolidacao enfileirada para Opera",
+      );
+    }
+    return created;
+  }
+
+  async listChildren(parentMissionId: string): Promise<readonly Mission[]> {
+    return prisma.mission.findMany({
+      where: { parentMissionId },
+      orderBy: { createdAt: "asc" },
+      include: { events: { orderBy: { createdAt: "asc" } } },
+    });
+  }
+
+  async list(filters?: {
+    readonly status?: MissionStatus;
+    readonly workspaceId?: string;
+    readonly take?: number;
+  }) {
+    return prisma.mission.findMany({
+      where: {
+        ...(filters?.status ? { status: filters.status } : {}),
+        ...(filters?.workspaceId
+          ? { workspaceId: filters.workspaceId }
+          : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: filters?.take ?? 50,
+      include: { events: { orderBy: { createdAt: "asc" }, take: 30 } },
+    });
+  }
+
+  async listTree(filters?: {
+    readonly workspaceId?: string;
+    readonly take?: number;
+  }): Promise<readonly MissionTreeNode[]> {
+    const roots = await prisma.mission.findMany({
+      where: {
+        parentMissionId: null,
+        missionKind: PrismaMissionKind.COORDINATE,
+        ...(filters?.workspaceId
+          ? { workspaceId: filters.workspaceId }
+          : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: filters?.take ?? 20,
+    });
+
+    return Promise.all(roots.map((root) => this.buildTreeNode(root.id)));
+  }
+
+  private async buildTreeNode(missionId: string): Promise<MissionTreeNode> {
+    const mission = await prisma.mission.findUniqueOrThrow({
+      where: { id: missionId },
+    });
+    const children = await prisma.mission.findMany({
+      where: { parentMissionId: missionId },
+      orderBy: { createdAt: "asc" },
+    });
+    const childNodes = await Promise.all(
+      children.map((child) => this.buildTreeNode(child.id)),
+    );
+    return {
+      id: mission.id,
+      workspaceId: mission.workspaceId,
+      projectId: mission.projectId,
+      objective: mission.objective,
+      missionKind: mission.missionKind,
+      status: mission.status,
+      ownerEmployeeId: mission.ownerEmployeeId,
+      requiredSpecialization: mission.requiredSpecialization,
+      parentMissionId: mission.parentMissionId,
+      progress: mission.progress,
+      attempt: mission.attempt,
+      startedAt: mission.startedAt?.toISOString() ?? null,
+      finishedAt: mission.finishedAt?.toISOString() ?? null,
+      createdAt: mission.createdAt.toISOString(),
+      children: childNodes,
+    };
+  }
+
+  async get(id: string) {
+    return prisma.mission.findUnique({
+      where: { id },
+      include: { events: { orderBy: { createdAt: "asc" } } },
+    });
+  }
+
+  async depths(): Promise<QueueDepths> {
+    const [queued, running, waiting, failed] = await Promise.all([
+      prisma.mission.count({ where: { status: MissionStatus.QUEUED } }),
+      prisma.mission.count({ where: { status: MissionStatus.RUNNING } }),
+      prisma.mission.count({ where: { status: MissionStatus.WAITING } }),
+      prisma.mission.count({ where: { status: MissionStatus.FAILED } }),
+    ]);
+    return { queued, running, waiting, failed };
+  }
+
+  async recoverStaleRunning(staleAfterMs: number): Promise<number> {
+    const cutoff = new Date(Date.now() - staleAfterMs);
+    const stale = await prisma.mission.findMany({
+      where: {
+        status: MissionStatus.RUNNING,
+        updatedAt: { lt: cutoff },
+      },
+    });
+
+    for (const mission of stale) {
+      await prisma.mission.update({
+        where: { id: mission.id },
+        data: {
+          status: MissionStatus.QUEUED,
+          startedAt: null,
+          lastError: "Recuperada apos RUNNING orfao (restart/stale)",
+          scheduledAt: new Date(),
+        },
+      });
+      await this.appendEvent(
+        mission.id,
+        "recovered",
+        "RUNNING orfao reenfileirado",
+      );
+    }
+
+    return stale.length;
+  }
+
+  /** Re-enfileira consolidacao para raizes WAITING com filhos prontos. */
+  async recoverWaitingParents(): Promise<number> {
+    const waiting = await prisma.mission.findMany({
+      where: {
+        status: MissionStatus.WAITING,
+        missionKind: PrismaMissionKind.COORDINATE,
+      },
+    });
+    let scheduled = 0;
+    for (const root of waiting) {
+      if (await this.maybeEnqueueConsolidation(root.id)) {
+        scheduled += 1;
+      }
+    }
+    return scheduled;
+  }
+
+  /**
+   * Recupera DAG: promove BLOCKED cujas predecessoras ja COMPLETED
+   * (ex.: apos restart no meio da cadeia).
+   */
+  async recoverBlockedDag(): Promise<number> {
+    const blocked = await prisma.mission.findMany({
+      where: {
+        readiness: "BLOCKED",
+        status: { in: [MissionStatus.QUEUED, MissionStatus.CREATED] },
+      },
+    });
+    let promoted = 0;
+    for (const mission of blocked) {
+      const preds = await prisma.missionDependency.findMany({
+        where: { missionId: mission.id },
+        include: { dependsOn: true },
+      });
+      if (preds.length === 0) {
+        await prisma.mission.update({
+          where: { id: mission.id },
+          data: { readiness: "READY", scheduledAt: new Date() },
+        });
+        await this.appendEvent(
+          mission.id,
+          "unblocked",
+          "BLOCKED sem dependencias — READY apos recovery",
+        );
+        promoted += 1;
+        continue;
+      }
+      const allDone = preds.every(
+        (pred) => pred.dependsOn.status === MissionStatus.COMPLETED,
+      );
+      if (!allDone) {
+        continue;
+      }
+      await prisma.mission.update({
+        where: { id: mission.id },
+        data: { readiness: "READY", scheduledAt: new Date() },
+      });
+      await this.appendEvent(
+        mission.id,
+        "unblocked",
+        "DAG recuperado — missao READY",
+      );
+      promoted += 1;
+    }
+    return promoted;
+  }
+
+  async appendEvent(
+    missionId: string,
+    type: string,
+    message: string,
+    payload?: Prisma.InputJsonValue,
+  ): Promise<void> {
+    await prisma.missionEvent.create({
+      data: {
+        missionId,
+        type,
+        message,
+        ...(payload !== undefined ? { payload } : {}),
+      },
+    });
+  }
+}
+
+function backoffMs(attempt: number): number {
+  const base = 5_000;
+  return Math.min(base * 2 ** Math.max(0, attempt - 1), 5 * 60_000);
+}
+
+export { MissionQueueStatus };

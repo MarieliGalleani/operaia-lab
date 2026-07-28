@@ -6,7 +6,7 @@ import { createProductLabRuntime } from "../operations/product-lab-runtime.js";
  * Preferir createProductLabRuntime() no composition root da API.
  */
 export function createDigitalTeam(): EmployeesApplication {
-  return createProductLabRuntime().team;
+  return createProductLabRuntime().lab.team;
 }
 
 /**

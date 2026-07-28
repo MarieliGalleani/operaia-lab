@@ -28,9 +28,11 @@ export interface OperationalRuntime {
  * Uma composition → um office → um store → mesma execução de missão.
  */
 export interface LabRuntime {
+  readonly office: ReturnType<typeof createDigitalOffice>;
   readonly team: EmployeesApplication;
   readonly operations: OperationalRuntime;
   readonly memory: MemoryStore;
+  readonly execution: ReturnType<typeof createMissionExecutionStack>;
 }
 
 export interface LabRuntimeOptions {
@@ -92,8 +94,10 @@ export function createLabRuntime(
   });
 
   return {
+    office,
     team,
     operations: { service, observer, store },
     memory,
+    execution,
   };
 }

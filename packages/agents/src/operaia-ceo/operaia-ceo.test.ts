@@ -139,6 +139,30 @@ describe("OperaIA CEO (migrado para o Employee Framework)", () => {
     expect(llm.lastMessages[0]?.content).toContain("OperaIA CEO");
   });
 
+  it("objetivo de lancamento gera multiplas delegacoes nativas", async () => {
+    const llm = new StubLLM("Plano de lancamento multi-dominio pronto.");
+    const ceo = createCeo(llm);
+    const output = await ceo.work({
+      briefing: briefing(
+        [
+          {
+            id: "t1",
+            title: "Implementar autenticacao",
+            status: TaskStatus.TODO,
+            impact: 5,
+            urgency: 5,
+          },
+        ],
+        "Lancar o NEXO",
+      ),
+    });
+    expect(output.decision.delegations.length).toBeGreaterThanOrEqual(4);
+    const specs = output.decision.delegations.map((d) => d.specialization);
+    expect(specs).toContain(Specialization.SOFTWARE_ENGINEERING);
+    expect(specs).toContain(Specialization.PRODUCT_DESIGN);
+    expect(specs).toContain(Specialization.MARKETING);
+  });
+
   it("reconhece objetivo concluido sem delegar", async () => {
     const ceo = createCeo(new StubLLM());
     const output = await ceo.work({

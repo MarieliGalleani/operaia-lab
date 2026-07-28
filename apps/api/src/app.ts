@@ -12,16 +12,22 @@ import { infraRoutes } from "./modules/infra/vps.routes.js";
 import { createProductLabRuntime } from "./modules/operations/product-lab-runtime.js";
 import { createOperationsRoutes } from "./modules/operations/operations.routes.js";
 import { projectRoutes } from "./modules/projects/projects.routes.js";
+import type { ContinuousRuntime } from "./modules/runtime/continuous-runtime.js";
+import { createRuntimeRoutes } from "./modules/runtime/runtime.routes.js";
 import { taskRoutes } from "./modules/tasks/tasks.routes.js";
 import { createWorkspaceRoutes } from "./modules/workspaces/workspaces.routes.js";
 import { errorHandler } from "./shared/error-handler.js";
 
+export interface AppBundle {
+  readonly app: FastifyInstance;
+  readonly continuous: ContinuousRuntime;
+}
+
 /**
  * Composition root da API: monta o Fastify e registra modulos.
- * Lab Runtime unificado = Equipe Digital + Operations (mesmo office/store).
- * Sem regra de negocio aqui.
+ * Lab Runtime unificado = Equipe Digital + Operations + Continuous Runtime.
  */
-export function buildApp(): FastifyInstance {
+export function buildApp(): AppBundle {
   const app = Fastify({
     logger: { level: env.LOG_LEVEL },
   });
@@ -34,7 +40,7 @@ export function buildApp(): FastifyInstance {
     origin: true,
   });
 
-  const lab = createProductLabRuntime();
+  const { lab, continuous } = createProductLabRuntime();
 
   app.register(healthRoutes);
   app.register(infraRoutes, { prefix: "/api/v1/infra" });
@@ -50,6 +56,9 @@ export function buildApp(): FastifyInstance {
   app.register(createOperationsRoutes(lab.operations), {
     prefix: "/api/v1/operations",
   });
+  app.register(createRuntimeRoutes(continuous), {
+    prefix: "/api/v1",
+  });
 
-  return app;
+  return { app, continuous };
 }

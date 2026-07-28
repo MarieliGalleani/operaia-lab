@@ -1,0 +1,35 @@
+# Path alvo na VM: /etc/systemd/system/operaia-api.service
+#
+# Papel: HTTP API + Continuous Runtime + Workers + Scheduler (monólito).
+# Postgres: Docker Compose (After=docker.service). Ver process-role-decision.md.
+
+[Unit]
+Description=OperaIA.lab API
+Documentation=file:/opt/operaia-lab/current/docs/production/architecture.md
+After=network-online.target docker.service
+Wants=network-online.target docker.service
+RequiresMountsFor=/opt/operaia-lab
+
+[Service]
+Type=simple
+User=operaia
+Group=operaia
+WorkingDirectory=/opt/operaia-lab/current
+Environment=NODE_ENV=production
+Environment=OPERAIA_PROCESS_ROLE=all
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-/opt/operaia-lab/shared/.env
+ExecStartPre=/usr/bin/test -f /opt/operaia-lab/shared/.env
+ExecStartPre=/usr/bin/test -d /opt/operaia-lab/current
+ExecStart=/usr/bin/pnpm --filter @operaia/api start
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=90
+LimitNOFILE=65535
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=operaia-api
+
+[Install]
+WantedBy=multi-user.target

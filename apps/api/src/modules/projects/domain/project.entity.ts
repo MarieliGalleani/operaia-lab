@@ -7,4 +7,5 @@ export interface Project extends Timestamps {
   readonly description: string | null;
   readonly status: ProjectStatus;
   readonly priority: Priority;
+  readonly goalId: UUID | null;
 }

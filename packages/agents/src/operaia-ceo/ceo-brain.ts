@@ -8,11 +8,14 @@ import type {
 import { TaskStatus } from "@operaia/shared";
 import { needsSpecialistDelegation } from "./ceo-delegation-gate.js";
 import { buildDirectExecutiveReply } from "./ceo-direct-reply.js";
-import { resolveRequiredSpecialization } from "./ceo-specialization-resolver.js";
 import { CeoPlanner } from "./ceo-planner.js";
 import { CeoPrioritizer } from "./ceo-prioritizer.js";
 import { CeoReviewer } from "./ceo-reviewer.js";
 import { buildCeoSystemPrompt } from "./ceo-system-prompt.js";
+import {
+  buildStrategicPlan,
+  type CapacityHint,
+} from "./ceo-strategic-plan.js";
 import {
   CeoPlanAction,
   type CeoPlan,
@@ -96,36 +99,53 @@ export class CeoBrain implements EmployeeBrain {
       ? await this.generateSummary(briefing, plan, review, priorities)
       : buildDirectExecutiveReply(briefing, review, priorities);
 
-    const specialization = shouldDelegate
-      ? resolveRequiredSpecialization({
+    const capacity = readCapacityFromNotes(briefing);
+    const strategic = shouldDelegate
+      ? buildStrategicPlan({
           objective: briefing.objective,
           pendingTitles,
+          capacity,
         })
       : null;
+
+    const portfolioNotes = readTaggedNotes(briefing, "PORTFOLIO");
+    const orgHealthNotes = readTaggedNotes(briefing, "ORG_HEALTH");
 
     return {
       analyzed:
         `${briefing.project}: ${review.pendingCount} pendente(s), ` +
         `${review.blockedCount} bloqueada(s)` +
-        (shouldDelegate
-          ? `; delegacao ${specialization} solicitada.`
+        (strategic
+          ? `; plano estrategico com ${strategic.delegations.length} delegacao(oes): ${strategic.specializations.join(", ")}.`
           : "; resposta executiva direta."),
       decision: narrative,
-      reasoning: shouldDelegate
-        ? "Priorizacao por impacto/urgencia; objetivo exige especialidade (via Specialization, sem escolher funcionario)."
+      reasoning: strategic
+        ? `${strategic.rationale} Matcher resolve quem executa. Capacidade e saude organizacional consideradas na priorizacao.`
         : "Missao respondida pela CEO sem especialista (gate de delegacao).",
-      recommendations: plan.steps.map((step) => `${step.order}. ${step.title}`),
-      delegations:
-        shouldDelegate && specialization
+      recommendations: [
+        ...plan.steps.map((step) => `${step.order}. ${step.title}`),
+        ...(strategic
           ? [
-              {
-                specialization,
-                reason: "Executar trabalho especializado priorizado.",
-                task: priorities[0]?.title,
-              },
+              `Plano: ${strategic.specializations.join(" → ")}`,
+              ...strategic.edges.map(
+                (edge) =>
+                  `Dependencia: ${edge.fromSpecialization} → ${edge.toSpecialization}`,
+              ),
             ]
-          : [],
-      risks: review.findings,
+          : []),
+        ...portfolioNotes.slice(0, 3),
+        ...orgHealthNotes.slice(0, 2),
+      ],
+      delegations: strategic
+        ? strategic.delegations.map((item, index) => ({
+            ...item,
+            task: item.task ?? priorities[index]?.title ?? priorities[0]?.title,
+          }))
+        : [],
+      risks: [
+        ...review.findings,
+        ...orgHealthNotes.filter((note) => note.toLowerCase().includes("risco")),
+      ],
       nextActions: priorities
         .slice(0, TOP_ACTIONS)
         .map((task) => `[${task.priority}] ${task.title}`),
@@ -291,4 +311,39 @@ function isSpecialistOutcomeBrief(
     typeof record["specialization"] === "string" &&
     typeof record["reason"] === "string"
   );
+}
+
+function readCapacityFromNotes(
+  briefing: EmployeeBriefing,
+): CapacityHint | undefined {
+  const line = [...briefing.history, ...memoryContextLines(briefing)].find(
+    (item) => item.startsWith("[CAPACITY]"),
+  );
+  if (!line) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(line.slice("[CAPACITY]".length)) as CapacityHint;
+  } catch {
+    return undefined;
+  }
+}
+
+function readTaggedNotes(
+  briefing: EmployeeBriefing,
+  tag: string,
+): string[] {
+  const prefix = `[${tag}]`;
+  return [...briefing.history, ...memoryContextLines(briefing)]
+    .filter((item) => item.startsWith(prefix))
+    .map((item) => item.slice(prefix.length).trim())
+    .filter(Boolean);
+}
+
+function memoryContextLines(briefing: EmployeeBriefing): string[] {
+  const raw = briefing.additional["memoryContext"];
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw.filter((item): item is string => typeof item === "string");
 }

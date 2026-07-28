@@ -1,0 +1,29 @@
+[Unit]
+Description=OperaIA.lab API + Continuous Digital Team Runtime
+Documentation=file:/opt/operaia-lab/infra/production/ARCHITECTURE.md
+After=network-online.target postgresql.service docker.service
+Wants=network-online.target
+RequiresMountsFor=/opt/operaia-lab
+
+[Service]
+Type=simple
+User=operaia
+Group=operaia
+WorkingDirectory=/opt/operaia-lab
+Environment=NODE_ENV=production
+Environment=PATH=/usr/local/bin:/usr/bin:/bin:/home/operaia/.local/share/pnpm
+EnvironmentFile=-/opt/operaia-lab/.env
+ExecStartPre=/usr/bin/test -f /opt/operaia-lab/.env
+ExecStart=/usr/bin/pnpm --filter @operaia/api start
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=90
+LimitNOFILE=65535
+# Logs via journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=operaia-lab-api
+
+[Install]
+WantedBy=multi-user.target
