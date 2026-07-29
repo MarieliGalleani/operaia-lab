@@ -23,7 +23,7 @@ export function createEmployeeRoutes(
       {
         schema: {
           tags: ["employees"],
-          response: { 200: z.array(employeeProfileSchema).readonly() },
+          response: { 200: z.array(employeeProfileSchema) },
         },
       },
       async () => application.listProfiles(),
@@ -34,7 +34,7 @@ export function createEmployeeRoutes(
       {
         schema: {
           tags: ["employees"],
-          response: { 200: z.array(employeeStatusSchema).readonly() },
+          response: { 200: z.array(employeeStatusSchema) },
         },
       },
       async () => application.listStatuses(),
@@ -55,12 +55,12 @@ export function createEmployeeRoutes(
       async (request, reply) => {
         const profile = application.getProfile(request.params.id);
         if (!profile) {
-          return reply.status(404).send({
+          return reply.code(404).send({
             code: "NOT_FOUND",
             message: `Employee nao encontrado: ${request.params.id}`,
           });
         }
-        return profile;
+        return reply.code(200).send(profile);
       },
     );
 

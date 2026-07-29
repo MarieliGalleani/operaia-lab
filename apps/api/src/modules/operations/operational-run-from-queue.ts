@@ -418,8 +418,8 @@ function buildReplyFromStored(
     answer: {
       summary: report.summary,
       projects: [`${workspaceName}: ${decision.analyzed}`],
-      risks: report.risks,
-      nextActions: report.nextActions,
+      risks: [...report.risks],
+      nextActions: [...report.nextActions],
     },
   };
 }

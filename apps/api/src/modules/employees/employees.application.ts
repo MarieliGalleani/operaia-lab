@@ -45,9 +45,9 @@ export interface EmployeeProfilePayload {
   readonly version: string;
   readonly executable: true;
   readonly mission: string;
-  readonly capabilities: readonly string[];
-  readonly permissions: readonly string[];
-  readonly limits: readonly string[];
+  capabilities: string[];
+  permissions: string[];
+  limits: string[];
 }
 
 export interface EmployeeStatusPayload {
@@ -63,13 +63,13 @@ export interface WorkspacePayload {
   readonly objective: string;
   readonly status: string;
   readonly progress: number;
-  readonly teamIds: readonly string[];
-  readonly decisions: readonly {
-    readonly id: string;
-    readonly summary: string;
-    readonly authorId: string;
-    readonly date: string;
-  }[];
+  teamIds: string[];
+  decisions: Array<{
+    id: string;
+    summary: string;
+    authorId: string;
+    date: string;
+  }>;
 }
 
 export interface WorkspaceTaskPayload {
@@ -126,7 +126,7 @@ export class EmployeesApplication {
     return this.missions;
   }
 
-  listProfiles(): readonly EmployeeProfilePayload[] {
+  listProfiles(): EmployeeProfilePayload[] {
     const statusById = new Map(
       this.listStatuses().map((entry) => [entry.employeeId, entry]),
     );
@@ -148,7 +148,7 @@ export class EmployeesApplication {
     }
   }
 
-  listStatuses(): readonly EmployeeStatusPayload[] {
+  listStatuses(): EmployeeStatusPayload[] {
     return this.office.registry.all().map((entry) => {
       const id = entry.profile.id;
       const activity =
@@ -163,7 +163,7 @@ export class EmployeesApplication {
     });
   }
 
-  async listWorkspaces(): Promise<readonly WorkspacePayload[]> {
+  async listWorkspaces(): Promise<WorkspacePayload[]> {
     const records = await this.workspaces.listWorkspaces();
     return records.map(toWorkspaceDto);
   }
@@ -173,7 +173,7 @@ export class EmployeesApplication {
     return workspace ? toWorkspaceDto(workspace) : undefined;
   }
 
-  async listTasks(workspaceId?: string): Promise<readonly WorkspaceTaskPayload[]> {
+  async listTasks(workspaceId?: string): Promise<WorkspaceTaskPayload[]> {
     const records = workspaceId
       ? [await this.workspaces.getWorkspace(workspaceId)].filter(
           (item): item is OfficeWorkspaceRecord => item !== undefined,
@@ -256,9 +256,9 @@ function toProfileDto(
     version: profile.version ?? "1.0.0",
     executable: true,
     mission: profile.mission,
-    capabilities: profile.capabilities,
-    permissions: profile.permissions,
-    limits: profile.limits,
+    capabilities: [...profile.capabilities],
+    permissions: [...profile.permissions],
+    limits: [...profile.limits],
   };
 }
 
@@ -269,7 +269,7 @@ function toWorkspaceDto(workspace: OfficeWorkspaceRecord): WorkspacePayload {
     objective: workspace.objective,
     status: workspace.status,
     progress: workspace.progress,
-    teamIds: workspace.teamIds,
+    teamIds: [...workspace.teamIds],
     decisions: [],
   };
 }

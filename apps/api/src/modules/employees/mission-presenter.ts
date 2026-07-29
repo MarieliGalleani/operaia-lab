@@ -3,15 +3,15 @@ import type { MissionResult } from "./mission-orchestrator.js";
 
 const responsePolicy = new DefaultResponsePolicy();
 
-/** DTOs alinhados ao contrato esperado pelo web (`apps/web/src/data/dto.ts`). */
+/** DTOs alinhados ao contrato HTTP / Zod (arrays mutaveis). */
 export interface EmployeeReplyPayload {
   readonly employeeId: string;
   readonly content: string;
   readonly answer: {
     readonly summary: string;
-    readonly projects: readonly string[];
-    readonly risks: readonly string[];
-    readonly nextActions: readonly string[];
+    projects: string[];
+    risks: string[];
+    nextActions: string[];
   };
 }
 
@@ -36,7 +36,7 @@ export interface WorkflowStepPayload {
 export interface WorkflowPayload {
   readonly workspaceId: string;
   readonly title: string;
-  readonly steps: readonly WorkflowStepPayload[];
+  steps: WorkflowStepPayload[];
 }
 
 /**
@@ -60,8 +60,8 @@ export function presentMissionResult(
         projects: [
           `${workspaceName}: ${result.final.output.decision.analyzed}`,
         ],
-        risks: report.risks,
-        nextActions: report.nextActions,
+        risks: [...report.risks],
+        nextActions: [...report.nextActions],
       },
     },
     workflow: buildWorkflow(result, workspaceId, workspaceName, now),

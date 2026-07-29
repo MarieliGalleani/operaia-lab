@@ -52,15 +52,17 @@ describe("Etapa 7 — E2E Digital Office (missao NEXO)", () => {
 
     // 1. Entrada de missao pelo Workspace
     const snapshot = await workspaces.toSnapshot("nexo");
-    expect(snapshot).toBeDefined();
-    expect(snapshot?.name).toBe("NEXO");
+    if (!snapshot) {
+      throw new Error("Workspace nexo nao encontrado no catalogo E2E");
+    }
+    expect(snapshot.name).toBe("NEXO");
     expect(
-      (snapshot?.tasks ?? []).some((t) => t.title.includes("autenticacao")),
+      (snapshot.tasks ?? []).some((t) => t.title.includes("autenticacao")),
     ).toBe(true);
 
     // 2–6. MissionOrchestrator: CEO → Delegacao → Mag → Consolidacao
     const mission = await orchestrator.run("operaia-ceo", {
-      workspace: snapshot!,
+      workspace: snapshot,
       objective: "Finalizar desenvolvimento da NEXO",
     });
 
@@ -147,12 +149,14 @@ describe("Etapa 7 — E2E Digital Office (missao NEXO)", () => {
   it("missao sem pendencias tecnicas: Opera responde sem Mag", async () => {
     const { workspaces, orchestrator, observer } = buildE2EOffice();
     const snapshot = await workspaces.toSnapshot("plataforma");
-    expect(snapshot).toBeDefined();
+    if (!snapshot) {
+      throw new Error("Workspace plataforma nao encontrado no catalogo E2E");
+    }
 
     const mission = await orchestrator.run("operaia-ceo", {
       workspace: {
-        ...snapshot!,
-        tasks: (snapshot!.tasks ?? []).map((task) => ({
+        ...snapshot,
+        tasks: (snapshot.tasks ?? []).map((task) => ({
           ...task,
           status: "DONE" as const,
         })),

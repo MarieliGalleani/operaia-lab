@@ -44,10 +44,15 @@ export function createWorkspaceRoutes(
       {
         schema: {
           tags: ["workspaces"],
-          response: { 200: z.array(workspaceSchema).readonly() },
+          response: { 200: z.array(workspaceSchema) },
         },
       },
-      async () => application.listWorkspaces(),
+      async () =>
+        (await application.listWorkspaces()).map((workspace) => ({
+          ...workspace,
+          teamIds: [...workspace.teamIds],
+          decisions: workspace.decisions.map((decision) => ({ ...decision })),
+        })),
     );
 
     app.get(
@@ -67,12 +72,16 @@ export function createWorkspaceRoutes(
           request.params.workspaceId,
         );
         if (!workspace) {
-          return reply.status(404).send({
+          return reply.code(404).send({
             code: "NOT_FOUND",
             message: `Workspace nao encontrado: ${request.params.workspaceId}`,
           });
         }
-        return workspace;
+        return reply.code(200).send({
+          ...workspace,
+          teamIds: [...workspace.teamIds],
+          decisions: workspace.decisions.map((decision) => ({ ...decision })),
+        });
       },
     );
 
@@ -82,7 +91,7 @@ export function createWorkspaceRoutes(
         schema: {
           tags: ["workspaces"],
           params: workspaceParamsSchema,
-          response: { 200: z.array(workspaceTaskSchema).readonly() },
+          response: { 200: z.array(workspaceTaskSchema) },
         },
       },
       async (request) => application.listTasks(request.params.workspaceId),
@@ -103,12 +112,16 @@ export function createWorkspaceRoutes(
       async (request, reply) => {
         const workflow = application.getWorkflow(request.params.workspaceId);
         if (!workflow) {
-          return reply.status(404).send({
+          return reply.code(404).send({
             code: "NOT_FOUND",
             message: `Workflow nao encontrado: ${request.params.workspaceId}`,
           });
         }
-        return workflow;
+        return reply.code(200).send({
+          workspaceId: workflow.workspaceId,
+          title: workflow.title,
+          steps: workflow.steps.map((step) => ({ ...step })),
+        });
       },
     );
 
@@ -118,7 +131,7 @@ export function createWorkspaceRoutes(
         schema: {
           tags: ["workspaces"],
           params: workspaceParamsSchema,
-          response: { 200: z.array(z.unknown()).readonly() },
+          response: { 200: z.array(z.unknown()) },
         },
       },
       async () => [],

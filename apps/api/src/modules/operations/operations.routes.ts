@@ -22,8 +22,29 @@ function toResponse(run: OperationalRun) {
     startedAt: run.startedAt,
     finishedAt: run.finishedAt,
     usableResult: run.usableResult,
-    reply: run.reply,
-    workflow: run.workflow,
+    reply: {
+      employeeId: run.reply.employeeId,
+      content: run.reply.content,
+      answer: {
+        summary: run.reply.answer.summary,
+        projects: [...run.reply.answer.projects],
+        risks: [...run.reply.answer.risks],
+        nextActions: [...run.reply.answer.nextActions],
+      },
+    },
+    workflow: {
+      workspaceId: run.workflow.workspaceId,
+      title: run.workflow.title,
+      steps: run.workflow.steps.map((step) => ({
+        stage: step.stage,
+        actorId: step.actorId,
+        detail: step.detail,
+        status: step.status,
+        ...(step.timestamp !== undefined
+          ? { timestamp: step.timestamp }
+          : {}),
+      })),
+    },
     decisions: {
       ceoAnalyzed: run.mission.initial.output.decision.analyzed,
       ceoDecision: run.mission.initial.output.decision.decision,
@@ -42,7 +63,11 @@ function toResponse(run: OperationalRun) {
       summary: outcome.result?.output.report.summary,
     })),
     llmEvents: [...run.llmEvents],
-    gaps: run.gaps,
+    gaps: run.gaps.map((gap) => ({
+      code: gap.code,
+      severity: gap.severity,
+      message: gap.message,
+    })),
     ...(run.queueStatus ? { queueStatus: run.queueStatus } : {}),
   };
 }
@@ -87,7 +112,7 @@ export function createOperationsRoutes(
       {
         schema: {
           tags: ["operations"],
-          response: { 200: z.array(operationalRunResponseSchema).readonly() },
+          response: { 200: z.array(operationalRunResponseSchema) },
         },
       },
       async () => runtime.service.list().map(toResponse),
