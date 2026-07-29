@@ -4,14 +4,18 @@ import {
   MissionStatus,
   prisma,
   type Mission,
-  type Priority,
   type Prisma,
 } from "@operaia/database";
+import type { Priority } from "@operaia/shared";
 import {
   CEO_EMPLOYEE_ID,
   MissionKind,
   MissionQueueStatus,
 } from "./mission-states.js";
+import {
+  asJson,
+  mergeConsolidatePreservingInitial,
+} from "./mission-result-store.js";
 
 export interface EnqueueMissionInput {
   readonly workspaceId: string;
@@ -27,6 +31,74 @@ export interface EnqueueMissionInput {
   readonly readiness?: "READY" | "BLOCKED";
   /** Se true, nao cria se ja existir ativa com mesmo hash (so COORDINATE raiz). */
   readonly dedupe?: boolean;
+}
+
+/** Erro de contrato ADR-007 (MissionQueue). */
+export class MissionEnqueueContractError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MissionEnqueueContractError";
+  }
+}
+
+export interface ResolvedEnqueueContract {
+  readonly missionKind: MissionKind;
+  readonly ownerEmployeeId: string;
+}
+
+/**
+ * ADR-007 Fase 1 — resolve e valida contrato de enqueue.
+ * COORDINATE raiz → owner Opera; EXECUTE só com pai+spec; CONSOLIDATE só com pai+Opera.
+ */
+export function resolveEnqueueContract(
+  input: EnqueueMissionInput,
+): ResolvedEnqueueContract {
+  const missionKind = input.missionKind ?? MissionKind.COORDINATE;
+
+  if (missionKind === MissionKind.COORDINATE) {
+    if (input.parentMissionId) {
+      throw new MissionEnqueueContractError(
+        "COORDINATE raiz nao pode ter parentMissionId",
+      );
+    }
+    return {
+      missionKind,
+      ownerEmployeeId: CEO_EMPLOYEE_ID,
+    };
+  }
+
+  if (missionKind === MissionKind.EXECUTE) {
+    if (!input.parentMissionId) {
+      throw new MissionEnqueueContractError(
+        "EXECUTE somente pos-delegacao: parentMissionId obrigatorio",
+      );
+    }
+    if (!input.requiredSpecialization?.trim()) {
+      throw new MissionEnqueueContractError(
+        "EXECUTE requer requiredSpecialization",
+      );
+    }
+    return {
+      missionKind,
+      ownerEmployeeId: input.ownerEmployeeId ?? "unmatched",
+    };
+  }
+
+  if (missionKind === MissionKind.CONSOLIDATE) {
+    if (!input.parentMissionId) {
+      throw new MissionEnqueueContractError(
+        "CONSOLIDATE somente pelo ciclo da MissionQueue: parentMissionId obrigatorio",
+      );
+    }
+    return {
+      missionKind,
+      ownerEmployeeId: CEO_EMPLOYEE_ID,
+    };
+  }
+
+  throw new MissionEnqueueContractError(
+    `missionKind invalido para enqueue: ${String(missionKind)}`,
+  );
 }
 
 export interface ClaimCriteria {
@@ -80,9 +152,8 @@ export class MissionQueue {
   async enqueue(
     input: EnqueueMissionInput,
   ): Promise<{ mission: Mission; created: boolean }> {
+    const { missionKind, ownerEmployeeId } = resolveEnqueueContract(input);
     const objectiveHash = hashObjective(input.workspaceId, input.objective);
-    const ownerEmployeeId = input.ownerEmployeeId ?? CEO_EMPLOYEE_ID;
-    const missionKind = input.missionKind ?? MissionKind.COORDINATE;
     const shouldDedupe =
       input.dedupe === true &&
       missionKind === MissionKind.COORDINATE &&
@@ -310,14 +381,28 @@ export class MissionQueue {
     rootMissionId: string,
     result: Prisma.InputJsonValue,
   ): Promise<{ consolidate: Mission; root: Mission }> {
-    const consolidate = await this.complete(consolidateMissionId, result);
+    const rootBefore = await prisma.mission.findUnique({
+      where: { id: rootMissionId },
+    });
+    if (!rootBefore) {
+      throw new Error(`Raiz nao encontrada para consolidacao: ${rootMissionId}`);
+    }
+
+    // ADR-007 Fase 2.1: nao descartar CoordinatePhaseResult.initial ao sobrescrever.
+    const merged = mergeConsolidatePreservingInitial(
+      rootBefore.resultJson,
+      result,
+    );
+    const mergedJson = asJson(merged);
+
+    const consolidate = await this.complete(consolidateMissionId, mergedJson);
     const root = await prisma.mission.update({
       where: { id: rootMissionId },
       data: {
         status: MissionStatus.COMPLETED,
         progress: 100,
         finishedAt: new Date(),
-        resultJson: result,
+        resultJson: mergedJson,
         lastError: null,
       },
     });

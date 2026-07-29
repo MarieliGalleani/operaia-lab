@@ -3,6 +3,7 @@ import type {
   DelegationOutcome,
   EmployeeResult,
 } from "@operaia/employee-runtime";
+import { BriefingBuilder, Specialization } from "@operaia/employee-framework";
 import { buildStrategicPlan } from "@operaia/agents";
 import type { MemoryStore } from "@operaia/memory";
 import type { DigitalOffice } from "../employees/office-composition.js";
@@ -14,11 +15,11 @@ import {
   type MissionExecutionStack,
 } from "../operations/mission-execution.js";
 import {
-  loadMissionMemoryNotes,
+  loadOperationalMemoryNotes,
   persistMissionMemory,
 } from "../operations/mission-memory.js";
 import {
-  loadOrganizationalLearningNotes,
+  loadOrganizationalLearningNotesFromPrisma,
   recordMissionLearning,
 } from "../organization/mission-learning.js";
 import type {
@@ -31,6 +32,7 @@ import {
   type CoordinatePhaseResult,
   type ConsolidatePhaseResult,
   type ExecutePhaseResult,
+  readCoordinatePhaseResult,
   serializeEmployeeResult,
   toEmployeeResult,
 } from "./mission-result-store.js";
@@ -48,12 +50,21 @@ interface MissionContext {
 
 export type PortfolioProvider = () => Promise<WorkspacePortfolioSnapshot | null>;
 
+export interface QueuedMissionExecutorOptions {
+  /**
+   * Fallback M1.4: se indice vazio, le MissionLearning.
+   * So para migracao — default false.
+   */
+  readonly allowLearningPrismaFallback?: boolean;
+}
+
 /**
  * Executa missoes da fila sem delegacao sincrona.
  * Injeta Portfolio / Capacity / Learning no contexto da Opera.
  */
 export class QueuedMissionExecutor {
   private portfolioProvider: PortfolioProvider | null = null;
+  private readonly allowLearningPrismaFallback: boolean;
 
   constructor(
     private readonly office: DigitalOffice,
@@ -62,7 +73,11 @@ export class QueuedMissionExecutor {
     private readonly execution: MissionExecutionStack,
     private readonly memory: MemoryStore,
     private readonly logger: EmployeeWorkerLogger,
-  ) {}
+    options: QueuedMissionExecutorOptions = {},
+  ) {
+    this.allowLearningPrismaFallback =
+      options.allowLearningPrismaFallback ?? false;
+  }
 
   setPortfolioProvider(provider: PortfolioProvider): void {
     this.portfolioProvider = provider;
@@ -74,18 +89,21 @@ export class QueuedMissionExecutor {
       throw new Error(`Workspace nao encontrado: ${mission.workspaceId}`);
     }
 
-    const [memoryNotes, learningNotes, portfolio] = await Promise.all([
-      loadMissionMemoryNotes(this.memory, {
+    // M1.4 — um unico caminho MemoryStore (sem dual-read MissionLearning).
+    const [memoryNotes, portfolio] = await Promise.all([
+      loadOperationalMemoryNotes(this.memory, {
         workspaceId: mission.workspaceId,
         objective: mission.objective,
+        allowLearningPrismaFallback: this.allowLearningPrismaFallback,
+        learningPrismaFallback: this.allowLearningPrismaFallback
+          ? loadOrganizationalLearningNotesFromPrisma
+          : undefined,
       }),
-      loadOrganizationalLearningNotes(mission.workspaceId),
       this.portfolioProvider?.() ?? Promise.resolve(null),
     ]);
 
     const contextNotes = [
       ...memoryNotes,
-      ...learningNotes,
       ...(portfolio?.memoryNotes ?? []),
     ];
 
@@ -140,7 +158,7 @@ export class QueuedMissionExecutor {
       return;
     }
 
-    const pendingTitles = context.workspace.tasks
+    const pendingTitles = (context.workspace.tasks ?? [])
       .filter((task) => task.status !== "DONE")
       .map((task) => task.title);
     const strategic = buildStrategicPlan({
@@ -206,7 +224,7 @@ export class QueuedMissionExecutor {
     const started = mission.startedAt?.getTime() ?? Date.now();
     const extraActions = buildDomainSyncActions({
       outcomes: [],
-      workspaceTasks: context.workspace.tasks,
+      workspaceTasks: context.workspace.tasks ?? [],
     });
     const executionPlan = buildMissionExecutionPlan({
       workspaceId: context.workspace.workspaceId,
@@ -215,10 +233,12 @@ export class QueuedMissionExecutor {
     });
     await executeMissionPlan(this.execution, executionPlan);
 
+    const storedInitial = serializeEmployeeResult(initial);
     const result: ConsolidatePhaseResult = {
       phase: "consolidated",
+      initial: storedInitial,
       usableResult: initial.output.report.summary,
-      final: serializeEmployeeResult(initial),
+      final: storedInitial,
       timing: {
         ceoMs: 0,
         specialistMs: 0,
@@ -339,7 +359,7 @@ export class QueuedMissionExecutor {
 
     const extraActions = buildDomainSyncActions({
       outcomes,
-      workspaceTasks: context.workspace.tasks,
+      workspaceTasks: context.workspace.tasks ?? [],
     });
     const executionPlan = buildMissionExecutionPlan({
       workspaceId: context.workspace.workspaceId,
@@ -348,8 +368,11 @@ export class QueuedMissionExecutor {
     });
     await executeMissionPlan(this.execution, executionPlan);
 
+    const coordinated = readCoordinatePhaseResult(root.resultJson);
+
     const result: ConsolidatePhaseResult = {
       phase: "consolidated",
+      ...(coordinated?.initial ? { initial: coordinated.initial } : {}),
       usableResult: final.output.report.summary,
       final: serializeEmployeeResult(final),
       timing: {
@@ -409,30 +432,53 @@ export class QueuedMissionExecutor {
   ): DelegationOutcome[] {
     return children
       .filter((child) => child.missionKind === MissionKind.EXECUTE)
-      .map((child) => {
-        const stored = child.resultJson as ExecutePhaseResult | null;
+      .flatMap((child): readonly DelegationOutcome[] => {
+        const specialization = parseSpecialization(
+          child.requiredSpecialization,
+        );
+        if (!specialization) {
+          return [];
+        }
         const request = {
-          specialization: child.requiredSpecialization!,
+          specialization,
           reason: child.objective,
           task: child.objective,
         };
+        const stored = child.resultJson as ExecutePhaseResult | null;
         if (child.status !== "COMPLETED" || !stored?.employeeResult) {
-          return { request, matched: false };
+          return [{ request, matched: false }];
         }
-        const briefing = {
-          project: "",
-          objective: child.objective,
-          tasks: [],
-          history: [],
-          constraints: [],
-          additional: {},
-        };
-        return {
-          request,
-          matched: true,
-          employeeId: child.ownerEmployeeId,
-          result: toEmployeeResult(stored.employeeResult, briefing),
-        };
+        return [
+          {
+            request,
+            matched: true,
+            employeeId: child.ownerEmployeeId,
+            result: toEmployeeResult(
+              stored.employeeResult,
+              new BriefingBuilder().build(
+                {
+                  workspaceId: child.workspaceId,
+                  name: "",
+                  objective: child.objective,
+                },
+                child.objective,
+              ),
+            ),
+          },
+        ];
       });
   }
+}
+
+const SPECIALIZATION_VALUES: ReadonlySet<string> = new Set(
+  Object.values(Specialization),
+);
+
+function parseSpecialization(
+  value: string | null | undefined,
+): Specialization | undefined {
+  if (!value || !SPECIALIZATION_VALUES.has(value)) {
+    return undefined;
+  }
+  return value as Specialization;
 }

@@ -16,8 +16,8 @@ import {
 import { Specialization } from "@operaia/employee-framework";
 import { TaskStatus } from "@operaia/shared";
 import { randomUUID } from "node:crypto";
-import { MagBrain } from "../../../../../packages/employees/cto-mag/src/mag-brain.js";
-import { SpecialistBrain } from "../../../../../packages/employees/specialist-kit/src/specialist-brain.js";
+import { MagBrain } from "@operaia/cto-mag";
+import { SpecialistBrain } from "@operaia/specialist-kit";
 import { createDigitalOffice } from "./office-composition.js";
 
 interface BrainCallTrace {

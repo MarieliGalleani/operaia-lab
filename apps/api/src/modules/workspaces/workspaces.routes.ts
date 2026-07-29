@@ -6,6 +6,7 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { EmployeesApplication } from "../employees/employees.application.js";
 import {
+  httpErrorSchema,
   workspaceSchema,
   workspaceTaskSchema,
   workflowSchema,
@@ -43,7 +44,7 @@ export function createWorkspaceRoutes(
       {
         schema: {
           tags: ["workspaces"],
-          response: { 200: z.array(workspaceSchema) },
+          response: { 200: z.array(workspaceSchema).readonly() },
         },
       },
       async () => application.listWorkspaces(),
@@ -55,7 +56,10 @@ export function createWorkspaceRoutes(
         schema: {
           tags: ["workspaces"],
           params: workspaceParamsSchema,
-          response: { 200: workspaceSchema },
+          response: {
+            200: workspaceSchema,
+            404: httpErrorSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -78,7 +82,7 @@ export function createWorkspaceRoutes(
         schema: {
           tags: ["workspaces"],
           params: workspaceParamsSchema,
-          response: { 200: z.array(workspaceTaskSchema) },
+          response: { 200: z.array(workspaceTaskSchema).readonly() },
         },
       },
       async (request) => application.listTasks(request.params.workspaceId),
@@ -90,7 +94,10 @@ export function createWorkspaceRoutes(
         schema: {
           tags: ["workspaces"],
           params: workspaceParamsSchema,
-          response: { 200: workflowSchema },
+          response: {
+            200: workflowSchema,
+            404: httpErrorSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -111,7 +118,7 @@ export function createWorkspaceRoutes(
         schema: {
           tags: ["workspaces"],
           params: workspaceParamsSchema,
-          response: { 200: z.array(z.unknown()) },
+          response: { 200: z.array(z.unknown()).readonly() },
         },
       },
       async () => [],

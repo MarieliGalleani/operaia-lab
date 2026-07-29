@@ -3,21 +3,7 @@ import { MissionStatus } from "@operaia/database";
 import { z } from "zod";
 import type { ContinuousRuntime } from "./continuous-runtime.js";
 import { CEO_EMPLOYEE_ID } from "./mission-states.js";
-
-const workerViewSchema = z.object({
-  employeeId: z.string(),
-  name: z.string(),
-  specialization: z.string(),
-  status: z.string(),
-  currentMissionId: z.string().nullable(),
-  heartbeatAt: z.string().nullable(),
-  uptimeMs: z.number(),
-  missionsCompleted: z.number(),
-  missionsFailed: z.number(),
-  retries: z.number(),
-  lastExecutionAt: z.string().nullable(),
-  avgDurationMs: z.number().nullable(),
-});
+import { workersListResponseSchema } from "./runtime.schema.js";
 
 /**
  * Observabilidade operacional (JSON only — sem novas telas).
@@ -32,10 +18,7 @@ export function createRuntimeRoutes(
         schema: {
           tags: ["runtime"],
           response: {
-            200: z.object({
-              workers: z.array(workerViewSchema),
-              alive: z.number(),
-            }),
+            200: workersListResponseSchema,
           },
         },
       },
@@ -80,6 +63,7 @@ export function createRuntimeRoutes(
       {
         schema: {
           tags: ["runtime"],
+          response: { 200: z.unknown() },
         },
       },
       async () => {
@@ -96,6 +80,7 @@ export function createRuntimeRoutes(
       {
         schema: {
           tags: ["runtime"],
+          response: { 200: z.unknown() },
         },
       },
       async () => {
@@ -143,6 +128,7 @@ export function createRuntimeRoutes(
       {
         schema: {
           tags: ["runtime"],
+          response: { 200: z.unknown() },
         },
       },
       async () => {
@@ -184,6 +170,7 @@ export function createRuntimeRoutes(
       {
         schema: {
           tags: ["runtime"],
+          response: { 200: z.unknown() },
         },
       },
       async () => ({

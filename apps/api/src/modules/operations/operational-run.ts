@@ -23,16 +23,28 @@ export interface OperationalExecutionAudit {
 }
 
 /**
+ * Status do run Assisted.
+ * - completed: ciclo Queue (ou Path A) terminou com sucesso
+ * - in_progress / timed_out: missao na Queue ainda nao terminal (Fase 1 gateway)
+ */
+export type OperationalRunStatus =
+  | "completed"
+  | "in_progress"
+  | "timed_out";
+
+/**
  * Registro completo de uma missao assistida — auditavel ponta a ponta.
+ * `id` no Path B = Mission.id persistido na Mission Queue.
  */
 export interface OperationalRun {
   readonly id: string;
-  readonly status: "completed";
+  readonly status: OperationalRunStatus;
   readonly workspaceId: string;
   readonly workspaceName: string;
   readonly objective: string;
   readonly startedAt: string;
-  readonly finishedAt: string;
+  /** Null enquanto a missao na fila ainda nao terminou. */
+  readonly finishedAt: string | null;
   readonly mission: MissionResult;
   readonly reply: EmployeeReplyPayload;
   readonly workflow: WorkflowPayload;
@@ -51,4 +63,6 @@ export interface OperationalRun {
     readonly consolidationMs: number;
     readonly totalMs: number;
   };
+  /** Status bruto da Mission Queue quando o run e projecao intermediaria. */
+  readonly queueStatus?: string;
 }

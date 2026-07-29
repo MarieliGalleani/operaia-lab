@@ -22,6 +22,29 @@ export function isLLMProviderImplemented(id: LLMProviderId): boolean {
   return id === "gemini" || id === "deterministic";
 }
 
+/**
+ * Cadeia de fallback apos o primario.
+ * Deterministic e sempre a rede de seguranca final (se o primario nao for ele).
+ */
+export function resolveLLMFallbackChain(
+  primary: LLMProviderId,
+  configured: readonly LLMProviderId[] = [],
+): readonly LLMProviderId[] {
+  const chain: LLMProviderId[] = [];
+  for (const id of configured) {
+    if (id === primary) {
+      continue;
+    }
+    if (!chain.includes(id)) {
+      chain.push(id);
+    }
+  }
+  if (primary !== "deterministic" && !chain.includes("deterministic")) {
+    chain.push("deterministic");
+  }
+  return chain;
+}
+
 export interface LLMStackConfig extends LLMProviderConfig {
   /** Cadeia de fallback (ordem de tentativa apos o primario). */
   readonly fallbackProviders?: readonly LLMProviderId[];
@@ -59,11 +82,13 @@ export function createLLMStack(config: LLMStackConfig): LLMProvider {
     observer,
   );
 
+  const fallbackIds = resolveLLMFallbackChain(
+    config.provider,
+    config.fallbackProviders ?? [],
+  );
+
   const fallbacks: LLMProvider[] = [];
-  for (const fallbackId of config.fallbackProviders ?? []) {
-    if (fallbackId === config.provider) {
-      continue;
-    }
+  for (const fallbackId of fallbackIds) {
     if (!isLLMProviderImplemented(fallbackId)) {
       console.warn(
         `[llm] fallback "${fallbackId}" ignorado — provider ainda nao implementado.`,
@@ -84,9 +109,15 @@ export function createLLMStack(config: LLMStackConfig): LLMProvider {
   }
 
   if (fallbacks.length === 0) {
+    console.info(`[llm] stack primary=${config.provider} (sem fallback)`);
     return primary;
   }
 
+  console.info(
+    `[llm] stack primary=${config.provider} fallbacks=${fallbacks
+      .map((provider) => provider.name)
+      .join(" → ")}`,
+  );
   return new FallbackLLMProvider([primary, ...fallbacks], observer);
 }
 

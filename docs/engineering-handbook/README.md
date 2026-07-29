@@ -273,31 +273,25 @@ Responsabilidade:
 
 ## Mission System
 
-Responsabilidade:
+**Fonte oficial:** `MissionQueue` ([ADR-007](../architecture/adr/ADR-007-mission-system-consolidation.md)).
 
-Transformar objetivos em ciclos operacionais.
+Responsabilidade: transformar objetivos em ciclos operacionais persistidos e auditáveis.
 
-Componentes:
+Componentes oficiais:
 
-- Mission;
-- Execution Plan;
-- Actions;
-- Executors;
+- Mission (Prisma / fila);
 - Mission Queue;
-- Mission Orchestrator.
+- QueuedMissionExecutor + Workers;
+- Execution Plan / Actions / Executors;
+- Memory (+ Learning).
 
-Fluxo:
-Mission
-↓
-Opera
-↓
-Delegation
-↓
-Employee Matcher
-↓
-Employee Execution
-↓
-Result
+**Assisted Execution** (`MissionOrchestrator` + `OperationalRun` sync) é **legado temporário** (kill-switch `ASSISTED_QUEUE_MODE=false`). Caminho oficial: Mission Queue (`ASSISTED_QUEUE_MODE=true`, default).
+
+Fluxo oficial:
+
+```
+COORDINATE → Opera → Delegation → Matcher → EXECUTE → CONSOLIDATE → Execution → Memory
+```
 
 
 ---
@@ -548,6 +542,22 @@ Capacidades existentes:
 - LLM Stack;
 - Digital Office API;
 - Workspace Runtime.
+
+---
+
+# Referências oficiais
+
+| Documento | Papel |
+|-----------|--------|
+| Este Handbook | **Como o sistema funciona hoje** |
+| [Plano Diretor](../architecture/plano-diretor-operaia-lab.md) | **Para onde vamos** — fases, critérios, prioridades e definição de pronto |
+| [Operational Cycle Proof](../architecture/operational-cycle-proof.md) | Prova de que a Mission Queue é o coração operacional (Fase 3 DoD) |
+| [Operational Resilience Proof](../architecture/operational-resilience-proof.md) | Prova de recovery/dedupe/reclaim sob falha operacional |
+| [Operational Memory Continuity Proof](../architecture/operational-memory-continuity-proof.md) | Prova de continuidade M1 após restart (briefing) |
+| [Domain Signal Layer](../architecture/domain-signal-layer.md) | Arquitetura de sinais externos — S1+S2 no código |
+| [GitHub Signal Contract S3.0](../architecture/github-signal-contract.md) | Contrato de domínio GitHub — Bridge ainda não |
+| [ADR-009](../architecture/adr/ADR-009-domain-signal-layer.md) | Decisão formal: Domain Signal Layer |
+| [ADRs](../architecture/adr/) | Decisões arquiteturais vinculantes |
 
 ---
 

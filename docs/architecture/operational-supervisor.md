@@ -1,296 +1,315 @@
-# Operational Supervisor
+# Operational Supervisor — Arquitetura
 
-Documento de arquitetura do **Operational Supervisor** no OperaIA.lab.
+| Campo | Valor |
+|-------|--------|
+| **Status** | Proposta de arquitetura — **aguardando aprovação** antes de evolução de código |
+| **Versão** | 2.0 |
+| **Módulo** | `apps/api/src/modules/runtime/supervisor/` |
+| **Runtime** | Continuous Runtime (`CONTINUOUS_RUNTIME_ENABLED`) |
+| **Relacionados** | ADR-007, Plano Diretor, Handbook `08-operational-supervisor.md` |
 
-Define a natureza, os limites e o fluxo do componente, alinhados à implementação em `apps/api/src/modules/runtime/supervisor/`. Diferencia o que **existe atualmente** do que permanece **evolução futura**. Não descreve autonomia total nem substitui a Opera.
-
-Complementa: [`docs/engineering-handbook/08-operational-supervisor.md`](../engineering-handbook/08-operational-supervisor.md).
-
----
-
-## 1. Objetivo
-
-### Por que o Supervisor existe
-
-O Digital Office não pode depender apenas de pedidos humanos pontuais para permanecer em movimento. Workspaces acumulam pendências, missões entram em estados intermediários e a operação precisa de observação contínua.
-
-O **Operational Supervisor** existe para manter **ciclos de operação contínuos**: observar o estado do escritório digital, identificar necessidade operacional e iniciar coordenação — **sem** assumir autoridade estratégica e **sem** substituir a Opera.
-
-### Qual problema resolve
-
-| Problema | Papel arquitetural do Supervisor |
-|---|---|
-| Escritório parado na ausência de input humano | Manter observação e ciclos operacionais recorrentes |
-| Pendências / missões em estados intermediários | Observar sinais; recuperar infra de fila quando aplicável; iniciar coordenação |
-| Falta de sinal para a Opera agir | Iniciar missão `COORDINATE` |
-| Opacidade do estado operacional | Registrar observação e ciclos (logs / eventos / snapshots locais) |
-
-### Relação com o Digital Office
-
-O Digital Office é composto por **Workspace**, **Missions** e **Employees**. O Supervisor é a camada de **infraestrutura operacional** que observa esse conjunto e dispara ciclos de coordenação para a **Opera** (CEO Employee). Ele **não** é Employee e **nunca substitui a Opera**.
-
-```
-Digital Office
-├── Workspaces (contexto)
-├── Missions (unidade operacional)
-├── Employees (Opera + specialists)
-└── Operational Supervisor (infraestrutura operacional — não é Employee)
-```
+Este documento é a especificação oficial do **Operational Supervisor** do OperaIA.lab.  
+Após aprovação, qualquer mudança de código neste módulo deve respeitar as seções abaixo.
 
 ---
 
-## 2. Natureza do componente
-
-### Definição
+## 1. Natureza
 
 ```
-Supervisor = infraestrutura operacional
+Supervisor = infraestrutura operacional do Digital Office
 ```
 
-Camada de runtime/infra do Digital Office responsável por ciclos operacionais contínuos. **Não** implementa contratos do Employee Framework. Localização de referência: módulo `supervisor` sob o Continuous Runtime da API.
+| O Supervisor **é** | O Supervisor **não é** |
+|--------------------|-------------------------|
+| Serviço de runtime contínuo | Funcionário (Employee) |
+| Observador e recuperador de infra | Agente que conversa com usuário |
+| Produtor de missões `COORDINATE` para a Opera | CEO / decisor estratégico |
+| Registrador de ciclos operacionais | Especialista de domínio |
 
-### Não é
+**Invariante:** o Supervisor **nunca substitui a Opera**.
 
-| Não é | Motivo |
-|---|---|
-| **Employee** | Sem perfil, brain ou decisão de funcionário digital |
-| **Agent** | Não processa briefing de domínio como agente cognitivo |
-| **CEO** | Não analisa estratégia nem consolida resultado de negócio |
-| **Especialista** | Não executa trabalho de domínio |
+---
 
-### Nunca substitui a Opera
+## 2. Responsabilidades
 
-**Invariante obrigatório:** o Supervisor **nunca** substitui a Opera.
+O Supervisor deve:
 
-A Opera permanece o único CEO Employee no fluxo: analisa, decide, prioriza no escopo da missão e delega. O Supervisor observa, pode recuperar estado técnico de fila e inicia `COORDINATE` para que a **Opera** atue. Qualquer bypass (enqueue para specialist, prioridade de negócio, plano de domínio) viola esta arquitetura.
+| # | Responsabilidade | Como |
+|---|------------------|------|
+| R1 | **Executar ciclos periódicos** | Loop `start` / `stop` com intervalo configurável (`SCHEDULER_INTERVAL_MS`) |
+| R2 | **Verificar estado do Workspace** | `WorkspaceScanner` — backlog, bloqueios, waiting, mudanças, atenção |
+| R3 | **Verificar missões pendentes** | `MissionScanner` — QUEUED/CREATED/WAITING/RUNNING/BLOCKED/FAILED/STALE/RETRY |
+| R4 | **Verificar backlog** | Sinais de tarefas/missões abertas e profundidade de fila (`QueueMonitor`) |
+| R5 | **Detectar necessidades operacionais** | Agregar razões neutras (`CoordinationReason`) sem interpretar negócio |
+| R6 | **Criar missões para a Opera avaliar** | `CoordinationDispatcher` → enqueue `COORDINATE` com `ownerEmployeeId = Opera` |
+| R7 | **Registrar histórico dos ciclos** | Eventos estruturados + snapshot por ciclo (ver §5 e §8) |
+| R8 | **Recovery técnico de fila** | Stale RUNNING, WAITING órfão, DAG bloqueado — sem escolher specialist |
 
-### Diferença entre Supervisor e Opera
-
-| | Operational Supervisor | Opera (CEO Employee) |
-|---|---|---|
-| Natureza | Infraestrutura operacional | Employee de management |
-| Entrada | Estado operacional | Objetivo + briefing de missão |
-| Saída | Observação; `COORDINATE`; registro; recovery técnico de fila | Decisão estratégica, delegação, consolidação |
-| Pode priorizar negócio? | Não | Sim (no escopo da missão) |
-| Pode escolher specialist? | Não | Sim (via especialização / gate) |
+### Ciclo canônico (ordem obrigatória)
 
 ```
-Supervisor observa e coordena via COORDINATE
-Opera decide e delega
-Employees executam especialidade
+Health Check
+    ↓
+Workspace Scan
+    ↓
+Mission Scan
+    ↓
+Queue / Backlog Scan
+    ↓
+Recover stale / waiting / blocked (infra)
+    ↓
+Dispatch COORDINATE (só se houver sinal + health ok)
+    ↓
+Persistir snapshot + emitir eventos do ciclo
+    ↓
+Sleep (intervalo)
 ```
 
 ---
 
-## 3. Duas responsabilidades centrais
-
-O Supervisor possui **duas responsabilidades** arquiteturais:
-
-### 3.1 Observação operacional
-
-- Percorrer sinais de workspace, missões e fila/runtime.
-- Verificar saúde operacional dos componentes do Digital Office.
-- Identificar necessidade de atenção **sem** executar missão de domínio.
-
-### 3.2 Coordenação via `COORDINATE` para a Opera
-
-- Quando há necessidade operacional, criar missão `COORDINATE` com destinatário Opera.
-- Motivo operacional neutro (não estratégico).
-- Sem sinal: encerrar o ciclo **sem** criar missão e **sem** inventar prioridade ou âncora de portfólio.
-
-Essas duas responsabilidades definem o núcleo. Demais capacidades (recovery técnico, health detalhado, eventos, snapshots) apoiam o núcleo sem alterar quem decide.
-
----
-
-## 4. Responsabilidades e recovery técnico
-
-### Responsabilidades permitidas
-
-1. **Observar estado operacional** — scans de workspace, missão e fila; health operacional.
-2. **Identificar necessidade de coordenação** — sinais que exigem a Opera.
-3. **Iniciar ciclos `COORDINATE`** — destinando à Opera.
-4. **Registrar o ciclo** — logs, eventos e snapshots locais.
-5. **Recuperação técnica de fila** (infraestrutura) — ver abaixo.
-
-### Recovery técnico de fila
-
-A recuperação técnica de fila (ex.: missões running stale, waiting parents, blocked DAG) **pode existir** como responsabilidade de **infraestrutura** do Supervisor (e/ou do Continuous Runtime no boot).
-
-Permitido somente se:
-
-| Condição | Exigência |
-|---|---|
-| Não toma decisão de negócio | Não interpreta objetivo nem escolhe roadmap |
-| Não escolhe especialistas | Não define `owner` specialist nem especialização |
-| Não altera prioridades | Não copia/converte prioridade de projeto/portfólio |
-
-Recovery técnico **desbloqueia estado operacional**; a decisão sobre o que fazer a seguir continua com a **Opera** (via `COORDINATE` quando houver sinal).
-
-### Escopo explícito
-
-| Supervisor | Opera / Employees |
-|---|---|
-| Observa | Decide estratégia |
-| Identifica necessidade operacional | Define prioridades de negócio |
-| Inicia `COORDINATE` | Escolhe especialistas / especialização |
-| Recovery técnico de fila | Executa trabalho de domínio e consolida resultado |
-| Registra o ciclo de supervisão | — |
-
----
-
-## 5. Limites
+## 3. Limites
 
 O Supervisor **não**:
 
-| Proibido | Justificativa |
-|---|---|
-| Toma decisões estratégicas | Pertence à Opera / oversight humano |
-| Define prioridades de negócio | Priorização de portfólio/produto não é papel de infra |
-| Escolhe especialistas | Matcher / Opera resolvem especialização |
-| Substitui a Opera | Invariante: Supervisor nunca substitui Opera |
-| Substitui aprovação humana | Governança e Human Oversight fora do Supervisor |
-| Executa trabalho de domínio | Specialists / engines de execução |
-| Altera arquitetura | Exige aprovação e ADR |
-| Interpreta objetivo de usuário como plano de domínio | Texto de `COORDINATE` é operacional; Opera interpreta |
-| Usa MissionScheduler / portfolio como fallback de decisão | Planejamento sob demanda permanece com a Opera |
+| Proibido | Motivo |
+|----------|--------|
+| É funcionário / tem brain / briefing de domínio | Natureza de infra |
+| Toma decisões estratégicas | Pertence à Opera |
+| Conversa com usuário | Sem canal de chat / reply |
+| Define prioridades de negócio ou roadmap | Fora do escopo |
+| Escolhe especialistas ou especialização | Matcher / Opera |
+| Cria missões `EXECUTE` ou `CONSOLIDATE` | Só workers após decisão da Opera |
+| Enfileira missão com `owner` ≠ Opera | Bypass da Opera |
+| Interpreta objetivo do usuário como plano | Texto de COORDINATE é operacional/neutro |
+| Aplica mudança estrutural (learning → produção) | Human Oversight (ADR-005) |
+| Usa MissionScheduler / portfolio como fallback de decisão | Planejamento sob demanda da Opera |
+| Inventa missão sem sinal operacional | Ciclo encerra sem enqueue |
 
-Sem necessidade operacional identificada, o Supervisor **não** cria missão e **não** inventa prioridade ou âncora de portfólio.
-
----
-
-## 6. Fluxo operacional
-
-Fluxo arquitetural canônico:
+### Separação de papéis
 
 ```
-Supervisor
- ↓
-Observação
- ↓
-Mission COORDINATE
- ↓
-Opera analisa
- ↓
-Delegação
- ↓
-Employees executam
- ↓
-Resultado registrado
-```
-
-### Leitura do fluxo
-
-1. O Supervisor observa o estado operacional (inclui identificação de necessidade e, quando aplicável, recovery técnico de fila).
-2. Havendo necessidade, inicia missão **`COORDINATE`** para a Opera.
-3. A Opera analisa o contexto e decide.
-4. Segue-se a **delegação** (especialização).
-5. **Employees** executam o trabalho de domínio.
-6. O **resultado** é registrado no fluxo operacional do Digital Office.
-
-O Supervisor **não** participa da delegação nem da execução especializada. A Opera **nunca** é substituída neste fluxo.
-
----
-
-## 7. Ciclo de execução
-
-### Loop
-
-O Supervisor opera como serviço com loop recorrente no Continuous Runtime:
-
-```
-observar (+ health / scans)
-  → recovery técnico de fila (quando aplicável)
-  → (opcional) iniciar COORDINATE
-  → registrar (eventos / snapshot local)
-  → aguardar intervalo
-```
-
-Execução controlada: `start` / `stop`; proteção contra sobreposição de ciclos.
-
-### Intervalos
-
-Intervalos de observação são configuração operacional de infraestrutura, não política de prioridade de negócio.
-
-### Logs e histórico
-
-O ciclo registra observação e coordenações iniciadas via logs estruturados, eventos e snapshots **locais** (em processo). Persistência durável e métricas avançadas são evolução — ver §11.
-
----
-
-## 8. Integrações
-
-| Integração | Papel |
-|---|---|
-| **Fonte de workspaces** (`WorkspaceSource`) | Contexto para observação de workspaces |
-| **Mission Queue** | Leitura de estado; recovery técnico; enqueue de `COORDINATE` |
-| **Workers / Continuous Runtime** | Boot do loop; processamento da fila após enqueue |
-| **Mission Orchestrator / QueuedMissionExecutor** | Continuidade do fluxo após `COORDINATE` (Opera em diante) |
-| **Operational Runs** | Registro/auditoria do ciclo missão → resultado (pós-Opera) |
-| **Observability** | Logs e eventos do ciclo do Supervisor |
-
-Planejamento de portfólio e escolha de prioridades **não** são integração do Supervisor; pertencem à Opera.
-
----
-
-## 9. Estados
-
-Os estados abaixo formam um **modelo arquitetural** do ciclo do Supervisor. **Não** constituem, por si só, uma máquina de estados obrigatoriamente espelhada 1:1 no código (a implementação pode usar flags como `running` / `ticking`).
-
-| Estado | Significado no modelo |
-|---|---|
-| **IDLE** | Inativo ou entre ciclos |
-| **OBSERVING** | Observando estado operacional |
-| **COORDINATING** | Iniciando / enfileirando `COORDINATE` |
-| **WAITING** | Aguardando intervalo ou continuidade do ciclo |
-| **COMPLETED** | Ciclo de supervisão concluído com sucesso no modelo |
-| **FAILED** | Ciclo de supervisão falhou no modelo (ex.: bloqueio operacional) |
-
-Esses estados **não** se confundem com o ciclo de vida de uma Mission de domínio nem com o estado cognitivo da Opera.
-
----
-
-## 10. Princípios
-
-1. **Supervisor observa, não decide estratégia.**
-2. **Supervisor nunca substitui a Opera.**
-3. **Opera decide estratégia.**
-4. **Employees executam especialidade.**
-5. **Ações precisam ser rastreáveis.**
-6. **Recovery técnico de fila não é decisão de negócio.**
-
-Invariante:
-
-```
-observa → (recovery técnico se aplicável) → (se necessário) COORDINATE
-  → Opera decide → Employees executam → resultado registrado
+Supervisor observa e (se necessário) cria COORDINATE
+Opera analisa e decide
+Employees executam especialidade
+MissionQueue / Workers realizam a execução técnica
 ```
 
 ---
 
-## 11. Estado atual vs evolução futura
+## 4. Fluxo
 
-### Existe atualmente
+### 4.1 Fluxo de ponta a ponta
 
-Capacidades presentes na implementação do módulo Supervisor / Continuous Runtime:
+```
+ContinuousRuntime.start()
+        ↓
+SupervisorLoop (periódico)
+        ↓
+Observação (health + workspace + missões + backlog/fila)
+        ↓
+Recovery técnico (opcional)
+        ↓
+[sinal operacional?] ──não──► registrar ciclo → sleep
+        │
+       sim
+        ↓
+MissionQueue.enqueue(COORDINATE, owner=Opera, dedupe=true)
+        ↓
+EmployeeWorker (Opera) claim
+        ↓
+QueuedMissionExecutor (COORDINATE → EXECUTE → CONSOLIDATE)
+        ↓
+Opera decide → Matcher → Specialists → Resultado (resultJson + MissionEvent)
+```
 
-| Capacidade | Papel |
-|---|---|
-| **Scans** | Workspace, mission e queue |
-| **Health operacional** | Verificação de componentes do runtime/office |
-| **Snapshots locais** | Snapshot do ciclo em store in-memory |
-| **Eventos** | Logs/eventos estruturados do ciclo |
-| **Recovery técnico** | Recuperação de estados de fila (stale / waiting / blocked), sem decisão de negócio |
+### 4.2 Objetivo da missão criada pelo Supervisor
 
-### Evolução futura
+O texto/objetivo de `COORDINATE` deve ser **operacional e neutro**, por exemplo:
 
-Itens **planejados** — não tratar como capacidade completa atual neste documento:
+- necessidade de atenção no workspace X;
+- missão parada / bloqueada / aguardando;
+- backlog detectado;
+- congestão de fila;
+- acompanhamento periódico.
 
-| Evolução | Descrição |
-|---|---|
-| **Persistência durável** | Snapshots e eventos além da memória de processo |
-| **Métricas avançadas** | Exportação, painéis, correlação operacional |
-| **Políticas operacionais formais** | Engine de políticas estritamente operacionais (timeout, congestão, heartbeat), wired de forma explícita — nunca regras de negócio |
+**Não** deve conter plano técnico, escolha de Mag/Luna, prioridade de produto ou interpretação de pedido de usuário.
+
+### 4.3 Gate de health
+
+Se o health geral for `fail`, o Supervisor:
+
+1. registra `HEALTH_FAIL`;
+2. **não** dispara novos `COORDINATE`;
+3. ainda pode executar recovery técnico seguro (desbloqueio de infra), conforme política.
 
 ---
 
-*Documento de arquitetura — Operational Supervisor · OperaIA.lab*
+## 5. Eventos
+
+Eventos oficiais do ciclo (contrato de observabilidade):
+
+| Evento | Quando |
+|--------|--------|
+| `SUPERVISOR_STARTED` | Loop iniciado |
+| `SUPERVISOR_STOPPED` | Loop parado |
+| `HEALTH_CHECK` | Início/fim da verificação de health |
+| `HEALTH_OK` | Health aceitável |
+| `HEALTH_FAIL` | Health bloqueante |
+| `WORKSPACE_SCANNED` | Scan de workspaces concluído |
+| `MISSION_SCANNED` | Scan de missões concluído |
+| `QUEUE_SCANNED` | Scan de fila/backlog concluído |
+| `RECOVERY_CREATED` | Recovery técnico aplicado |
+| `COORDINATION_CREATED` | Missão `COORDINATE` enfileirada |
+| `SNAPSHOT_PERSISTED` | Snapshot do ciclo gravado no store |
+| `SUPERVISOR_CYCLE` | Resumo do ciclo (diagnóstico) |
+| `SUPERVISOR_SLEEP` | Aguardando próximo intervalo |
+
+### Razões de coordenação (`CoordinationReason`)
+
+Sinais **operacionais** permitidos (não são prioridade de negócio):
+
+- `novo_workspace`
+- `missao_parada` / `missao_bloqueada` / `missao_aguardando`
+- `retry` / `recuperacao`
+- `backlog`
+- `mudanca_importante`
+- `congestionamento_fila`
+- `acompanhamento_periodico`
+
+---
+
+## 6. Integração com Mission Queue
+
+A **Mission Queue é a única porta** pela qual o Supervisor cria trabalho (ADR-007).
+
+| Operação | Permitido? | Detalhe |
+|----------|------------|---------|
+| Ler profundidade / status / missões | Sim | Observação |
+| `recoverStaleRunning` / `recoverWaitingParents` / `recoverBlockedDag` | Sim | Infra |
+| `enqueue` `COORDINATE` com owner Opera | Sim | Única criação de missão |
+| `enqueue` `EXECUTE` / `CONSOLIDATE` | **Não** | |
+| `enqueue` com owner specialist | **Não** | |
+| Escolher `priority` de produto | **Não** | Usar default operacional / dedupe |
+| Claim / execute missão | **Não** | Workers |
+
+### Contrato de enqueue
+
+```
+workspaceId     = workspace com sinal
+objective       = texto operacional neutro (razão + contexto mínimo)
+ownerEmployeeId = Opera (CEO_EMPLOYEE_ID)
+missionKind     = COORDINATE (implícito no enqueue raiz)
+dedupe          = true
+```
+
+Após o enqueue, o Supervisor **não** acompanha a decisão da Opera. O Continuous Runtime (workers) processa a fila.
+
+---
+
+## 7. Pontos de segurança
+
+| # | Controle | Descrição |
+|---|----------|-----------|
+| S1 | **Sem bypass da Opera** | Toda missão criada pelo Supervisor é `COORDINATE` para Opera |
+| S2 | **Sem decisão de negócio** | Code review / testes rejeitam escolha de specialist, prioridade de produto, plano |
+| S3 | **Health gate** | Health `fail` → sem novos COORDINATE |
+| S4 | **Dedupe** | Evita storm de COORDINATE idênticos |
+| S5 | **Sem I/O de usuário** | Sem endpoints de chat; sem reply; sem LLM de conversa |
+| S6 | **Sem secrets de domínio** | Supervisor não chama GitHub/n8n/WhatsApp; só estado interno + fila |
+| S7 | **Auditoria do ciclo** | Eventos + snapshot por ciclo; correlação com `missionId` quando COORDINATE é criado |
+| S8 | **Isolamento de workspace** | Sinais e enqueue sempre com `workspaceId` explícito — sem misturar contextos |
+| S9 | **Human Oversight** | Mudanças estruturais / apply de learning fora do Supervisor |
+| S10 | **Congestão** | Em evolução: não disparar novos COORDINATE se profundidade de fila ultrapassar limiar operacional |
+
+### Testes de invariante (obrigatórios na implementação)
+
+1. Ciclo sem sinal → **zero** enqueue.  
+2. Ciclo com sinal → enqueue só `COORDINATE` + owner Opera.  
+3. Health fail → **zero** COORDINATION_CREATED.  
+4. Nenhum caminho chama specialist por nome.  
+5. Eventos do ciclo emitidos na ordem esperada.
+
+---
+
+## 8. Histórico dos ciclos
+
+### Requisito
+
+Cada ciclo deve deixar trilha auditável:
+
+- timestamp / número do ciclo;
+- resumo de health;
+- contagens de scan (workspaces em atenção, missões, depths);
+- recoveries aplicados;
+- coordenações criadas (`missionId`);
+- eventos emitidos.
+
+### Estado atual vs alvo desta evolução
+
+| Capacidade | Hoje | Alvo após aprovação |
+|------------|------|---------------------|
+| Eventos em processo | Sim (store in-memory) | Manter + **persistência durável** |
+| Snapshots in-memory | Sim (cap limitado) | Manter + **persistência durável** |
+| Exposição em `GET /api/v1/runtime` | Parcial | Completar histórico recente estável |
+| Métricas exportáveis | Não | Evolução posterior (não bloqueia v2) |
+
+A implementação pós-aprovação deve priorizar **histórico durável dos ciclos** sem alterar responsabilidades nem limites deste documento.
+
+---
+
+## 9. Componentes (mapa)
+
+| Componente | Papel |
+|------------|-------|
+| `SupervisorLoop` | Orquestra o ciclo periódico |
+| `HealthMonitor` | Health de runtime / registry / memory / queue / execution |
+| `WorkspaceScanner` | Estado e atenção por workspace |
+| `MissionScanner` | Missões pendentes / stale / retry |
+| `QueueMonitor` | Backlog e congestão da fila |
+| `RecoveryCoordinator` | Recovery técnico |
+| `CoordinationDispatcher` | Cria `COORDINATE` para Opera |
+| `SnapshotGenerator` + SnapshotStore | Histórico do ciclo |
+| EventStore + Logger | Eventos estruturados |
+| `ContinuousRuntime` | Boot: readiness → recovery inicial → workers → Supervisor |
+
+---
+
+## 10. Critérios de aceite (pós-aprovação)
+
+A evolução será considerada pronta quando:
+
+1. Documentação e código respeitam §§2–7.  
+2. Histórico de ciclos persiste além do restart do processo.  
+3. Testes de invariante (§7) verdes.  
+4. Validação operacional: Supervisor emite `COORDINATION_CREATED` → missão COMPLETED/FAILED auditável na Mission Queue — **sem** intervenção manual no meio do ciclo.  
+5. Nenhuma nova interface de usuário.  
+6. Typecheck + testes do módulo Supervisor verdes.
+
+---
+
+## 11. Fora de escopo
+
+- Novas UIs / chat com Supervisor  
+- Multi-tenant Campus  
+- Integração GitHub/n8n **dentro** do Supervisor (ingress externo é Bridge → Queue; Supervisor só reage a estado interno)  
+- Ativar MissionScheduler como decisor  
+- Redesign do Path A Assisted (exceto se necessário para não violar ADR-007)
+
+---
+
+## 12. Aprovação
+
+| Decisão | Status |
+|---------|--------|
+| Arquitetura deste documento | **Aguardando aprovação** |
+| Implementação / evolução de código | **Bloqueada até aprovação** |
+
+Após aprovação explícita, a implementação seguirá este documento na ordem:
+
+1. Fechar gaps de histórico durável dos ciclos  
+2. Reforçar testes de invariante e segurança  
+3. Validação operacional com Continuous Runtime  
+
+---
+
+*Operational Supervisor · OperaIA.lab · Documento de arquitetura v2.0*

@@ -13,7 +13,11 @@ import { buildTestWorkspaceCatalog } from "../employees/test-workspace-catalog.j
 import type { WorkspaceSource } from "../employees/workspace-source.js";
 import type { TaskRepository } from "../tasks/domain/task.repository.js";
 import { createMissionExecutionStack } from "./mission-execution.js";
-import { OperationalMissionService } from "./operational-mission-service.js";
+import {
+  OperationalMissionService,
+  type AssistedMissionQueuePort,
+  type OperationalMissionServiceOptions,
+} from "./operational-mission-service.js";
 import { OperationalRunStore } from "./operational-run-store.js";
 
 /** Peças Operations expostas ao HTTP / CLI. */
@@ -46,6 +50,10 @@ export interface LabRuntimeOptions {
   readonly actionPolicy?: ActionPolicy;
   readonly taskRepository?: TaskRepository;
   readonly enableConsoleObservability?: boolean;
+  /** Unified Mission Gateway — preferQueue via env no product; default false em lab isolado. */
+  readonly missionQueue?: AssistedMissionQueuePort;
+  readonly preferQueue?: boolean;
+  readonly missionWait?: OperationalMissionServiceOptions["wait"];
 }
 
 /**
@@ -85,6 +93,11 @@ export function createLabRuntime(
     store,
     memory,
     execution,
+    {
+      ...(options.missionQueue ? { queue: options.missionQueue } : {}),
+      preferQueue: options.preferQueue ?? false,
+      ...(options.missionWait ? { wait: options.missionWait } : {}),
+    },
   );
 
   const team = new EmployeesApplication({

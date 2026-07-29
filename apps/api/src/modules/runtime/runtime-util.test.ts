@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { hashObjective } from "./mission-queue.js";
-import { CEO_EMPLOYEE_ID, MissionQueueStatus } from "./mission-states.js";
+import {
+  hashObjective,
+  resolveEnqueueContract,
+} from "./mission-queue.js";
+import { CEO_EMPLOYEE_ID, MissionKind, MissionQueueStatus } from "./mission-states.js";
 import { WorkerMetrics } from "./runtime-metrics.js";
 
 describe("runtime continuo — utilitarios", () => {
@@ -23,6 +26,16 @@ describe("runtime continuo — utilitarios", () => {
     expect(MissionQueueStatus.WAITING).toBe("WAITING");
     expect(MissionQueueStatus.COMPLETED).toBe("COMPLETED");
     expect(MissionQueueStatus.FAILED).toBe("FAILED");
+  });
+
+  it("resolveEnqueueContract forca Opera em COORDINATE (regressao Fase 1)", () => {
+    const resolved = resolveEnqueueContract({
+      workspaceId: "ws",
+      objective: "obj",
+      ownerEmployeeId: "outro",
+    });
+    expect(resolved.missionKind).toBe(MissionKind.COORDINATE);
+    expect(resolved.ownerEmployeeId).toBe(CEO_EMPLOYEE_ID);
   });
 
   it("WorkerMetrics agrega sucesso e falha", () => {

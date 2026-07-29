@@ -201,3 +201,23 @@ export interface SupervisorCycleContext {
   readonly dispatch: DispatchResult;
   readonly snapshot: OperationalSnapshot;
 }
+
+/** Acao operacional pedida por uma politica (sem regra de negocio). */
+export type PolicyActionType =
+  | "recover_queue"
+  | "recover_workers"
+  | "dispatch_coordinate"
+  | "skip";
+
+export interface PolicyAction {
+  readonly policy: string;
+  readonly type: PolicyActionType;
+  readonly reason: string;
+  readonly count?: number;
+  readonly workspaceId?: string;
+}
+
+export interface PolicyEvaluationResult {
+  readonly evaluatedAt: string;
+  readonly actions: readonly PolicyAction[];
+}

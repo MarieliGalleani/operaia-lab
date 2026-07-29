@@ -8,6 +8,7 @@ import {
   ObservableLLMProvider,
   PolicyLLMProvider,
   RecordingLLMObserver,
+  resolveLLMFallbackChain,
   type LLMCompletion,
   type LLMCompletionOptions,
   type LLMMessage,
@@ -107,6 +108,32 @@ describe("Etapa 6 — policy layer", () => {
   });
 });
 
+describe("Etapa 6 — resolveLLMFallbackChain", () => {
+  it("mantem ordem do CSV e garante deterministic no fim", () => {
+    expect(resolveLLMFallbackChain("gemini", ["openai", "anthropic"])).toEqual([
+      "openai",
+      "anthropic",
+      "deterministic",
+    ]);
+  });
+
+  it("nao duplica deterministic quando ja configurado", () => {
+    expect(
+      resolveLLMFallbackChain("gemini", ["openai", "deterministic"]),
+    ).toEqual(["openai", "deterministic"]);
+  });
+
+  it("com primario deterministic nao acrescenta fallback deterministic", () => {
+    expect(resolveLLMFallbackChain("deterministic", ["openai"])).toEqual([
+      "openai",
+    ]);
+  });
+
+  it("sem CSV ainda garante rede de seguranca deterministic", () => {
+    expect(resolveLLMFallbackChain("gemini", [])).toEqual(["deterministic"]);
+  });
+});
+
 describe("Etapa 6 — createLLMStack", () => {
   it("monta stack deterministico com observabilidade para testes", async () => {
     const observer = new RecordingLLMObserver();
@@ -138,5 +165,17 @@ describe("Etapa 6 — createLLMStack", () => {
       { role: "user", content: "plano inicial" },
     ]);
     expect(result.content).toContain("Analisei");
+  });
+
+  it("gemini com fallback deterministic usa FallbackLLMProvider", () => {
+    const llm = createLLMStack({
+      provider: "gemini",
+      geminiApiKey: "test-key-for-stack-wiring",
+      fallbackProviders: ["deterministic"],
+      enableConsoleObservability: false,
+    });
+    expect(llm.name).toContain("fallback:");
+    expect(llm.name).toContain("gemini");
+    expect(llm.name).toContain("deterministic");
   });
 });

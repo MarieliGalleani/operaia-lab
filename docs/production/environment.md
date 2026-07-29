@@ -46,6 +46,8 @@ Em produção o arquivo real será `/opt/operaia-lab/shared/.env` (criado na mis
 | `SCHEDULER_INTERVAL_MS` | não | Ciclo do Mission Scheduler. |
 | `MISSION_STALE_RUNNING_MS` | não | Timeout para recovery de missões `RUNNING` órfãs. |
 | `OPERAIA_PROCESS_ROLE` | contrato futuro | `all` \| `api` \| `runtime` \| `worker` \| `scheduler`. Hoje o código efetivo trata o processo como monolítico (`all`). |
+| `MEMORY_STORE` | não (default `prisma`) | `prisma` = índice M1 persistente (`OperationalMemoryNote`). `inmemory` = kill-switch volátil (rollback sem drop). |
+| `MEMORY_M1_LEARNING_FALLBACK` | não (default `false`) | Se `true` e o índice M1 não tiver learnings, lê `MissionLearning` (só migração). |
 
 ---
 
@@ -55,7 +57,7 @@ Em produção o arquivo real será `/opt/operaia-lab/shared/.env` (criado na mis
 |----------|-------------|-----------|
 | `LLM_PROVIDER` | não | `gemini` \| `openai` \| `anthropic` \| `openrouter` \| `deterministic`. |
 | `LLM_MODEL` | não | Modelo padrão do provedor. |
-| `LLM_FALLBACK_PROVIDERS` | não | CSV de fallbacks. |
+| `LLM_FALLBACK_PROVIDERS` | não | CSV de fallbacks (ex.: `deterministic` ou `openai,deterministic`). `deterministic` é anexado automaticamente como última rede de segurança se o primário não for ele. |
 | `LLM_MAX_TOKENS_CLAMP` | não | Teto técnico de tokens. |
 | `LLM_OBSERVABILITY` | não | `true`/`false` — logs de chamadas LLM. |
 | `GEMINI_API_KEY` | prod se provider=gemini | Chave Gemini; **vazia no template**. |

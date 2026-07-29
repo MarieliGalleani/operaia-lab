@@ -226,6 +226,43 @@ model MissionEvent {
   @@map("mission_events")
 }
 
+/// Indice recuperavel M1 (MemoryStore persistente).
+/// Fonte de verdade continua em Mission / MissionLearning — esta tabela e derivada.
+model OperationalMemoryNote {
+  id              String    @id @default(uuid())
+  workspaceId     String
+  content         String
+  /// Sempre "operational" em M1.
+  layer           String    @default("operational")
+  /// operational-run-summary | organizational-learning | operational-digest
+  kind            String
+  /// mission | learning | digest
+  sourceType      String
+  /// Id da entidade de origem (missionId / learningId / digest batch id)
+  sourceId        String
+  /// persistMissionMemory | recordMissionLearning | backfill-mission | backfill-learning
+  origin          String
+  missionId       String?
+  learningId      String?
+  statusFinal     String?
+  objective       String?
+  decision        String?
+  resultSummary   String?
+  risksJson       Json?
+  nextActionsJson Json?
+  metadataJson    Json?
+  createdAt       DateTime  @default(now())
+  expiresAt       DateTime?
+  archivedAt      DateTime?
+
+  @@unique([workspaceId, sourceType, sourceId, kind])
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, kind, createdAt])
+  @@index([workspaceId, expiresAt])
+  @@index([missionId])
+  @@map("operational_memory_notes")
+}
+
 /// Heartbeat + metricas por Employee worker logico.
 model WorkerHeartbeat {
   employeeId       String   @id
@@ -262,6 +299,106 @@ enum ApprovalStatus {
   REJECTED
   IMPLEMENTING
   COMPLETED
+}
+
+/// Lifecycle Domain Signal (ADR-009 / S1).
+enum DomainSignalStatus {
+  DETECTED
+  EVALUATED
+  CONVERTED
+  RESOLVED
+  IGNORED
+  EXPIRED
+}
+
+/// Decisao de avaliacao auditavel. CONVERT_CANDIDATE nao enfileira Mission em S1.
+enum DomainSignalEvaluationDecision {
+  CONVERT_CANDIDATE
+  IGNORE
+  DEFER
+}
+
+/// Mapa origem externa → workspace (kill-switch + isolamento).
+model WorkspaceSourceBinding {
+  id          String   @id @default(uuid())
+  workspaceId String
+  /// github | n8n | http | internal | …
+  sourceType  String
+  /// ex.: owner/repo, workflowId
+  externalRef String
+  enabled     Boolean  @default(true)
+  /// filtros (branches, labels) — sem secrets em claro
+  configJson  Json?
+  /// ponteiro a secret store (nunca o secret)
+  secretRef   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  signals DomainSignal[]
+
+  @@unique([workspaceId, sourceType, externalRef])
+  @@index([sourceType, externalRef, enabled])
+  @@map("workspace_source_bindings")
+}
+
+/// Ledger de ingress — Signal informa; Opera decide; Mission executa (ADR-009).
+model DomainSignal {
+  id          String  @id @default(uuid())
+  workspaceId String
+  bindingId   String?
+  binding     WorkspaceSourceBinding? @relation(fields: [bindingId], references: [id], onDelete: SetNull)
+
+  /// Familia da origem (ADR source)
+  sourceType String
+  /// Id no sistema externo (ADR externalId)
+  sourceId   String?
+  /// Tipo tipado do evento — ex.: github.pr.opened
+  type       String
+
+  /// Idempotencia de entrega (unica unique de dedupe)
+  deliveryId String
+  /// Similaridade / agrupamento — NAO unique
+  signalHash String
+
+  /// Trace Signal → Evaluation → Mission → Learning
+  correlationId String
+
+  status DomainSignalStatus @default(DETECTED)
+
+  /// Payload ja redigido
+  payloadJson  Json
+  metadataJson Json?
+
+  evaluationDecision DomainSignalEvaluationDecision?
+  /// nome/versao da politica (ex.: default-allowlist@1)
+  evaluationPolicy   String?
+  /// motivo estavel (ex.: policy_deny, unbound_source, ok)
+  evaluationReason   String?
+  /// detalhes estruturados da avaliacao
+  evaluationJson     Json?
+  evaluatedAt        DateTime?
+
+  /// preenchido so em CONVERTED+ (S1: sem enqueue automatico)
+  missionId String?
+
+  payloadVersion Int @default(1)
+
+  occurredAt  DateTime?
+  receivedAt  DateTime  @default(now())
+  convertedAt DateTime?
+  resolvedAt  DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([sourceType, deliveryId])
+  @@index([workspaceId, status, receivedAt])
+  @@index([workspaceId, signalHash, receivedAt])
+  @@index([correlationId])
+  @@index([missionId])
+  @@index([type, receivedAt])
+  @@index([evaluationDecision, status])
+  @@map("domain_signals")
 }
 
 /// Propostas estruturais — aprovacao humana obrigatoria (sem apply automatico).

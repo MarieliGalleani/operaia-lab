@@ -56,6 +56,44 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(15 * 60 * 1000),
+
+  /**
+   * Unified Mission Gateway (ADR-007) — Assisted via MissionQueue.
+   * Default true: Queue e o caminho oficial.
+   * Kill-switch: ASSISTED_QUEUE_MODE=false volta ao Path A sync (legado).
+   */
+  ASSISTED_QUEUE_MODE: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((value) => value === "true"),
+  /** Timeout do waitUntilTerminal no Assisted→Queue (ms). Evita HTTP infinito. */
+  ASSISTED_MISSION_WAIT_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(180_000),
+  ASSISTED_MISSION_WAIT_POLL_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(500),
+
+  /**
+   * Memory M1 — store persistente vs volátil.
+   * prisma = OperationalMemoryNote (default produto).
+   * inmemory = kill-switch / rollback sem drop de tabela.
+   */
+  MEMORY_STORE: z.enum(["prisma", "inmemory"]).default("prisma"),
+
+  /**
+   * M1.4 — fallback controlado: se o indice OperationalMemoryNote
+   * nao tiver learnings, le MissionLearning (ledger).
+   * Default false apos cutover; true so durante migracao/backfill incompleto.
+   */
+  MEMORY_M1_LEARNING_FALLBACK: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
 });
 
 const parsed = envSchema.safeParse(process.env);

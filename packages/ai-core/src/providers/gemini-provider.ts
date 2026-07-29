@@ -38,16 +38,23 @@ export class GeminiProvider implements LLMProvider {
     const model = options?.model?.trim() || this.defaultModel;
     const { systemInstruction, contents } = toGeminiRequestParts(messages);
 
+    const geminiContents = contents.map((content) => ({
+      role: content.role,
+      parts: content.parts.map((part) => ({
+        text: part.text,
+      })),
+    }));
+    
     const response = await this.client.models.generateContent({
       model,
-      contents: [...contents],
+      contents: geminiContents,
       config: {
         systemInstruction,
         temperature: options?.temperature,
         maxOutputTokens: options?.maxTokens,
       },
     });
-
+    
     const content = response.text?.trim() ?? "";
     if (!content) {
       throw new Error("GeminiProvider: resposta vazia do modelo.");

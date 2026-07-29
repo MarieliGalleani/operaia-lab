@@ -30,7 +30,14 @@ describe("Digital Team Online — Fase 2.1 Memory Integration", () => {
     await memory.store({
       id: randomUUID(),
       content: PRIOR_AUTH_MEMORY,
-      metadata: { workspaceId: "nexo", kind: "operational-run-summary" },
+      metadata: {
+        workspaceId: "nexo",
+        kind: "operational-run-summary",
+        layer: "operational",
+        sourceType: "mission",
+        sourceId: "prior-auth-fixture",
+        origin: "test-fixture",
+      },
     });
 
     const lab = createLabRuntime({ deterministic: true, memoryStore: memory });
@@ -56,7 +63,14 @@ describe("Digital Team Online — Fase 2.1 Memory Integration", () => {
     await memory.store({
       id: randomUUID(),
       content: PRIOR_AUTH_MEMORY,
-      metadata: { workspaceId: "nexo", kind: "operational-run-summary" },
+      metadata: {
+        workspaceId: "nexo",
+        kind: "operational-run-summary",
+        layer: "operational",
+        sourceType: "mission",
+        sourceId: "prior-auth-fixture-mag",
+        origin: "test-fixture",
+      },
     });
 
     const lab = createLabRuntime({ deterministic: true, memoryStore: memory });

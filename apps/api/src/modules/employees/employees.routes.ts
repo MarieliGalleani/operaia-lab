@@ -7,6 +7,7 @@ import {
   employeeProfileSchema,
   employeeReplySchema,
   employeeStatusSchema,
+  httpErrorSchema,
 } from "./employees.schema.js";
 
 /**
@@ -22,7 +23,7 @@ export function createEmployeeRoutes(
       {
         schema: {
           tags: ["employees"],
-          response: { 200: z.array(employeeProfileSchema) },
+          response: { 200: z.array(employeeProfileSchema).readonly() },
         },
       },
       async () => application.listProfiles(),
@@ -33,7 +34,7 @@ export function createEmployeeRoutes(
       {
         schema: {
           tags: ["employees"],
-          response: { 200: z.array(employeeStatusSchema) },
+          response: { 200: z.array(employeeStatusSchema).readonly() },
         },
       },
       async () => application.listStatuses(),
@@ -45,7 +46,10 @@ export function createEmployeeRoutes(
         schema: {
           tags: ["employees"],
           params: employeeIdParamsSchema,
-          response: { 200: employeeProfileSchema },
+          response: {
+            200: employeeProfileSchema,
+            404: httpErrorSchema,
+          },
         },
       },
       async (request, reply) => {

@@ -2,78 +2,15 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { NotFoundError } from "@operaia/shared";
 import {
-  createOperationalRuntime,
   NEXO_OPERATIONAL_MISSION,
   type OperationalRuntime,
 } from "./operational-composition.js";
 import type { OperationalRun } from "./operational-run.js";
-
-const runMissionBodySchema = z.object({
-  workspaceId: z.string().min(1),
-  objective: z.string().min(1),
-  employeeId: z.string().min(1).optional(),
-});
-
-const gapSchema = z.object({
-  code: z.string(),
-  severity: z.enum(["info", "warning", "critical"]),
-  message: z.string(),
-});
-
-const operationalRunResponseSchema = z.object({
-  id: z.string(),
-  status: z.literal("completed"),
-  workspaceId: z.string(),
-  workspaceName: z.string(),
-  objective: z.string(),
-  startedAt: z.string(),
-  finishedAt: z.string(),
-  usableResult: z.string(),
-  reply: z.object({
-    employeeId: z.string(),
-    content: z.string(),
-    answer: z.object({
-      summary: z.string(),
-      projects: z.array(z.string()),
-      risks: z.array(z.string()),
-      nextActions: z.array(z.string()),
-    }),
-  }),
-  workflow: z.object({
-    workspaceId: z.string(),
-    title: z.string(),
-    steps: z.array(
-      z.object({
-        stage: z.string(),
-        actorId: z.string(),
-        detail: z.string(),
-        status: z.string(),
-        timestamp: z.string().optional(),
-      }),
-    ),
-  }),
-  decisions: z.object({
-    ceoAnalyzed: z.string(),
-    ceoDecision: z.string(),
-    delegations: z.array(
-      z.object({
-        specialization: z.string(),
-        reason: z.string(),
-        task: z.string().optional(),
-      }),
-    ),
-  }),
-  specialists: z.array(
-    z.object({
-      matched: z.boolean(),
-      employeeId: z.string().optional(),
-      specialization: z.string(),
-      summary: z.string().optional(),
-    }),
-  ),
-  llmEvents: z.array(z.unknown()),
-  gaps: z.array(gapSchema),
-});
+import {
+  operationalRunIdParamsSchema,
+  operationalRunResponseSchema,
+  runMissionBodySchema,
+} from "./operations.schema.js";
 
 function toResponse(run: OperationalRun) {
   return {
@@ -106,12 +43,18 @@ function toResponse(run: OperationalRun) {
     })),
     llmEvents: [...run.llmEvents],
     gaps: run.gaps,
+    ...(run.queueStatus ? { queueStatus: run.queueStatus } : {}),
   };
+}
+
+function statusCodeForRun(run: OperationalRun): 201 | 202 {
+  return run.status === "completed" ? 201 : 202;
 }
 
 /**
  * Operacao assistida: missoes controladas com registro completo.
  * Controllers finos — delegam ao OperationalMissionService.
+ * Path B (Queue) e o padrao de produto; Path A via kill-switch.
  */
 export function createOperationsRoutes(
   runtime: OperationalRuntime,
@@ -123,7 +66,10 @@ export function createOperationsRoutes(
         schema: {
           tags: ["operations"],
           body: runMissionBodySchema,
-          response: { 201: operationalRunResponseSchema },
+          response: {
+            201: operationalRunResponseSchema,
+            202: operationalRunResponseSchema,
+          },
         },
       },
       async (request, reply) => {
@@ -132,7 +78,7 @@ export function createOperationsRoutes(
           objective: request.body.objective,
           employeeId: request.body.employeeId,
         });
-        return reply.status(201).send(toResponse(run));
+        return reply.status(statusCodeForRun(run)).send(toResponse(run));
       },
     );
 
@@ -141,7 +87,7 @@ export function createOperationsRoutes(
       {
         schema: {
           tags: ["operations"],
-          response: { 200: z.array(operationalRunResponseSchema) },
+          response: { 200: z.array(operationalRunResponseSchema).readonly() },
         },
       },
       async () => runtime.service.list().map(toResponse),
@@ -152,7 +98,7 @@ export function createOperationsRoutes(
       {
         schema: {
           tags: ["operations"],
-          params: z.object({ id: z.string().min(1) }),
+          params: operationalRunIdParamsSchema,
           response: { 200: operationalRunResponseSchema },
         },
       },
@@ -171,12 +117,15 @@ export function createOperationsRoutes(
       {
         schema: {
           tags: ["operations"],
-          response: { 201: operationalRunResponseSchema },
+          response: {
+            201: operationalRunResponseSchema,
+            202: operationalRunResponseSchema,
+          },
         },
       },
       async (_request, reply) => {
         const run = await runtime.service.run({ ...NEXO_OPERATIONAL_MISSION });
-        return reply.status(201).send(toResponse(run));
+        return reply.status(statusCodeForRun(run)).send(toResponse(run));
       },
     );
   };

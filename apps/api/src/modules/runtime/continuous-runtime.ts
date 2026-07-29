@@ -42,6 +42,8 @@ export interface ContinuousRuntimeConfig {
   readonly heartbeatIntervalMs: number;
   readonly schedulerIntervalMs: number;
   readonly staleRunningMs: number;
+  /** M1.4 — fallback MissionLearning se indice vazio (migracao). */
+  readonly allowLearningPrismaFallback?: boolean;
 }
 
 /**
@@ -74,6 +76,10 @@ export class ContinuousRuntime {
       config.execution,
       config.memory,
       config.logger,
+      {
+        allowLearningPrismaFallback:
+          config.allowLearningPrismaFallback ?? false,
+      },
     );
     this.workers = new WorkerManager({
       office: config.office,

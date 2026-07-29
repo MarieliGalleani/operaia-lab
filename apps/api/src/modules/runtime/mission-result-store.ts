@@ -22,6 +22,11 @@ export interface ExecutePhaseResult {
 
 export interface ConsolidatePhaseResult {
   readonly phase: "consolidated";
+  /**
+   * Decisao COORDINATE da Opera (ADR-007 Fase 2.1).
+   * Preservada quando completeConsolidation sobrescreve o resultJson da raiz.
+   */
+  readonly initial?: StoredEmployeeResult;
   readonly usableResult: string;
   readonly final: StoredEmployeeResult;
   readonly timing?: {
@@ -30,6 +35,80 @@ export interface ConsolidatePhaseResult {
     readonly consolidationMs: number;
     readonly totalMs: number;
   };
+}
+
+/**
+ * Mescla o consolidado com o initial da fase COORDINATE (WAITING),
+ * evitando perda ao sobrescrever resultJson da raiz.
+ */
+export function mergeConsolidatePreservingInitial(
+  previousRootResultJson: unknown,
+  incoming: unknown,
+): ConsolidatePhaseResult {
+  const base = requireConsolidatePhaseResult(incoming);
+  if (base.initial) {
+    return base;
+  }
+  const preserved = readStoredInitial(previousRootResultJson);
+  if (!preserved) {
+    return base;
+  }
+  return {
+    ...base,
+    initial: preserved,
+  };
+}
+
+function requireConsolidatePhaseResult(
+  incoming: unknown,
+): ConsolidatePhaseResult {
+  if (!incoming || typeof incoming !== "object") {
+    throw new Error("completeConsolidation requer ConsolidatePhaseResult");
+  }
+  const record = incoming as Record<string, unknown>;
+  if (record.phase !== "consolidated") {
+    throw new Error(
+      `phase esperado consolidated, recebido: ${String(record.phase)}`,
+    );
+  }
+  if (typeof record.usableResult !== "string" || !record.final) {
+    throw new Error("ConsolidatePhaseResult incompleto (usableResult/final)");
+  }
+  return incoming as ConsolidatePhaseResult;
+}
+
+/** Narrowing seguro de Json → CoordinatePhaseResult (ou null). */
+export function readCoordinatePhaseResult(
+  resultJson: unknown,
+): CoordinatePhaseResult | null {
+  if (!resultJson || typeof resultJson !== "object" || Array.isArray(resultJson)) {
+    return null;
+  }
+  const record = resultJson as Record<string, unknown>;
+  if (record.phase !== "coordinated") {
+    return null;
+  }
+  if (!record.initial || typeof record.initial !== "object") {
+    return null;
+  }
+  return resultJson as CoordinatePhaseResult;
+}
+
+function readStoredInitial(
+  resultJson: unknown,
+): StoredEmployeeResult | undefined {
+  if (!resultJson || typeof resultJson !== "object") {
+    return undefined;
+  }
+  const record = resultJson as Record<string, unknown>;
+  if (
+    (record.phase === "coordinated" || record.phase === "consolidated") &&
+    record.initial &&
+    typeof record.initial === "object"
+  ) {
+    return record.initial as StoredEmployeeResult;
+  }
+  return undefined;
 }
 
 export function serializeEmployeeResult(

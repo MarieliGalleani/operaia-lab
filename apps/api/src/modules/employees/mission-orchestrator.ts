@@ -75,7 +75,7 @@ export class MissionOrchestrator {
 
     const extraActions = buildDomainSyncActions({
       outcomes,
-      workspaceTasks: context.workspace.tasks,
+      workspaceTasks: context.workspace.tasks ?? [],
     });
     console.log("[mission-orchestrator] domain-sync actions", {
       objective: context.objective,

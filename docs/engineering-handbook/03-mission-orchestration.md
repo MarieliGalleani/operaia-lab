@@ -4,6 +4,63 @@
 
 Este documento registra oficialmente como missões são criadas, analisadas, delegadas, executadas e consolidadas dentro do **OperaIA.lab**.
 
+**ADR oficial:** [`ADR-007 — Consolidação do Mission System`](../architecture/adr/ADR-007-mission-system-consolidation.md).
+
+---
+
+## 0. Mission System oficial (Fase 0 — ADR-007)
+
+### Fonte da verdade
+
+O **Mission System oficial** do OperaIA.lab é baseado em **`MissionQueue`** (persistência Prisma + Continuous Runtime + `QueuedMissionExecutor`).
+
+Uma **Mission oficial** segue:
+
+```
+COORDINATE
+    ↓
+Opera
+    ↓
+Delegation
+    ↓
+Matcher
+    ↓
+EXECUTE
+    ↓
+CONSOLIDATE
+    ↓
+Execution
+    ↓
+Memory
+```
+
+| Kind | Regra |
+|---|---|
+| **COORDINATE** | Entrada oficial; `ownerEmployeeId` = Opera (`operaia-ceo`) |
+| **EXECUTE** | Só nasce **após** delegação da Opera; tem `parentMissionId` |
+| **CONSOLIDATE** | Criado pela fila após filhos terminarem; owner Opera |
+
+### Assisted Execution (não é Mission oficial)
+
+O fluxo síncrono `OperationalMissionService` + `MissionOrchestrator` + `OperationalRun` é **Assisted Execution legado** (Path A). **Não** define o contrato de Mission do produto.
+
+**Unified Mission Gateway (Fase 1):** com `ASSISTED_QUEUE_MODE=true` (default de produto), `POST /employees/:id/ask` e `POST /operations/missions` usam a **Mission Queue** (`runViaQueue`). Path A permanece apenas como **kill-switch** (`ASSISTED_QUEUE_MODE=false`) e testes isolados sem fila.
+
+| Modo | Flag | Motor |
+|------|------|-------|
+| Oficial (default) | `ASSISTED_QUEUE_MODE=true` | MissionQueue → workers → projector |
+| Legado temporário | `ASSISTED_QUEUE_MODE=false` | MissionOrchestrator sync |
+
+**Prova operacional do ciclo oficial:** [`operational-cycle-proof.md`](../architecture/operational-cycle-proof.md) (`ops:operational-cycle-proof`). Valida boot do Continuous Runtime, workers, Supervisor, eventos, `resultJson` e COMPLETED via `POST /employees/:id/ask` e `POST /operations/missions`. Memória permanece fora de escopo dessa prova.
+
+### Produtores autorizados de COORDINATE
+
+- Operational Supervisor (sinais operacionais);
+- HTTP Runtime (`POST` missions na fila), com owner forçado Opera;
+- Planejamento sob demanda da Opera (não como fallback do Supervisor).
+
+HTTP **externo** não cria `EXECUTE` nem `CONSOLIDATE`.
+
 ---
 
 ## 1. Visão Geral
@@ -42,21 +99,39 @@ Uma **missão** é a unidade operacional fundamental do OperaIA.lab. Representa 
 
 ### Ciclo de vida
 
-Uma missão possui ciclo de vida explícito. Estados observados no sistema:
+#### Mission oficial (`MissionQueue`)
+
+Estados da fila persistente:
 
 ```
-CREATED → RUNNING → [WAITING | REPLANNING] → COMPLETED | FAILED | CANCELLED
+QUEUED → RUNNING → [WAITING] → COMPLETED | FAILED
 ```
 
-No nível de orquestração (`OrchestrationEngine`), cada missão evolui por ciclos (`CycleRecord`), com histórico imutável de execuções e erros. No nível operacional (`OperationalRun`), a missão é registrada como entidade auditável com timing, gaps e auditoria de execução.
+Kinds: `COORDINATE` | `EXECUTE` | `CONSOLIDATE`. Readiness: `READY` | `BLOCKED`.
 
-Uma missão não é um request HTTP — é um processo operacional com identidade (`missionId`), duração e trilha de auditoria completa.
+(`CREATED` / `CANCELLED` existem no schema; o fluxo oficial cria entradas em `QUEUED`.)
+
+#### Assisted Execution / motores genéricos
+
+O `OrchestrationEngine` (package) e o `OperationalRun` (Assisted) possuem ciclos próprios — **não** substituem o ciclo da `MissionQueue`.
 
 ---
 
-## 3. Mission Orchestrator
+## 3. Mission Orchestrator e fila oficial
 
-O **Mission Orchestrator** coordena o fluxo de missão na camada de aplicação. O pacote `packages/orchestration-engine` fornece o motor de orquestração genérico; a composição concreta do fluxo CEO → delegação → execução reside em `apps/api` via `MissionOrchestrator`.
+### Mission System oficial — fila
+
+No Digital Office contínuo, a coordenação concreta é:
+
+- **`MissionQueue`** — persistência e estados;
+- **`QueuedMissionExecutor`** — fases COORDINATE / EXECUTE / CONSOLIDATE;
+- **Workers** — claim por owner (Opera) ou `requiredSpecialization`.
+
+O pacote `packages/orchestration-engine` fornece um motor de loop **genérico**; ele **não** é a fonte da verdade da Mission oficial.
+
+### Assisted Execution — `MissionOrchestrator`
+
+O **`MissionOrchestrator`** (`apps/api`) coordena o fluxo **síncrono** assistido: Opera → `DelegationService` → plan → engine → consolidação. Útil para lab/operations HTTP; **não** substitui a `MissionQueue` como Mission oficial (ADR-007).
 
 ### Papel do `packages/orchestration-engine`
 
@@ -221,9 +296,11 @@ O plano do Execution Engine representa **trabalho executável** — distinto do 
 
 ---
 
-## 8. Operational Run
+## 8. Operational Run (Assisted Execution)
 
-O **Operational Run** é o registro operacional completo de uma missão assistida — auditável ponta a ponta. Implementado como `OperationalRun` em `apps/api`, consolida todos os artefatos produzidos durante o ciclo da missão.
+O **Operational Run** é o registro ponta a ponta da **execução assistida** síncrona — não a fonte da verdade da Mission oficial na fila. Implementado como `OperationalRun` em `apps/api`.
+
+Na migração ADR-007, `OperationalRun` tende a tornar-se projeção/compat a partir da `MissionQueue`.
 
 ### Campos do registro
 
@@ -306,92 +383,70 @@ Employees não acessam memória diretamente. A integração ocorre na camada de 
 
 ## 10. Fluxo Completo
 
-Fluxo arquitetural oficial de uma missão operacional no OperaIA.lab:
+### Fluxo oficial (MissionQueue)
 
 ```
-User
-↓
-Digital Office API
-↓
-Opera CEO
-↓
-Mission Orchestrator
-↓
-Employee Matcher
-↓
-Specialist Employee
-↓
+Mission (COORDINATE)
+ ↓
+Opera
+ ↓
+Delegation
+ ↓
+Employee Matcher / claim
+ ↓
+EXECUTE (Employee)
+ ↓
+CONSOLIDATE (Opera)
+ ↓
 Execution Engine
-↓
-Memory System
-↓
-Operational Result
+ ↓
+Result + Memory
 ```
 
-### User
+Entradas típicas: HTTP Runtime, Operational Supervisor, planning da Opera.
 
-Define o objetivo operacional e mantém supervisão sobre o resultado.
+### Assisted Execution (legado / lab)
 
-### Digital Office API
+```
+User / Operations API
+ ↓
+OperationalMissionService
+ ↓
+Mission Orchestrator (sync)
+ ↓
+Opera → Matcher → Specialist → Execution → OperationalRun + Memory
+```
 
-Recebe a requisição, valida entrada, carrega contexto do workspace e inicia o ciclo de missão.
-
-### Opera CEO
-
-Analisa objetivo e contexto. Aplica CEO Gate para decidir delegação ou resposta direta.
-
-### Mission Orchestrator
-
-Coordena o fluxo completo: CEO → delegação → plano → execução → consolidação. Mantém estado, eventos e histórico.
-
-### Employee Matcher
-
-Resolve especialidade delegada para funcionário compatível no registry.
-
-### Specialist Employee
-
-Processa briefing focado, produz decisão e plano de ações dentro de seus limites.
-
-### Execution Engine
-
-Executa o plano de ações via registry de executores. Produz resultados normalizados e auditoria.
-
-### Memory System
-
-Persiste resumo da missão e disponibiliza contexto para operações futuras.
-
-### Operational Result
-
-Resultado consolidado retornado ao usuário — texto utilizável, workflow atualizado e registro auditável completo.
+Não confundir Assisted Execution com Mission oficial.
 
 ---
 
 ## 11. Regras Arquiteturais
 
-### Missões sempre passam pelo orchestrator
+### Mission oficial passa pela MissionQueue
 
-Nenhuma execução operacional pode contornar o `MissionOrchestrator` ou o `OrchestrationEngine`. Atalhos que executam ações sem análise, delegação e registro violam a arquitetura.
+Toda Mission de produto é persistida na fila. Assisted Execution não redefine o contrato (ADR-007).
+
+### COORDINATE sempre pertence à Opera
+
+`ownerEmployeeId` de COORDINATE / CONSOLIDATE = Opera. Employee direto na raiz não é Mission oficial.
+
+### EXECUTE só após delegação
+
+HTTP externo e o Supervisor **não** criam EXECUTE/CONSOLIDATE. Filhos nascem no fluxo pós-decisão da Opera.
 
 ### Funcionários não chamam outros funcionários
 
-Delegação ocorre exclusivamente via `DelegationRequest` + `EmployeeMatcher`. Um funcionário informa especialidade necessária; o sistema resolve o executor. Comunicação peer-to-peer entre pacotes de employees é proibida.
+Delegação via specialization + Matcher / claim. Sem peer-to-peer entre pacotes de employees.
 
-### Execução deve ser registrada
+### Execução e resultados são rastreáveis
 
-Toda ação executada produz registro no `OperationalRun` com plano, resultados normalizados e auditoria (`OperationalExecutionAudit`). Execução sem registro é invisível para auditoria e memória.
-
-### Resultados devem retornar pela consolidação da Opera
-
-O output final ao usuário passa pela consolidação do CEO (`final: EmployeeResult`). Especialistas entregam resultados intermediários; Opera integra em resposta executiva (`usableResult`).
-
-### Ações devem possuir limites explícitos
-
-Toda ação no `ExecutionPlan` respeita limites do especialista (`EmployeeProfile.limits`) e políticas do Execution Engine. Ações fora de domínio devem ser rejeitadas antes da execução.
+Fila: `MissionEvent`, `resultJson`, learning/memory. Assisted: `OperationalRun` até convergência.
 
 ### Decisões estratégicas permanecem no CEO
 
-O orchestrator coordena; o CEO decide. Delegação, priorização e consolidação são responsabilidade do Opera. O motor de orquestração não substitui julgamento estratégico — apenas garante que decisões sigam o fluxo correto.
+Supervisor observa e agenda COORDINATE; Opera decide; specialists executam domínio; Execution Engine realiza actions.
 
 ---
 
-> **Referências:** [01 — Architecture](./01-architecture.md) · [02 — Agent System](./02-agent-system.md) · [README — Orchestration before execution](./README.md#orchestration-before-execution)
+> **Referências:** [01 — Architecture](./01-architecture.md) · [02 — Agent System](./02-agent-system.md) · [ADR-007 — Mission System](../architecture/adr/ADR-007-mission-system-consolidation.md) · [README](./README.md)

@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+/** Erro HTTP tipado na borda (ex.: reply.status(404).send). */
+export const httpErrorSchema = z.object({
+  code: z.string(),
+  message: z.string(),
+});
+
 export const employeeIdParamsSchema = z.object({
   id: z.string().min(1),
 });
@@ -13,6 +19,10 @@ export const askEmployeeBodySchema = z.object({
   question: z.string().min(1),
 });
 
+/**
+ * Schemas de resposta usam `.readonly()` nos arrays para alinhar ao DTO interno
+ * (`readonly T[]`). Zod + Fastify passam a aceitar o retorno sem cast.
+ */
 export const employeeProfileSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -22,9 +32,9 @@ export const employeeProfileSchema = z.object({
   version: z.string(),
   executable: z.literal(true),
   mission: z.string(),
-  capabilities: z.array(z.string()),
-  permissions: z.array(z.string()),
-  limits: z.array(z.string()),
+  capabilities: z.array(z.string()).readonly(),
+  permissions: z.array(z.string()).readonly(),
+  limits: z.array(z.string()).readonly(),
 });
 
 export const employeeStatusSchema = z.object({
@@ -39,9 +49,9 @@ export const employeeReplySchema = z.object({
   content: z.string(),
   answer: z.object({
     summary: z.string(),
-    projects: z.array(z.string()),
-    risks: z.array(z.string()),
-    nextActions: z.array(z.string()),
+    projects: z.array(z.string()).readonly(),
+    risks: z.array(z.string()).readonly(),
+    nextActions: z.array(z.string()).readonly(),
   }),
 });
 
@@ -63,7 +73,7 @@ export const workflowStepSchema = z.object({
 export const workflowSchema = z.object({
   workspaceId: z.string(),
   title: z.string(),
-  steps: z.array(workflowStepSchema),
+  steps: z.array(workflowStepSchema).readonly(),
 });
 
 export const workspaceSchema = z.object({
@@ -72,15 +82,17 @@ export const workspaceSchema = z.object({
   objective: z.string(),
   status: z.string(),
   progress: z.number(),
-  teamIds: z.array(z.string()),
-  decisions: z.array(
-    z.object({
-      id: z.string(),
-      summary: z.string(),
-      authorId: z.string(),
-      date: z.string(),
-    }),
-  ),
+  teamIds: z.array(z.string()).readonly(),
+  decisions: z
+    .array(
+      z.object({
+        id: z.string(),
+        summary: z.string(),
+        authorId: z.string(),
+        date: z.string(),
+      }),
+    )
+    .readonly(),
 });
 
 export const workspaceTaskSchema = z.object({

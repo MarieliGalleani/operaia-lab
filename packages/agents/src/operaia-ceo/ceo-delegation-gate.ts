@@ -12,7 +12,7 @@ const ADVISORY_PATTERN =
   /\b(como\s+est[aã]o|como\s+esta|status|resumo|situa[cç][aã]o|overview|o\s+que\s+falta|prioridades\s+de\s+hoje|quem\s+precisa|aten[cç][aã]o\s+hoje|qual(?:is)?\s+o\s+papel|pap[eé]is\s+de\s+voc)\b/i;
 
 const TECHNICAL_EXECUTION_PATTERN =
-  /\b(implement|autentic|auth|login|senha|oauth|jwt|desenvolv|codifica|refator|migrac|api\b|banco\b|deploy|bug|corrigir|endpoint|frontend|backend|teste\s+automat)\w*/i;
+  /\b(implement|autentic|auth|login|senha|oauth|jwt|desenvolv|codifica|refator|migrac|api\b|banco\b|deploy|bug|corrigir|endpoint|frontend|backend|teste\s+automat|plano\s+t[eé]cnic|revis(?:ar|ao|ão)\s+(?:o\s+)?(?:projeto|codigo|código)|arquitetur|desenho\s+t[eé]cnic)\w*/i;
 
 /** Pedidos explicitos de execucao / progresso operacional. */
 const EXECUTION_PROGRESS_PATTERN =

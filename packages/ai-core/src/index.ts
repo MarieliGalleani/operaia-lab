@@ -13,6 +13,7 @@ export { createLLMProvider } from "./providers/create-llm-provider.js";
 export {
   createLLMStack,
   isLLMProviderImplemented,
+  resolveLLMFallbackChain,
   type LLMStackConfig,
 } from "./providers/create-llm-stack.js";
 export { FallbackLLMProvider } from "./providers/fallback-llm-provider.js";

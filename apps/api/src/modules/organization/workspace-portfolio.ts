@@ -163,10 +163,6 @@ export async function buildWorkspacePortfolioSnapshot(deps: {
 
   const saturatedSpecializations: string[] = [];
   for (const [spec, count] of runningBySpec) {
-    const specialists = heartbeats.filter((row) => {
-      const metrics = row.metricsJson as { specialization?: string } | null;
-      return metrics?.specialization === spec || row.employeeId.includes(spec);
-    });
     // Saturacao: mais de 1 missao RUNNING da mesma especializacao e nenhum idle generico
     if (count >= 1 && workersAvailable === 0) {
       saturatedSpecializations.push(spec);

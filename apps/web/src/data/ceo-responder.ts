@@ -11,7 +11,9 @@ const STATUS_LABEL: Record<Project["status"], string> = {
  * Gera a resposta executiva do CEO — Opera a partir do estado atual.
  *
  * APENAS para mocks/testes isolados (`createMockGateways` / MockOfficeService).
- * O caminho principal do escritorio usa POST /employees/:id/ask → MissionOrchestrator.
+ * O caminho principal do escritorio usa POST /employees/:id/ask
+ * → OperationalMissionService → Mission Queue (ASSISTED_QUEUE_MODE=true).
+ * Path A (MissionOrchestrator sync) so via kill-switch ASSISTED_QUEUE_MODE=false.
  */
 export function buildCeoAnswer(
   _question: string,

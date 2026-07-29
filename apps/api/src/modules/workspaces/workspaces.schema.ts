@@ -28,5 +28,5 @@ export const sessionStateResponseSchema = z.object({
   startedAt: z.date(),
   finishedAt: z.date().nullable(),
   executionSummary: z.unknown(),
-  history: z.array(z.unknown()),
+  history: z.array(z.unknown()).readonly(),
 });

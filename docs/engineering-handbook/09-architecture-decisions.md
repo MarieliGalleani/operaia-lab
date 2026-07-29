@@ -13,7 +13,16 @@ Este documento registra as **principais decisões arquiteturais (ADR)** do Opera
 | ADR-005 | Human Oversight como princípio de operação | Aceito |
 | ADR-006 | Operational Supervisor como infraestrutura operacional | Aceito |
 
-> ADRs de infraestrutura de deploy (ex.: layout de produção em VM) podem existir em `docs/architecture/adr/` com numeração própria de operações. Este documento cobre as decisões **centrais do sistema operacional digital**.
+> ADRs em `docs/architecture/adr/` complementam este índice (deploy, Mission System, memória). Este documento cobre as decisões **centrais do sistema operacional digital**.
+
+| ADR (architecture/) | Título | Status |
+|---|---|---|
+| [ADR-007](../architecture/adr/ADR-007-mission-system-consolidation.md) | MissionQueue como fonte oficial | Aceito (fases em curso) |
+| [ADR-008](../architecture/adr/ADR-008-memory-three-layers.md) | Memória em três camadas (M1/M2/M3) | Proposto — aguarda aprovação |
+| [ADR-009](../architecture/adr/ADR-009-domain-signal-layer.md) | Domain Signal Layer | Aceito — S1+S2+S3.1; convert/webhook HTTP pendentes |
+| Proposta | [Arquitetura de memória](../architecture/memory-architecture.md) | Proposta técnica (sem código) |
+| Proposta | [Domain Signal Layer](../architecture/domain-signal-layer.md) | Especificação técnica (S1+S2 no código) |
+| Contrato | [GitHub Signal Contract S3.0](../architecture/github-signal-contract.md) | Contrato de domínio — Bridge ainda não |
 
 ---
 

@@ -3,6 +3,10 @@ import { DIGITAL_TEAM_EMPLOYEES } from "@operaia/digital-team";
 import { env } from "../../config/env.js";
 import { RepositoryWorkspaceSource } from "../employees/repository-workspace-source.js";
 import {
+  createMemoryStore,
+  resolveMemoryStoreMode,
+} from "../memory/memory-store-factory.js";
+import {
   createLabRuntime,
   type LabRuntime,
 } from "../operations/lab-runtime.js";
@@ -29,6 +33,10 @@ export function createProductLabRuntime(): ProductRuntime {
     teamIds,
   );
 
+  const memoryStore = createMemoryStore(
+    resolveMemoryStoreMode(env.MEMORY_STORE),
+  );
+
   const lab = createLabRuntime({
     stack: {
       provider: env.LLM_PROVIDER,
@@ -42,7 +50,14 @@ export function createProductLabRuntime(): ProductRuntime {
     },
     workspaces,
     taskRepository,
+    memoryStore,
     enableConsoleObservability: env.LLM_OBSERVABILITY,
+    // Unified Mission Gateway: default env true; kill-switch ASSISTED_QUEUE_MODE=false.
+    preferQueue: env.ASSISTED_QUEUE_MODE,
+    missionWait: {
+      timeoutMs: env.ASSISTED_MISSION_WAIT_TIMEOUT_MS,
+      pollIntervalMs: env.ASSISTED_MISSION_WAIT_POLL_MS,
+    },
   });
 
   const continuous = new ContinuousRuntime({
@@ -58,7 +73,11 @@ export function createProductLabRuntime(): ProductRuntime {
     heartbeatIntervalMs: env.WORKER_HEARTBEAT_INTERVAL_MS,
     schedulerIntervalMs: env.SCHEDULER_INTERVAL_MS,
     staleRunningMs: env.MISSION_STALE_RUNNING_MS,
+    allowLearningPrismaFallback: env.MEMORY_M1_LEARNING_FALLBACK,
   });
+
+  // Fila disponivel para Assisted; default ASSISTED_QUEUE_MODE=true (kill-switch=false).
+  lab.operations.service.bindQueue(continuous.queue);
 
   return { lab, continuous };
 }

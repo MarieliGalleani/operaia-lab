@@ -54,9 +54,9 @@ describe("Etapa 7 — E2E Digital Office (missao NEXO)", () => {
     const snapshot = await workspaces.toSnapshot("nexo");
     expect(snapshot).toBeDefined();
     expect(snapshot?.name).toBe("NEXO");
-    expect(snapshot?.tasks.some((t) => t.title.includes("autenticacao"))).toBe(
-      true,
-    );
+    expect(
+      (snapshot?.tasks ?? []).some((t) => t.title.includes("autenticacao")),
+    ).toBe(true);
 
     // 2–6. MissionOrchestrator: CEO → Delegacao → Mag → Consolidacao
     const mission = await orchestrator.run("operaia-ceo", {
@@ -152,7 +152,7 @@ describe("Etapa 7 — E2E Digital Office (missao NEXO)", () => {
     const mission = await orchestrator.run("operaia-ceo", {
       workspace: {
         ...snapshot!,
-        tasks: snapshot!.tasks.map((task) => ({
+        tasks: (snapshot!.tasks ?? []).map((task) => ({
           ...task,
           status: "DONE" as const,
         })),

@@ -25,6 +25,16 @@ describe("CEO delegation gate", () => {
     ).toBe(true);
   });
 
+  it("delega revisao de projeto com pedido de plano tecnico", () => {
+    expect(
+      needsSpecialistDelegation({
+        objective: "Revisar o projeto NEXO e gerar um plano tecnico.",
+        pendingTitles: pending,
+        planRequestsDelegate: true,
+      }),
+    ).toBe(true);
+  });
+
   it("CEO responde sozinha em pergunta consultiva", () => {
     expect(
       needsSpecialistDelegation({
