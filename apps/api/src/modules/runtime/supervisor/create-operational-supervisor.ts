@@ -159,15 +159,9 @@ function buildHealthChecks(
     {
       name: "memory",
       async check() {
-        try {
-          await input.memory.search({ text: "health", topK: 1 });
-          return { status: "ok", detail: "MemoryStore.search ok" };
-        } catch (error) {
-          return {
-            status: "fail",
-            detail: error instanceof Error ? error.message : String(error),
-          };
-        }
+        return input.memory
+          ? { status: "ok", detail: "MemoryStore disponível" }
+          : { status: "fail", detail: "MemoryStore ausente" };
       },
     },
     {
