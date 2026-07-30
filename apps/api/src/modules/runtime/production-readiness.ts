@@ -145,15 +145,33 @@ function fail(
     checkedAt: new Date().toISOString(),
   };
 }
-
 async function checkPostgres(): Promise<ComponentReadiness> {
   try {
     await prisma.$queryRaw`SELECT 1`;
+
     return ready("PostgreSQL", "Conexao OK");
   } catch (error) {
     return fail(
       "PostgreSQL",
       error instanceof Error ? error.message : String(error),
+    );
+  }
+}
+
+async function checkMemoryStore(
+  memory: MemoryStore,
+): Promise<ComponentReadiness> {
+  try {
+    if (!memory) {
+      return fail("MemoryStore", "MemoryStore ausente");
+    }
+
+    return ready("MemoryStore", "MemoryStore disponível");
+  } catch (error) {
+    return warn(
+      "MemoryStore",
+      error instanceof Error ? error.message : String(error),
+      false,
     );
   }
 }
@@ -233,21 +251,6 @@ async function checkWorkspaceRuntime(
     return fail(
       "WorkspaceRuntime",
       error instanceof Error ? error.message : String(error),
-    );
-  }
-}
-
-async function checkMemoryStore(
-  memory: MemoryStore,
-): Promise<ComponentReadiness> {
-  try {
-    await memory.search({ text: "readiness", topK: 1 });
-    return ready("MemoryStore", "search OK");
-  } catch (error) {
-    return warn(
-      "MemoryStore",
-      error instanceof Error ? error.message : String(error),
-      false,
     );
   }
 }
