@@ -55,6 +55,17 @@ describe("CEO delegation gate", () => {
     ).toBe(false);
   });
 
+  it("A.4.2: MISSION_INTENT TECH força especialista mesmo sem pendencias", () => {
+    expect(
+      needsSpecialistDelegation({
+        objective:
+          "[MISSION_INTENT] TECH_IMPLEMENTATION|employee:cto-mag|confidence:0.90\n\nQuero implementar autenticação.",
+        pendingTitles: [],
+        planRequestsDelegate: false,
+      }),
+    ).toBe(true);
+  });
+
   it("nao delega se o plano nao pediu DELEGATE", () => {
     expect(
       needsSpecialistDelegation({

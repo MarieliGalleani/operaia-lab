@@ -1,3 +1,4 @@
+import type { ActionCapabilityProvider } from "@operaia/action-runtime";
 import type { Employee, EmployeeBriefing } from "@operaia/employee-framework";
 import type { ToolContext } from "@operaia/tool-runtime";
 import { WorkspaceBriefingAdapter } from "../briefing/workspace-briefing-adapter.js";
@@ -7,6 +8,9 @@ import type { EmployeeResult } from "./employee-result.js";
 
 /** Chave em briefing.additional para o ToolContext. */
 export const BRIEFING_TOOL_CONTEXT_KEY = "toolContext" as const;
+
+/** Chave em briefing.additional para ActionCapabilityProvider (A.5). */
+export const BRIEFING_ACTION_CAPABILITY_KEY = "actionCapability" as const;
 
 /**
  * Coloca um funcionario para trabalhar dentro de um Workspace.
@@ -34,7 +38,8 @@ export class EmployeeRunner {
       withDelegation,
       context.executionSummaries,
     );
-    const briefing = attachToolContext(withExecution, context.tools);
+    const withTools = attachToolContext(withExecution, context.tools);
+    const briefing = attachActionCapability(withTools, context.actions);
     const output = await employee.work({ briefing });
 
     return {
@@ -61,9 +66,19 @@ export function getToolContextFromBriefing(
 }
 
 /**
- * Injeta notas de memoria no briefing (history + additional.memoryContext).
- * Apenas transporte — sem acoplar a MemoryStore.
+ * Recupera ActionCapabilityProvider injetado no briefing (se houver).
+ * Employees usam requestAction — nunca adapters.
  */
+export function getActionCapabilityFromBriefing(
+  briefing: EmployeeBriefing,
+): ActionCapabilityProvider | null {
+  const value = briefing.additional[BRIEFING_ACTION_CAPABILITY_KEY];
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  return value as ActionCapabilityProvider;
+}
+
 function attachMemoryNotes(
   briefing: EmployeeBriefing,
   notes: readonly string[] | undefined,
@@ -82,10 +97,6 @@ function attachMemoryNotes(
   };
 }
 
-/**
- * Injeta outcomes de delegacao no briefing (campo `additional`).
- * Apenas transporte de dados — nao interpreta o conteudo.
- */
 function attachDelegationOutcomes(
   briefing: EmployeeBriefing,
   outcomes: readonly DelegationOutcome[] | undefined,
@@ -113,10 +124,6 @@ function attachDelegationOutcomes(
   };
 }
 
-/**
- * Injeta resultados normalizados do Execution Engine no briefing.
- * Apenas transporte — o brain decide se usa.
- */
 function attachExecutionSummaries(
   briefing: EmployeeBriefing,
   summaries: EmployeeContext["executionSummaries"],
@@ -134,10 +141,6 @@ function attachExecutionSummaries(
   };
 }
 
-/**
- * Injeta ToolContext permitido pela ToolPermissionPolicy.
- * Employee acessa via getToolContextFromBriefing / additional.toolContext.
- */
 function attachToolContext(
   briefing: EmployeeBriefing,
   tools: ToolContext | undefined,
@@ -152,6 +155,25 @@ function attachToolContext(
       ...briefing.additional,
       [BRIEFING_TOOL_CONTEXT_KEY]: tools,
       toolIds: tools.listAllowedTools(),
+    },
+  };
+}
+
+function attachActionCapability(
+  briefing: EmployeeBriefing,
+  actions: ActionCapabilityProvider | null | undefined,
+): EmployeeBriefing {
+  if (!actions) {
+    return briefing;
+  }
+
+  return {
+    ...briefing,
+    additional: {
+      ...briefing.additional,
+      [BRIEFING_ACTION_CAPABILITY_KEY]: actions,
+      actionWorkspaceId: actions.workspaceId,
+      actionEmployeeId: actions.employeeId,
     },
   };
 }

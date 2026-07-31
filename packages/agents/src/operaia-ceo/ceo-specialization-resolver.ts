@@ -21,11 +21,11 @@ const SPECIALTY_RULES: readonly {
     specialization: Specialization.MARKETING,
   },
   {
-    pattern: /\b(automat|integra|workflow|pipeline|zapier|n8n)\w*/i,
+    pattern: /\b(automat|integra|workflow|pipeline|zapier|n8n|docker|compose|caddy|systemd|servidor|infra|vps|container)\w*/i,
     specialization: Specialization.AUTOMATION,
   },
   {
-    pattern: /\b(opera[cç][aã]o|ops\b|sla|processo operacional|hand.?off)\w*/i,
+    pattern: /\b(opera[cç][aã]o|ops\b|sla|processo operacional|hand.?off|journal|logs?\b)\w*/i,
     specialization: Specialization.OPERATIONS,
   },
   {

@@ -1,6 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { RecordingLLMObserver } from "@operaia/ai-core";
 import type { MemoryStore } from "@operaia/memory";
+import {
+  defaultIntentRouter,
+  formatObjectiveWithIntent,
+  type IntentRouter,
+  type MissionIntent,
+} from "@operaia/mission-router";
 import type { DigitalOffice } from "../employees/office-composition.js";
 import { MissionOrchestrator } from "../employees/mission-orchestrator.js";
 import { presentMissionResult } from "../employees/mission-presenter.js";
@@ -66,18 +72,24 @@ export interface OperationalMissionServiceOptions {
    */
   readonly preferQueue?: boolean;
   readonly wait?: WaitUntilTerminalOptions;
+  /** A.4.2 — default RuleBasedIntentRouter. */
+  readonly intentRouter?: IntentRouter;
 }
 
 /**
  * Ciclo operacional assistido.
  * Path B (default produto via ASSISTED_QUEUE_MODE): MissionQueue → wait → projector.
  * Path A (kill-switch / lab): MissionOrchestrator sync → OperationalRun.
+ *
+ * A.4.2: Mission Intent Router classifica a mensagem antes de criar a missao.
+ * CEO permanece coordenadora (COORDINATE / sync start); intent marca o especialista.
  */
 export class OperationalMissionService {
   private readonly orchestrator: MissionOrchestrator;
   private queue: AssistedMissionQueuePort | undefined;
   private preferQueue: boolean;
   private readonly waitOptions: WaitUntilTerminalOptions;
+  private readonly intentRouter: IntentRouter;
 
   constructor(
     office: DigitalOffice,
@@ -94,6 +106,7 @@ export class OperationalMissionService {
       preferQueue: options.preferQueue,
     }).preferQueue;
     this.waitOptions = options.wait ?? {};
+    this.intentRouter = options.intentRouter ?? defaultIntentRouter;
   }
 
   /** Late-binding (product: ContinuousRuntime.queue apos composition). */
@@ -117,11 +130,31 @@ export class OperationalMissionService {
     return { preferQueue: this.preferQueue };
   }
 
+  /** Expoe o ultimo intent classificado (testes / observabilidade). */
+  routeIntent(message: string, workspaceId: string): MissionIntent {
+    return this.intentRouter.route(message, workspaceId);
+  }
+
   async run(input: RunOperationalMissionInput): Promise<OperationalRun> {
+    const intent = this.intentRouter.route(input.objective, input.workspaceId);
+    const routed: RunOperationalMissionInput & { readonly intent: MissionIntent } =
+      {
+        ...input,
+        objective: formatObjectiveWithIntent(input.objective, intent),
+        intent,
+      };
+
+    console.log("[mission-intent-router]", {
+      workspaceId: intent.workspaceId,
+      intentType: intent.intentType,
+      suggestedEmployee: intent.suggestedEmployee,
+      confidence: intent.confidence,
+    });
+
     if (this.preferQueue) {
-      return this.runViaQueue(input);
+      return this.runViaQueue(routed);
     }
-    return this.runSync(input);
+    return this.runSync(routed);
   }
 
   /**
@@ -228,7 +261,7 @@ export class OperationalMissionService {
   }
 
   private async runSync(
-    input: RunOperationalMissionInput,
+    input: RunOperationalMissionInput & { readonly intent?: MissionIntent },
   ): Promise<OperationalRun> {
     const workspace = await this.workspaces.getWorkspace(input.workspaceId);
     const snapshot = await this.workspaces.toSnapshot(input.workspaceId);
@@ -240,10 +273,11 @@ export class OperationalMissionService {
     const startedAt = new Date().toISOString();
     const employeeId = input.employeeId ?? CEO_EMPLOYEE_ID;
     const missionId = randomUUID();
+    const displayObjective = input.intent?.message ?? input.objective;
 
     const memoryNotes = await loadOperationalMemoryNotes(this.memory, {
       workspaceId: input.workspaceId,
-      objective: input.objective,
+      objective: displayObjective,
     });
 
     const mission = await this.orchestrator.run(employeeId, {
@@ -266,7 +300,7 @@ export class OperationalMissionService {
       status: "completed",
       workspaceId: input.workspaceId,
       workspaceName: workspace.name,
-      objective: input.objective,
+      objective: displayObjective,
       startedAt,
       finishedAt,
       mission,
@@ -288,7 +322,7 @@ export class OperationalMissionService {
     await persistMissionMemory(this.memory, {
       workspaceId: input.workspaceId,
       missionId: run.id,
-      objective: input.objective,
+      objective: displayObjective,
       summary: run.usableResult,
     });
 

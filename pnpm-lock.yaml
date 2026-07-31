@@ -56,6 +56,9 @@ importers:
       '@operaia/memory':
         specifier: workspace:*
         version: link:../../packages/memory
+      '@operaia/mission-router':
+        specifier: workspace:*
+        version: link:../../packages/mission-router
       '@operaia/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -161,6 +164,9 @@ importers:
       '@operaia/memory':
         specifier: workspace:*
         version: link:../memory
+      '@operaia/mission-router':
+        specifier: workspace:*
+        version: link:../mission-router
       '@operaia/shared':
         specifier: workspace:*
         version: link:../shared
@@ -220,6 +226,9 @@ importers:
 
   packages/employee-runtime:
     dependencies:
+      '@operaia/action-runtime':
+        specifier: workspace:*
+        version: link:../action-runtime
       '@operaia/employee-framework':
         specifier: workspace:*
         version: link:../employee-framework
@@ -451,6 +460,12 @@ importers:
       '@operaia/shared':
         specifier: workspace:*
         version: link:../shared
+
+  packages/mission-router:
+    devDependencies:
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(tsx@4.23.1)
 
   packages/orchestration-engine:
     devDependencies:

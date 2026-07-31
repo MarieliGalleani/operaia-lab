@@ -1,5 +1,12 @@
 import type { DomainSignalService } from "@operaia/domain-signals";
 import type { MemoryStore } from "@operaia/memory";
+import {
+  createEmployeeActionsFactory,
+} from "@operaia/employee-runtime";
+import type {
+  ActionRuntime,
+  ExecutionLedger,
+} from "@operaia/action-runtime";
 import type { DigitalOffice } from "../employees/office-composition.js";
 import type { WorkspaceSource } from "../employees/workspace-source.js";
 import {
@@ -16,6 +23,7 @@ import {
 import type { ProjectRepository } from "../projects/domain/project.repository.js";
 import { ensureOperationalWorkspaces } from "../projects/ensure-operational-workspaces.js";
 import type { TaskRepository } from "../tasks/domain/task.repository.js";
+import { createLabActionRuntime } from "./action-runtime-factory.js";
 import type { EmployeeWorkerLogger } from "./employee-worker.js";
 import { createEmployeeToolsFactory } from "./github-employee-tools-factory.js";
 import { MissionQueue } from "./mission-queue.js";
@@ -72,6 +80,17 @@ export interface ContinuousRuntimeConfig {
    * Ex.: { "operaia-lab": "/home/ubuntu/operaia-lab" }
    */
   readonly workspaceInfraRoots?: Readonly<Record<string, string>>;
+  /**
+   * Action Runtime A.5 — default createLabActionRuntime (InMemory ledger).
+   * Producao: passar executionLedger Prisma ou actionRuntime pronto.
+   */
+  readonly actionRuntime?: ActionRuntime;
+  readonly executionLedger?: ExecutionLedger;
+  readonly workspaceActionTargets?: Readonly<
+    Record<string, readonly string[]>
+  >;
+  /** Default true — injeta actionsFactory no executor (Atlas/Orion). */
+  readonly enableWorkerActions?: boolean;
 }
 
 /**
@@ -88,6 +107,8 @@ export class ContinuousRuntime {
   >["eventStore"];
   readonly improvement: ImprovementEngine;
   readonly governance = new GovernanceService();
+  /** Action Runtime compartilhado com workers (A.5). */
+  readonly actionRuntime: ActionRuntime;
   private readonly learningStats = new PrismaLearningStatsAdapter();
   private readonly scheduleRules = new PrismaScheduleRuleAdapter();
   private readonly startedAt = Date.now();
@@ -106,6 +127,13 @@ export class ContinuousRuntime {
             userAgent: "operaia-lab-github",
           })
         : null;
+
+    this.actionRuntime =
+      config.actionRuntime ??
+      createLabActionRuntime({
+        executionLedger: config.executionLedger,
+        workspaceTargets: config.workspaceActionTargets,
+      });
 
     this.executor = new QueuedMissionExecutor(
       config.office,
@@ -129,6 +157,11 @@ export class ContinuousRuntime {
             "operaia-lab": process.cwd(),
           },
         }),
+      );
+    }
+    if (config.enableWorkerActions !== false) {
+      this.executor.setActionsFactory(
+        createEmployeeActionsFactory(this.actionRuntime),
       );
     }
     this.workers = new WorkerManager({

@@ -40,6 +40,7 @@ import {
 import { CEO_EMPLOYEE_ID, MissionKind } from "./mission-states.js";
 import {
   buildToolsForEmployee,
+  type EmployeeActionsFactory,
   type EmployeeToolsFactory,
 } from "@operaia/employee-runtime";
 
@@ -66,6 +67,11 @@ export interface QueuedMissionExecutorOptions {
    * Default: tools sem adapters.
    */
   readonly toolsFactory?: EmployeeToolsFactory;
+  /**
+   * Factory de ActionCapabilityProvider (Action Runtime A.5).
+   * Default: sem acoes.
+   */
+  readonly actionsFactory?: EmployeeActionsFactory;
 }
 
 /**
@@ -76,6 +82,7 @@ export class QueuedMissionExecutor {
   private portfolioProvider: PortfolioProvider | null = null;
   private readonly allowLearningPrismaFallback: boolean;
   private toolsFactory: EmployeeToolsFactory;
+  private actionsFactory: EmployeeActionsFactory;
 
   constructor(
     private readonly office: DigitalOffice,
@@ -91,6 +98,7 @@ export class QueuedMissionExecutor {
     this.toolsFactory =
       options.toolsFactory ??
       ((employeeId) => buildToolsForEmployee(employeeId));
+    this.actionsFactory = options.actionsFactory ?? (() => null);
   }
 
   setPortfolioProvider(provider: PortfolioProvider): void {
@@ -99,6 +107,10 @@ export class QueuedMissionExecutor {
 
   setToolsFactory(factory: EmployeeToolsFactory): void {
     this.toolsFactory = factory;
+  }
+
+  setActionsFactory(factory: EmployeeActionsFactory): void {
+    this.actionsFactory = factory;
   }
 
   async execute(mission: Mission, workerEmployeeId: string): Promise<void> {
@@ -297,11 +309,16 @@ export class QueuedMissionExecutor {
       workerEmployeeId,
       mission.workspaceId,
     );
+    const actions = await this.actionsFactory(
+      workerEmployeeId,
+      mission.workspaceId,
+    );
     const result = await runner.run(employee, {
       workspace: context.workspace,
       objective: context.objective,
       memoryNotes: context.memoryNotes,
       tools,
+      actions,
     });
 
     const executionTime = Date.now() - started;

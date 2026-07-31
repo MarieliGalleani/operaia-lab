@@ -1,4 +1,5 @@
 import { isBroadLaunchObjective } from "./ceo-specialization-resolver.js";
+import { requiresSpecialistFromIntentMarker } from "@operaia/mission-router";
 
 /**
  * Gate de delegacao da CEO: decide se a missao exige especialista
@@ -33,12 +34,18 @@ export interface DelegationGateInput {
  * False = resposta imediata da Opera (sem Mag / sem consolidacao).
  */
 export function needsSpecialistDelegation(input: DelegationGateInput): boolean {
-  if (input.pendingTitles.length === 0) {
+  const objective = input.objective.trim();
+  if (objective.length === 0) {
     return false;
   }
 
-  const objective = input.objective.trim();
-  if (objective.length === 0) {
+  // A.4.2 — Mission Intent Router: TECH/BUG/INFRA forcam especialista
+  // mesmo sem pendencias no quadro (intenção do usuario e a fonte).
+  if (requiresSpecialistFromIntentMarker(objective)) {
+    return true;
+  }
+
+  if (input.pendingTitles.length === 0) {
     return false;
   }
 

@@ -1,6 +1,7 @@
 /**
- * Composition helper A.4 / A.4.1 — Action Runtime.
- * NAO integrado a WorkerManager / MissionQueue / Supervisor / UI.
+ * Composition helper A.4 / A.4.1 / A.5 — Action Runtime para Workers.
+ * WorkerManager lifecycle nao muda: o QueuedMissionExecutor injeta
+ * ActionCapabilityProvider no EmployeeContext durante EXECUTE.
  *
  * Default: InMemoryExecutionLedger
  * Producao: passar PrismaExecutionLedger(prisma)

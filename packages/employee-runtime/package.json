@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@operaia/action-runtime": "workspace:*",
     "@operaia/employee-framework": "workspace:*",
     "@operaia/execution-engine": "workspace:*",
     "@operaia/shared": "workspace:*",

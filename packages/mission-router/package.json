@@ -1,5 +1,5 @@
 {
-  "name": "@operaia/agents",
+  "name": "@operaia/mission-router",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,13 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
-  "dependencies": {
-    "@operaia/ai-core": "workspace:*",
-    "@operaia/employee-framework": "workspace:*",
-    "@operaia/memory": "workspace:*",
-    "@operaia/mission-router": "workspace:*",
-    "@operaia/shared": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "vitest": "^3.0.5"
   }

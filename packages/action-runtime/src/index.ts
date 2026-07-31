@@ -61,6 +61,13 @@ export {
 } from "./action-runtime.js";
 
 export {
+  ActionCapabilityProvider,
+  createActionCapabilityProvider,
+  type ActionCapabilityRequest,
+  type ActionCapabilityProviderOptions,
+} from "./action-capability-provider.js";
+
+export {
   DockerActionAdapter,
   MemoryDockerActionClient,
   type DockerActionClient,

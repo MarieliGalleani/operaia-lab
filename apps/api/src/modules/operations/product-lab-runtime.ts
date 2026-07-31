@@ -1,6 +1,11 @@
 import { parseLLMProviderList } from "@operaia/ai-core";
 import { DIGITAL_TEAM_EMPLOYEES } from "@operaia/digital-team";
 import { DomainSignalService } from "@operaia/domain-signals";
+import {
+  PrismaExecutionLedger,
+  type ActionExecutionPrismaClient,
+} from "@operaia/action-runtime";
+import { prisma } from "@operaia/database";
 import { env } from "../../config/env.js";
 import { RepositoryWorkspaceSource } from "../employees/repository-workspace-source.js";
 import {
@@ -92,6 +97,16 @@ export function createProductLabRuntime(): ProductRuntime {
     githubToken: env.GITHUB_TOKEN,
     workspaceInfraRoots: {
       "operaia-lab": process.cwd(),
+    },
+    executionLedger: new PrismaExecutionLedger(
+      prisma as unknown as ActionExecutionPrismaClient,
+    ),
+    workspaceActionTargets: {
+      "operaia-lab": [
+        "api",
+        "operaia-lab-api.service",
+        "infra/caddy/Caddyfile",
+      ],
     },
   });
 
