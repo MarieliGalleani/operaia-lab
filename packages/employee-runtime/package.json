@@ -15,7 +15,8 @@
   "dependencies": {
     "@operaia/employee-framework": "workspace:*",
     "@operaia/execution-engine": "workspace:*",
-    "@operaia/shared": "workspace:*"
+    "@operaia/shared": "workspace:*",
+    "@operaia/tool-runtime": "workspace:*"
   },
   "devDependencies": {
     "@operaia/agents": "workspace:*",

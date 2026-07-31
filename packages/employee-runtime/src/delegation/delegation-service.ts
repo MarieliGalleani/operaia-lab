@@ -2,7 +2,21 @@ import type { DelegationRequest } from "@operaia/employee-framework";
 import type { EmployeeContext } from "../activation/employee-context.js";
 import type { EmployeeResult } from "../activation/employee-result.js";
 import { EmployeeRunner } from "../activation/employee-runner.js";
+import { buildToolsForEmployee } from "../tools/build-tools-for-employee.js";
 import { EmployeeMatcher } from "./employee-matcher.js";
+
+/**
+ * Relatorio estruturado opcional da execucao do especialista (fila async).
+ */
+export interface ExecutionReportPayload {
+  readonly employeeId: string;
+  readonly summary: string;
+  readonly findings: readonly string[];
+  readonly risks: readonly string[];
+  readonly recommendations: readonly string[];
+  readonly confidence: number;
+  readonly executionTime: number;
+}
 
 /**
  * Resultado de um pedido de delegacao: o pedido original, se houve um
@@ -13,6 +27,7 @@ export interface DelegationOutcome {
   readonly matched: boolean;
   readonly employeeId?: string;
   readonly result?: EmployeeResult;
+  readonly executionReport?: ExecutionReportPayload;
 }
 
 /**
@@ -45,10 +60,12 @@ export class DelegationService {
 
       const employee = matched.create(this.dependencies);
       const objective = request.task ?? request.reason ?? context.objective;
+      const tools = buildToolsForEmployee(employee.profile.id);
       const result = await this.runner.run(employee, {
         workspace: context.workspace,
         objective,
         memoryNotes: context.memoryNotes,
+        tools,
       });
 
       outcomes.push({

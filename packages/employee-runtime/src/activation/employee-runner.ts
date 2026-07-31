@@ -1,8 +1,12 @@
 import type { Employee, EmployeeBriefing } from "@operaia/employee-framework";
+import type { ToolContext } from "@operaia/tool-runtime";
 import { WorkspaceBriefingAdapter } from "../briefing/workspace-briefing-adapter.js";
 import type { DelegationOutcome } from "../delegation/delegation-service.js";
 import type { EmployeeContext } from "./employee-context.js";
 import type { EmployeeResult } from "./employee-result.js";
+
+/** Chave em briefing.additional para o ToolContext. */
+export const BRIEFING_TOOL_CONTEXT_KEY = "toolContext" as const;
 
 /**
  * Coloca um funcionario para trabalhar dentro de um Workspace.
@@ -26,10 +30,11 @@ export class EmployeeRunner {
       withMemory,
       context.delegationOutcomes,
     );
-    const briefing = attachExecutionSummaries(
+    const withExecution = attachExecutionSummaries(
       withDelegation,
       context.executionSummaries,
     );
+    const briefing = attachToolContext(withExecution, context.tools);
     const output = await employee.work({ briefing });
 
     return {
@@ -39,6 +44,20 @@ export class EmployeeRunner {
       output,
     };
   }
+}
+
+/**
+ * Recupera ToolContext injetado no briefing (se houver).
+ * Employees usam isto em vez de conhecer adapters.
+ */
+export function getToolContextFromBriefing(
+  briefing: EmployeeBriefing,
+): ToolContext | null {
+  const value = briefing.additional[BRIEFING_TOOL_CONTEXT_KEY];
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  return value as ToolContext;
 }
 
 /**
@@ -88,6 +107,7 @@ function attachDelegationOutcomes(
         report: outcome.result?.output.report,
         decision: outcome.result?.output.decision,
         qualityPassed: outcome.result?.output.quality.passed,
+        executionReport: outcome.executionReport,
       })),
     },
   };
@@ -110,6 +130,28 @@ function attachExecutionSummaries(
     additional: {
       ...briefing.additional,
       executionResults: summaries,
+    },
+  };
+}
+
+/**
+ * Injeta ToolContext permitido pela ToolPermissionPolicy.
+ * Employee acessa via getToolContextFromBriefing / additional.toolContext.
+ */
+function attachToolContext(
+  briefing: EmployeeBriefing,
+  tools: ToolContext | undefined,
+): EmployeeBriefing {
+  if (!tools) {
+    return briefing;
+  }
+
+  return {
+    ...briefing,
+    additional: {
+      ...briefing.additional,
+      [BRIEFING_TOOL_CONTEXT_KEY]: tools,
+      toolIds: tools.listAllowedTools(),
     },
   };
 }

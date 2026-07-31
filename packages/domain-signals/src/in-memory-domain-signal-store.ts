@@ -84,6 +84,28 @@ export class InMemoryDomainSignalStore implements DomainSignalStore {
     return this.bindings.get(id) ?? null;
   }
 
+  async findBindingsByExternalRef(input: {
+    readonly sourceType: string;
+    readonly externalRef: string;
+    readonly enabledOnly?: boolean;
+  }): Promise<readonly WorkspaceSourceBindingRecord[]> {
+    const ref = input.externalRef.trim().toLowerCase();
+    return [...this.bindings.values()].filter(
+      (row) =>
+        row.sourceType === input.sourceType &&
+        row.externalRef.toLowerCase() === ref &&
+        (input.enabledOnly ? row.enabled : true),
+    );
+  }
+
+  async listBindings(input?: {
+    readonly enabledOnly?: boolean;
+  }): Promise<readonly WorkspaceSourceBindingRecord[]> {
+    return [...this.bindings.values()].filter((row) =>
+      input?.enabledOnly ? row.enabled : true,
+    );
+  }
+
   async createSignal(data: CreateDomainSignalData): Promise<DomainSignalRecord> {
     const dup = await this.findByDelivery({
       sourceType: data.sourceType,

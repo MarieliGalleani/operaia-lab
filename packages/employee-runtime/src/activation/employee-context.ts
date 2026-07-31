@@ -1,4 +1,5 @@
 import type { WorkspaceSnapshot } from "@operaia/employee-framework";
+import type { ToolContext } from "@operaia/tool-runtime";
 import type { DelegationOutcome } from "../delegation/delegation-service.js";
 
 /**
@@ -29,6 +30,9 @@ export interface ExecutionSummaryNote {
  * injeta no briefing; funcionarios nao conhecem MemoryStore.
  *
  * `executionSummaries` carrega resultados do Execution Engine (apos Policy).
+ *
+ * `tools` (ToolContext) expoe ferramentas permitidas pela ToolPermissionPolicy.
+ * O Employee nunca conhece adapters concretos.
  */
 export interface EmployeeContext {
   readonly workspace: WorkspaceSnapshot;
@@ -36,4 +40,5 @@ export interface EmployeeContext {
   readonly memoryNotes?: readonly string[];
   readonly delegationOutcomes?: readonly DelegationOutcome[];
   readonly executionSummaries?: readonly ExecutionSummaryNote[];
+  readonly tools?: ToolContext;
 }

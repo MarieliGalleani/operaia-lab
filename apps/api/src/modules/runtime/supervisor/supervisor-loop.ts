@@ -1,5 +1,6 @@
 import type { CoordinationDispatcher } from "./coordination-dispatcher.js";
 import type { HealthMonitor } from "./health-monitor.js";
+import type { GitHubRepositoryScanner } from "./github-repository-scanner.js";
 import type { MissionScanner } from "./mission-scanner.js";
 import type {
   SnapshotStorePort,
@@ -8,6 +9,7 @@ import type {
 import type { QueueMonitor } from "./queue-monitor.js";
 import type { RecoveryCoordinator } from "./recovery-coordinator.js";
 import { SnapshotGenerator } from "./snapshot-generator.js";
+import type { SignalDecisionEngine } from "../signal-decision-engine.js";
 import type { WorkspaceScanner } from "./workspace-scanner.js";
 import type { OperationalSnapshot, SupervisorCycleContext } from "./types.js";
 import { SupervisorEvent } from "./types.js";
@@ -25,12 +27,16 @@ export interface SupervisorLoopDeps {
   readonly intervalMs: number;
   readonly staleRunningMs: number;
   readonly sleep?: (ms: number) => Promise<void>;
+  /** Opcional: visao operacional GitHub (bindings existentes). */
+  readonly githubRepositoryScanner?: GitHubRepositoryScanner;
+  /** Opcional: decisao operacional sobre sinais emitidos no scan. */
+  readonly signalDecisionEngine?: SignalDecisionEngine;
 }
 
 /**
  * SupervisorLoop — servico operacional permanente.
  *
- * health → workspace scan → mission scan → queue scan →
+ * health → workspace scan → github repo scan → mission scan → queue scan →
  * recover stale → dispatch coordination → sleep
  *
  * NUNCA toma decisoes de negocio.
@@ -117,6 +123,35 @@ export class SupervisorLoop {
         active: workspaces.activeCount,
         attention: workspaces.attentionCount,
       });
+
+      if (this.deps.githubRepositoryScanner) {
+        const activeWorkspaceIds = workspaces.workspaces
+          .filter((ws) => ws.status === "ACTIVE")
+          .map((ws) => ws.workspaceId);
+        const github = await this.deps.githubRepositoryScanner.scan({
+          activeWorkspaceIds,
+        });
+        this.deps.logger.emit(SupervisorEvent.GITHUB_REPOS_SCANNED, {
+          scanned: github.scanned,
+          updated: github.updated,
+          signalsEmitted: github.signalsEmitted,
+          skipped: github.skipped,
+          errors: github.errors,
+        });
+
+        if (this.deps.signalDecisionEngine) {
+          const decisions =
+            await this.deps.signalDecisionEngine.processGithubScan(github);
+          this.deps.logger.emit(SupervisorEvent.SIGNAL_DECISIONS, {
+            processed: decisions.length,
+            converted: decisions.filter((d) => d.outcome === "converted")
+              .length,
+            ignored: decisions.filter((d) => d.outcome === "ignored").length,
+            deferred: decisions.filter((d) => d.outcome === "deferred")
+              .length,
+          });
+        }
+      }
 
       const missions = await this.deps.missionScanner.scan();
       this.deps.logger.emit(SupervisorEvent.MISSION_SCANNED, {

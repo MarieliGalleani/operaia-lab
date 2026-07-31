@@ -1,3 +1,4 @@
+import type { DomainSignalService } from "@operaia/domain-signals";
 import type { MemoryStore } from "@operaia/memory";
 import type { DigitalOffice } from "../employees/office-composition.js";
 import type { WorkspaceSource } from "../employees/workspace-source.js";
@@ -13,8 +14,10 @@ import {
   type MissionExecutionStack,
 } from "../operations/mission-execution.js";
 import type { ProjectRepository } from "../projects/domain/project.repository.js";
+import { ensureOperationalWorkspaces } from "../projects/ensure-operational-workspaces.js";
 import type { TaskRepository } from "../tasks/domain/task.repository.js";
 import type { EmployeeWorkerLogger } from "./employee-worker.js";
+import { createEmployeeToolsFactory } from "./github-employee-tools-factory.js";
 import { MissionQueue } from "./mission-queue.js";
 import { MissionScheduler } from "./mission-scheduler.js";
 import {
@@ -23,11 +26,14 @@ import {
 } from "./production-readiness.js";
 import { QueuedMissionExecutor } from "./queued-mission-executor.js";
 import { createOperationalSupervisor } from "./supervisor/create-operational-supervisor.js";
+import { FetchGithubRepoClient } from "./supervisor/github-repo-client.js";
 import { PrismaLearningStatsAdapter } from "./supervisor/infrastructure/prisma-learning-stats-adapter.js";
 import { PrismaScheduleRuleAdapter } from "./supervisor/infrastructure/prisma-schedule-rule-adapter.js";
 import type { SupervisorLoop } from "./supervisor/supervisor-loop.js";
 import type { OperationalSnapshot } from "./supervisor/types.js";
 import { WorkerManager } from "./worker-manager.js";
+import { GithubApiClient } from "@operaia/tool-runtime";
+
 
 export interface ContinuousRuntimeConfig {
   readonly office: DigitalOffice;
@@ -44,6 +50,28 @@ export interface ContinuousRuntimeConfig {
   readonly staleRunningMs: number;
   /** M1.4 — fallback MissionLearning se indice vazio (migracao). */
   readonly allowLearningPrismaFallback?: boolean;
+  /**
+   * Bootstrap multi-workspace: retorna workspaceIds de bindings enabled.
+   * Sem privilegiar NEXO — cada binding garante um Workspace.
+   */
+  readonly listEnabledBindingWorkspaceIds?: () => Promise<readonly string[]>;
+  /**
+   * Popula catalogo oficial (Projects + WorkspaceSourceBindings).
+   * Idempotente — chamado antes do ensure generico.
+   */
+  readonly ensureOfficialCatalog?: () => Promise<{
+    readonly workspaceIds: readonly string[];
+    readonly projectsEnsured: number;
+    readonly bindingsUpserted: number;
+  }>;
+  /** Habilita scan GitHub no ciclo do Operational Supervisor. */
+  readonly domainSignals?: DomainSignalService;
+  readonly githubToken?: string | null;
+  /**
+   * Roots locais por workspace para LocalInfrastructureAdapter (A.3).
+   * Ex.: { "operaia-lab": "/home/ubuntu/operaia-lab" }
+   */
+  readonly workspaceInfraRoots?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -69,6 +97,16 @@ export class ContinuousRuntime {
 
   constructor(private readonly config: ContinuousRuntimeConfig) {
     this.improvement = createDefaultImprovementEngine();
+
+    // Um unico transporte GitHub para scanner + Tool Adapter (sem clientes paralelos).
+    const sharedGithubApi =
+      config.domainSignals || config.githubToken
+        ? new GithubApiClient({
+            token: config.githubToken,
+            userAgent: "operaia-lab-github",
+          })
+        : null;
+
     this.executor = new QueuedMissionExecutor(
       config.office,
       config.workspaces,
@@ -81,6 +119,18 @@ export class ContinuousRuntime {
           config.allowLearningPrismaFallback ?? false,
       },
     );
+    if (config.domainSignals || config.workspaceInfraRoots) {
+      this.executor.setToolsFactory(
+        createEmployeeToolsFactory({
+          signals: config.domainSignals,
+          client: sharedGithubApi ?? undefined,
+          token: config.githubToken,
+          workspaceInfraRoots: config.workspaceInfraRoots ?? {
+            "operaia-lab": process.cwd(),
+          },
+        }),
+      );
+    }
     this.workers = new WorkerManager({
       office: config.office,
       queue: this.queue,
@@ -116,6 +166,11 @@ export class ContinuousRuntime {
       intervalMs: config.schedulerIntervalMs,
       staleRunningMs: config.staleRunningMs,
       logger: config.logger,
+      domainSignals: config.domainSignals,
+      githubToken: config.githubToken,
+      githubRepoClient: sharedGithubApi
+        ? new FetchGithubRepoClient({ client: sharedGithubApi })
+        : undefined,
     });
     this.supervisor = bundle.supervisor;
     this.eventStore = bundle.eventStore;
@@ -150,6 +205,8 @@ export class ContinuousRuntime {
   }
 
   async start(): Promise<void> {
+    await this.bootstrapWorkspaces();
+
     if (!this.config.enabled || this.started) {
       return;
     }
@@ -213,6 +270,48 @@ export class ContinuousRuntime {
         improvementObservers: this.improvement.getObservers(),
       },
       "Runtime continuo + Operational Supervisor v2 iniciado",
+    );
+  }
+
+  /**
+   * Garante Workspaces a partir do catalogo oficial + bindings enabled.
+   * Chamado no start mesmo com continuous disabled (HTTP/ops precisam do catalogo).
+   */
+  async bootstrapWorkspaces(): Promise<void> {
+    if (this.config.ensureOfficialCatalog) {
+      const official = await this.config.ensureOfficialCatalog();
+      this.config.logger.info(
+        {
+          component: "continuous-runtime",
+          event: "official_catalog_bootstrapped",
+          projectsEnsured: official.projectsEnsured,
+          bindingsUpserted: official.bindingsUpserted,
+          workspaceIds: official.workspaceIds,
+        },
+        "Catalogo operacional oficial garantido",
+      );
+    }
+
+    const listIds = this.config.listEnabledBindingWorkspaceIds;
+    if (!listIds) {
+      return;
+    }
+    const bindingWorkspaceIds = await listIds();
+    const result = await ensureOperationalWorkspaces({
+      projects: this.config.projects,
+      bindingWorkspaceIds,
+    });
+    this.config.logger.info(
+      {
+        component: "continuous-runtime",
+        event: "workspaces_bootstrapped",
+        bindingCount: bindingWorkspaceIds.length,
+        ensured: result.workspaceIds.length,
+        created: result.createdIds.length,
+        activated: result.activatedIds.length,
+        workspaceIds: result.workspaceIds,
+      },
+      "Bootstrap multi-workspace a partir de WorkspaceSourceBinding",
     );
   }
 

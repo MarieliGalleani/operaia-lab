@@ -2,6 +2,7 @@ import type { ProjectRepository } from "../projects/domain/project.repository.js
 import type { TaskRepository } from "../tasks/domain/task.repository.js";
 import {
   buildOfficeWorkspace,
+  publicWorkspaceId,
   resolveProjectNameFromSlug,
   toWorkspaceSnapshotFromRecord,
 } from "./workspace-mappers.js";
@@ -57,6 +58,22 @@ export class RepositoryWorkspaceSource implements WorkspaceSource {
     }
     const name =
       resolveProjectNameFromSlug(workspaceId) ?? workspaceId;
-    return this.projects.findByName(name);
+    const byName = await this.projects.findByName(name);
+    if (byName) {
+      return byName;
+    }
+    if (name !== workspaceId) {
+      const byRaw = await this.projects.findByName(workspaceId);
+      if (byRaw) {
+        return byRaw;
+      }
+    }
+    // Qualquer Project cujo slug publico coincida (multi-workspace generico).
+    const all = await this.projects.findAll();
+    return (
+      all.find(
+        (project) => publicWorkspaceId(project) === workspaceId.toLowerCase(),
+      ) ?? null
+    );
   }
 }

@@ -94,6 +94,18 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+
+  /**
+   * Secret default do webhook GitHub (HMAC X-Hub-Signature-256).
+   * Binding.secretRef pode apontar para outra env via "env:VAR".
+   */
+  GITHUB_WEBHOOK_SECRET: z.string().optional(),
+
+  /**
+   * Token opcional para scan REST de repositorios (GitHubRepositoryScanner).
+   * Sem token, usa API publica (rate limit menor).
+   */
+  GITHUB_TOKEN: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

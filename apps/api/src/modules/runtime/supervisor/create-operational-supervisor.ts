@@ -1,3 +1,4 @@
+import type { DomainSignalService } from "@operaia/domain-signals";
 import type { MemoryStore } from "@operaia/memory";
 import type { DigitalOffice } from "../../employees/office-composition.js";
 import type { WorkspaceSource } from "../../employees/workspace-source.js";
@@ -5,8 +6,15 @@ import type { MissionExecutionStack } from "../../operations/mission-execution.j
 import type { EmployeeWorkerLogger } from "../employee-worker.js";
 import type { MissionScheduler } from "../mission-scheduler.js";
 import type { MissionQueue } from "../mission-queue.js";
+import { SignalDecisionEngine } from "../signal-decision-engine.js";
 import type { WorkerManager } from "../worker-manager.js";
 import { CoordinationDispatcher } from "./coordination-dispatcher.js";
+import {
+  FetchGithubRepoClient,
+  type GithubRepoClient,
+} from "./github-repo-client.js";
+import { GitHubRepositoryScanner } from "./github-repository-scanner.js";
+import type { GithubSnapshotStore } from "./github-snapshot-store.js";
 import { HealthMonitor } from "./health-monitor.js";
 import { InMemorySnapshotStore } from "./infrastructure/in-memory-snapshot-store.js";
 import { MissionQueueAdapter } from "./infrastructure/mission-queue-adapter.js";
@@ -15,6 +23,7 @@ import {
   PersistingSupervisorLogger,
   type OperationalEventStorePort,
 } from "./infrastructure/operational-event-store.js";
+import { PrismaGithubSnapshotStore } from "./infrastructure/prisma-github-snapshot-store.js";
 import { MissionScanner } from "./mission-scanner.js";
 import type {
   ClockPort,
@@ -46,6 +55,13 @@ export interface CreateOperationalSupervisorInput {
   readonly eventStore?: OperationalEventStorePort;
   readonly clock?: ClockPort;
   readonly supervisorLogger?: SupervisorLoggerPort;
+  /** Domain signals — habilita GitHubRepositoryScanner no ciclo. */
+  readonly domainSignals?: DomainSignalService;
+  readonly githubToken?: string | null;
+  readonly githubRepoClient?: GithubRepoClient;
+  readonly githubSnapshotStore?: GithubSnapshotStore;
+  readonly githubRepositoryScanner?: GitHubRepositoryScanner;
+  readonly signalDecisionEngine?: SignalDecisionEngine;
 }
 
 export interface OperationalSupervisorBundle {
@@ -96,6 +112,29 @@ export function createOperationalSupervisor(
     aliveCount: () => input.workers.aliveCount(),
   };
 
+  const githubRepositoryScanner =
+    input.githubRepositoryScanner ??
+    (input.domainSignals
+      ? new GitHubRepositoryScanner({
+          signals: input.domainSignals,
+          client:
+            input.githubRepoClient ??
+            new FetchGithubRepoClient({ token: input.githubToken }),
+          snapshots:
+            input.githubSnapshotStore ?? new PrismaGithubSnapshotStore(),
+          clock,
+        })
+      : undefined);
+
+  const signalDecisionEngine =
+    input.signalDecisionEngine ??
+    (input.domainSignals
+      ? new SignalDecisionEngine({
+          signals: input.domainSignals,
+          queue: input.queue,
+        })
+      : undefined);
+
   const supervisor = new SupervisorLoop({
     healthMonitor: new HealthMonitor(buildHealthChecks(input), clock),
     workspaceScanner: new WorkspaceScanner(
@@ -129,6 +168,8 @@ export function createOperationalSupervisor(
     logger: supervisorLogger,
     intervalMs: input.intervalMs,
     staleRunningMs: input.staleRunningMs,
+    githubRepositoryScanner,
+    signalDecisionEngine,
   });
 
   return { supervisor, eventStore };

@@ -110,6 +110,23 @@ export {
 } from "./github-source-bridge.js";
 
 export {
+  GITHUB_EVALUATION_POLICY,
+  applyGitHubEvaluationPolicy,
+  decideGitHubEvaluation,
+  type GitHubPolicyDecision,
+  type ApplyGitHubEvaluationPolicyInput,
+  type GitHubEvaluationConfig,
+} from "./github-evaluation-policy.js";
+
+export {
+  decideGithubRepoSnapshotChanged,
+  isTechnicalPath,
+  isReadmeOrDocsPath,
+  isCriticalIssueLabel,
+  type GithubSnapshotDecisionPayload,
+} from "./github-snapshot-decision.js";
+
+export {
   SIGNAL_SEVERITIES,
   severityForGitHubSignalType,
   type SignalSeverity,

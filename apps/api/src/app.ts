@@ -14,6 +14,10 @@ import { createOperationsRoutes } from "./modules/operations/operations.routes.j
 import { projectRoutes } from "./modules/projects/projects.routes.js";
 import type { ContinuousRuntime } from "./modules/runtime/continuous-runtime.js";
 import { createRuntimeRoutes } from "./modules/runtime/runtime.routes.js";
+import { enqueueSignalCoordinateMission } from "./modules/runtime/signal-mission-converter.js";
+import { createGithubWebhookRoutes } from "./modules/signals/github-webhook.routes.js";
+import { createSignalRuntime } from "./modules/signals/signal-runtime.js";
+import { resolveWebhookSecret } from "./modules/signals/secret-resolver.js";
 import { taskRoutes } from "./modules/tasks/tasks.routes.js";
 import { createWorkspaceRoutes } from "./modules/workspaces/workspaces.routes.js";
 import { errorHandler } from "./shared/error-handler.js";
@@ -41,6 +45,7 @@ export function buildApp(): AppBundle {
   });
 
   const { lab, continuous } = createProductLabRuntime();
+  const signalRuntime = createSignalRuntime();
 
   app.register(healthRoutes);
   app.register(infraRoutes, { prefix: "/api/v1/infra" });
@@ -59,6 +64,26 @@ export function buildApp(): AppBundle {
   app.register(createRuntimeRoutes(continuous), {
     prefix: "/api/v1",
   });
+  app.register(
+    createGithubWebhookRoutes({
+      signals: signalRuntime.signals,
+      bridge: signalRuntime.bridge,
+      ingest: signalRuntime.ingest,
+      resolveSecret: (ref) =>
+        resolveWebhookSecret(ref, {
+          ...process.env,
+          ...(env.GITHUB_WEBHOOK_SECRET
+            ? { GITHUB_WEBHOOK_SECRET: env.GITHUB_WEBHOOK_SECRET }
+            : {}),
+        }),
+      onConvertCandidate: async ({ signal }) =>
+        enqueueSignalCoordinateMission({
+          queue: continuous.queue,
+          signal,
+        }),
+    }),
+    { prefix: "/api/v1/webhooks" },
+  );
 
   return { app, continuous };
 }

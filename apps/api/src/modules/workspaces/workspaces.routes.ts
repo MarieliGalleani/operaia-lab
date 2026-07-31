@@ -1,6 +1,5 @@
 import {
   createWorkspaceRuntime,
-  type Workspace,
 } from "@operaia/workspace-runtime";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
@@ -19,24 +18,21 @@ import {
   workspaceParamsSchema,
 } from "./workspaces.schema.js";
 
-function seedSessionWorkspaces(): Workspace[] {
-  const createdAt = new Date();
-  return [
-    { id: "nexo", name: "NEXO", createdAt },
-    { id: "menuflow", name: "MenuFlow", createdAt },
-    { id: "plataforma", name: "Plataforma", createdAt },
-  ];
-}
-
 /**
  * Workspaces: catalogo real (Project/Task via Equipe Digital) + sessoes Runtime.
+ * Session store espelha o catalogo multi-workspace (sem seed fixo NEXO).
  */
 export function createWorkspaceRoutes(
   application: EmployeesApplication,
 ): FastifyPluginAsyncZod {
   return async (app) => {
-    const { manager } = createWorkspaceRuntime({
-      initialWorkspaces: seedSessionWorkspaces(),
+    const catalog = await application.listWorkspaces();
+    const { manager, workspaceStore } = createWorkspaceRuntime({
+      initialWorkspaces: catalog.map((workspace) => ({
+        id: workspace.id,
+        name: workspace.name,
+        createdAt: new Date(),
+      })),
     });
 
     app.get(
@@ -144,12 +140,30 @@ export function createWorkspaceRoutes(
           tags: ["workspaces"],
           params: workspaceParamsSchema,
           body: createSessionSchema,
-          response: { 201: createSessionResponseSchema },
+          response: {
+            201: createSessionResponseSchema,
+            404: httpErrorSchema,
+          },
         },
       },
       async (request, reply) => {
+        const officeWorkspace = await application.getWorkspace(
+          request.params.workspaceId,
+        );
+        if (!officeWorkspace) {
+          return reply.code(404).send({
+            code: "NOT_FOUND",
+            message: `Workspace nao encontrado: ${request.params.workspaceId}`,
+          });
+        }
+        // Registra dinamicamente no WorkspaceRuntime (multi-workspace).
+        await workspaceStore.save({
+          id: officeWorkspace.id,
+          name: officeWorkspace.name,
+          createdAt: new Date(),
+        });
         const session = await manager.startSession({
-          workspaceId: request.params.workspaceId,
+          workspaceId: officeWorkspace.id,
           objective: request.body.objective,
         });
         return reply.status(201).send({

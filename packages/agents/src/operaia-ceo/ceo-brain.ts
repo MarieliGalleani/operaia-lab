@@ -15,7 +15,13 @@ import { buildCeoSystemPrompt } from "./ceo-system-prompt.js";
 import {
   buildStrategicPlan,
   type CapacityHint,
+  type StrategicPlan,
 } from "./ceo-strategic-plan.js";
+import {
+  defaultDelegationEngine,
+  parseDelegationContextFromObjective,
+  type DelegationEngine,
+} from "./delegation-engine.js";
 import {
   CeoPlanAction,
   type CeoPlan,
@@ -34,6 +40,15 @@ interface SpecialistOutcomeBrief {
   readonly employeeId?: string;
   readonly report?: EmployeeReport;
   readonly qualityPassed?: boolean;
+  readonly executionReport?: {
+    readonly employeeId: string;
+    readonly summary: string;
+    readonly findings: readonly string[];
+    readonly risks: readonly string[];
+    readonly recommendations: readonly string[];
+    readonly confidence: number;
+    readonly executionTime: number;
+  };
 }
 
 export interface CeoBrainDependencies {
@@ -41,6 +56,8 @@ export interface CeoBrainDependencies {
   readonly planner?: CeoPlanner;
   readonly prioritizer?: CeoPrioritizer;
   readonly reviewer?: CeoReviewer;
+  /** Motor externo de recomendacao de especialistas (separado da Opera). */
+  readonly delegationEngine?: DelegationEngine;
 }
 
 /**
@@ -55,12 +72,14 @@ export class CeoBrain implements EmployeeBrain {
   private readonly planner: CeoPlanner;
   private readonly prioritizer: CeoPrioritizer;
   private readonly reviewer: CeoReviewer;
+  private readonly delegationEngine: DelegationEngine;
 
   constructor(deps: CeoBrainDependencies) {
     this.llm = deps.llm;
     this.planner = deps.planner ?? new CeoPlanner();
     this.prioritizer = deps.prioritizer ?? new CeoPrioritizer();
     this.reviewer = deps.reviewer ?? new CeoReviewer();
+    this.delegationEngine = deps.delegationEngine ?? defaultDelegationEngine;
   }
 
   async decide(briefing: EmployeeBriefing): Promise<EmployeeDecision> {
@@ -71,7 +90,7 @@ export class CeoBrain implements EmployeeBrain {
     return this.planAndDelegate(briefing);
   }
 
-  /** Ciclo inicial: analisa workspace, prioriza e decide se pede especialidade. */
+  /** Ciclo inicial: recebe recomendacao do DelegationEngine, valida e delega. */
   private async planAndDelegate(
     briefing: EmployeeBriefing,
   ): Promise<EmployeeDecision> {
@@ -82,31 +101,77 @@ export class CeoBrain implements EmployeeBrain {
       .filter((task) => task.status !== TaskStatus.DONE)
       .map((task) => task.title);
 
-    const shouldDelegate = needsSpecialistDelegation({
+    const capacity = readCapacityFromNotes(briefing);
+    const engineContext = parseDelegationContextFromObjective(
+      briefing.objective,
+      {
+        workspaceId: briefing.project,
+        pendingTitles,
+        affectedFiles: readStringArray(briefing.additional["affectedFiles"]),
+        changeFields: readStringArray(briefing.additional["changeFields"]),
+        changeReason:
+          typeof briefing.additional["changeReason"] === "string"
+            ? briefing.additional["changeReason"]
+            : null,
+        repository:
+          typeof briefing.additional["repository"] === "string"
+            ? briefing.additional["repository"]
+            : null,
+      },
+    );
+
+    const rawRecommendation = this.delegationEngine.recommend(engineContext);
+    const validated = this.delegationEngine.validate(rawRecommendation, {
+      saturatedSpecializations: capacity?.saturatedSpecializations,
+    });
+
+    const gateDelegate = needsSpecialistDelegation({
       objective: briefing.objective,
       pendingTitles,
       planRequestsDelegate: plan.steps.some(
         (step) => step.action === CeoPlanAction.DELEGATE,
       ),
     });
+
+    // Opera nao escolhe especialistas manualmente: usa o engine quando ha sinal.
+    const shouldDelegate =
+      validated.delegations.length > 0 || gateDelegate;
+
     console.log("[ceo-gate]", {
       objective: briefing.objective,
       pendingTitles,
       shouldDelegate,
+      engineDelegations: validated.delegations.length,
+      gateDelegate,
     });
 
     const narrative = shouldDelegate
       ? await this.generateSummary(briefing, plan, review, priorities)
       : buildDirectExecutiveReply(briefing, review, priorities);
 
-    const capacity = readCapacityFromNotes(briefing);
-    const strategic = shouldDelegate
-      ? buildStrategicPlan({
-          objective: briefing.objective,
-          pendingTitles,
-          capacity,
-        })
-      : null;
+    let strategic: StrategicPlan | null = null;
+    if (validated.delegations.length > 0) {
+      strategic = {
+        specializations: validated.specializations,
+        delegations: validated.delegations.map((item, index) => ({
+          ...item,
+          task:
+            item.task ??
+            priorities[index]?.title ??
+            priorities[0]?.title ??
+            item.reason,
+        })),
+        edges: validated.edges,
+        rationale:
+          "DelegationEngine recomendou especialistas; Opera validou e aprovou o plano.",
+      };
+    } else if (gateDelegate) {
+      strategic = buildStrategicPlan({
+        objective: briefing.objective,
+        pendingTitles,
+        capacity,
+      });
+    }
 
     const portfolioNotes = readTaggedNotes(briefing, "PORTFOLIO");
     const orgHealthNotes = readTaggedNotes(briefing, "ORG_HEALTH");
@@ -120,7 +185,9 @@ export class CeoBrain implements EmployeeBrain {
           : "; resposta executiva direta."),
       decision: narrative,
       reasoning: strategic
-        ? `${strategic.rationale} Matcher resolve quem executa. Capacidade e saude organizacional consideradas na priorizacao.`
+        ? validated.delegations.length > 0
+          ? `${strategic.rationale} Matcher resolve quem executa.`
+          : `${strategic.rationale} Matcher resolve quem executa. Capacidade e saude organizacional consideradas na priorizacao.`
         : "Missao respondida pela CEO sem especialista (gate de delegacao).",
       recommendations: [
         ...plan.steps.map((step) => `${step.order}. ${step.title}`),
@@ -162,7 +229,7 @@ export class CeoBrain implements EmployeeBrain {
     const unmatched = outcomes.filter((outcome) => !outcome.matched);
 
     const recommendations = [
-      "Revisar entregas dos especialistas.",
+      "Revisar ExecutionReports dos especialistas.",
       ...matched.map(
         (outcome) =>
           `Integrar plano de ${outcome.employeeId ?? outcome.specialization}.`,
@@ -171,7 +238,7 @@ export class CeoBrain implements EmployeeBrain {
         (outcome) =>
           `Especialidade ${outcome.specialization} indisponivel: ${outcome.reason}.`,
       ),
-      "Reportar ao usuario em linguagem executiva.",
+      "Somente a Opera responde ao usuario (especialistas nao falam direto).",
     ];
 
     const specialistRisks = outcomes.flatMap((outcome) => {
@@ -180,12 +247,15 @@ export class CeoBrain implements EmployeeBrain {
           `Sem especialista para ${outcome.specialization} (${outcome.reason}).`,
         ];
       }
-      return outcome.report?.risks ?? [];
+      return outcome.executionReport?.risks ?? outcome.report?.risks ?? [];
     });
 
-    const specialistActions = matched.flatMap(
-      (outcome) => outcome.report?.nextActions ?? [],
-    );
+    const specialistActions = matched.flatMap((outcome) => {
+      if (outcome.executionReport?.recommendations.length) {
+        return [...outcome.executionReport.recommendations];
+      }
+      return outcome.report?.nextActions ?? [];
+    });
 
     const narrative = await this.generateConsolidationSummary(
       briefing,
@@ -195,12 +265,12 @@ export class CeoBrain implements EmployeeBrain {
 
     return {
       analyzed:
-        `${briefing.project}: consolidacao de ${outcomes.length} delegacao(oes) ` +
+        `${briefing.project}: consolidacao de ${outcomes.length} ExecutionReport(s) ` +
         `(${matched.length} atendida(s), ${unmatched.length} sem especialista).`,
       decision: narrative,
       reasoning:
-        "Porta-voz da organizacao: revisei as entregas especializadas, " +
-        "priorizei o que importa para o objetivo e preparei a resposta ao usuario.",
+        "Porta-voz da organizacao: consolidei os ExecutionReports dos especialistas " +
+        "em uma unica resposta executiva. Nenhum especialista responde diretamente ao usuario.",
       recommendations,
       delegations: [],
       risks: [...review.findings, ...specialistRisks],
@@ -250,18 +320,29 @@ export class CeoBrain implements EmployeeBrain {
   ): Promise<string> {
     const specialistBlock = outcomes
       .map((outcome, index) => {
-        if (!outcome.matched || !outcome.report) {
+        if (!outcome.matched || (!outcome.report && !outcome.executionReport)) {
           return (
             `${index + 1}. ${outcome.specialization}: SEM ESPECIALISTA ` +
             `(${outcome.reason})`
           );
         }
+        const report = outcome.executionReport;
+        if (report) {
+          return [
+            `${index + 1}. ${report.employeeId} (${outcome.specialization}) [ExecutionReport]:`,
+            `   Summary: ${report.summary}`,
+            `   Findings: ${report.findings.join(" | ") || "(vazio)"}`,
+            `   Risks: ${report.risks.join(" | ") || "(vazio)"}`,
+            `   Recommendations: ${report.recommendations.join(" | ") || "(vazio)"}`,
+            `   Confidence: ${report.confidence}`,
+          ].join("\n");
+        }
         return [
           `${index + 1}. ${outcome.employeeId} (${outcome.specialization}):`,
-          `   Analise: ${outcome.report.analysis}`,
-          `   Conclusao: ${outcome.report.summary}`,
-          `   Acoes propostas: ${outcome.report.plan.join(" | ") || "(vazio)"}`,
-          `   Proximos passos: ${outcome.report.nextActions.join(" | ") || "(vazio)"}`,
+          `   Analise: ${outcome.report?.analysis}`,
+          `   Conclusao: ${outcome.report?.summary}`,
+          `   Acoes propostas: ${outcome.report?.plan.join(" | ") || "(vazio)"}`,
+          `   Proximos passos: ${outcome.report?.nextActions.join(" | ") || "(vazio)"}`,
         ].join("\n");
       })
       .join("\n");
@@ -273,10 +354,11 @@ export class CeoBrain implements EmployeeBrain {
         content: [
           "Modo: consolidacao apos delegacao. Voce e a porta-voz da organizacao.",
           "Nao devolva o relatorio bruto do especialista; sintetize para o usuario.",
+          "Especialistas NUNCA respondem diretamente ao usuario.",
           `Objetivo: ${briefing.objective}`,
           `Workspace: ${briefing.project}`,
           `Pendencias: ${review.pendingCount}; bloqueadas: ${review.blockedCount}`,
-          "Entregas dos especialistas (analise | conclusao | acoes | proximos passos):",
+          "ExecutionReports dos especialistas:",
           specialistBlock || "- (nenhuma)",
           "Escreva um resumo executivo curto (2-4 frases) consolidando a situacao,",
           "o que a equipe entregou e as proximas acoes para o usuario.",
@@ -346,4 +428,11 @@ function memoryContextLines(briefing: EmployeeBriefing): string[] {
     return [];
   }
   return raw.filter((item): item is string => typeof item === "string");
+}
+
+function readStringArray(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  return value.filter((item): item is string => typeof item === "string");
 }

@@ -40,6 +40,26 @@ export class DomainSignalService {
     return this.store.findBinding(input);
   }
 
+  findBindingById(
+    id: string,
+  ): Promise<WorkspaceSourceBindingRecord | null> {
+    return this.store.findBindingById(id);
+  }
+
+  findBindingsByExternalRef(input: {
+    readonly sourceType: string;
+    readonly externalRef: string;
+    readonly enabledOnly?: boolean;
+  }): Promise<readonly WorkspaceSourceBindingRecord[]> {
+    return this.store.findBindingsByExternalRef(input);
+  }
+
+  listBindings(input?: {
+    readonly enabledOnly?: boolean;
+  }): Promise<readonly WorkspaceSourceBindingRecord[]> {
+    return this.store.listBindings(input);
+  }
+
   async ingest(input: IngestSignalInput): Promise<IngestSignalResult> {
     if (!input.workspaceId?.trim()) {
       throw new Error("ingest exige workspaceId");
@@ -184,6 +204,10 @@ export class DomainSignalService {
       signal,
       similar.map((row) => row.id),
     );
+  }
+
+  async findById(signalId: string): Promise<DomainSignalRecord | null> {
+    return this.store.findById(signalId);
   }
 
   /**

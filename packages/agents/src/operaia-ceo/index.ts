@@ -20,6 +20,20 @@ export {
   type CapacityHint,
 } from "./ceo-strategic-plan.js";
 export {
+  DelegationEngine,
+  defaultDelegationEngine,
+  parseDelegationContextFromObjective,
+  type DelegationContext,
+  type DelegationEngineResult,
+  type DelegationRecommendation,
+  type DelegationEngineOptions,
+} from "./delegation-engine.js";
+export {
+  DEFAULT_DELEGATION_MATRIX,
+  matchDelegationPattern,
+  type DelegationMatrixRule,
+} from "./delegation-matrix.js";
+export {
   CeoBrain,
   type CeoBrainDependencies,
 } from "./ceo-brain.js";

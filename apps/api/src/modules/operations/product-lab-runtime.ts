@@ -1,5 +1,6 @@
 import { parseLLMProviderList } from "@operaia/ai-core";
 import { DIGITAL_TEAM_EMPLOYEES } from "@operaia/digital-team";
+import { DomainSignalService } from "@operaia/domain-signals";
 import { env } from "../../config/env.js";
 import { RepositoryWorkspaceSource } from "../employees/repository-workspace-source.js";
 import {
@@ -11,6 +12,8 @@ import {
   type LabRuntime,
 } from "../operations/lab-runtime.js";
 import { PrismaProjectRepository } from "../projects/infrastructure/prisma-project.repository.js";
+import { ensureOfficialOperationalCatalog } from "../projects/ensure-official-operational-catalog.js";
+import { PrismaDomainSignalStore } from "../signals/prisma-domain-signal-store.js";
 import { PrismaTaskRepository } from "../tasks/infrastructure/prisma-task.repository.js";
 import { ContinuousRuntime } from "../runtime/continuous-runtime.js";
 
@@ -32,6 +35,8 @@ export function createProductLabRuntime(): ProductRuntime {
     taskRepository,
     teamIds,
   );
+  const signalStore = new PrismaDomainSignalStore();
+  const signals = new DomainSignalService(signalStore);
 
   const memoryStore = createMemoryStore(
     resolveMemoryStoreMode(env.MEMORY_STORE),
@@ -74,6 +79,20 @@ export function createProductLabRuntime(): ProductRuntime {
     schedulerIntervalMs: env.SCHEDULER_INTERVAL_MS,
     staleRunningMs: env.MISSION_STALE_RUNNING_MS,
     allowLearningPrismaFallback: env.MEMORY_M1_LEARNING_FALLBACK,
+    ensureOfficialCatalog: () =>
+      ensureOfficialOperationalCatalog({
+        projects: projectRepository,
+        upsertBinding: (binding) => signals.upsertBinding(binding),
+      }),
+    listEnabledBindingWorkspaceIds: async () => {
+      const bindings = await signals.listBindings({ enabledOnly: true });
+      return bindings.map((binding) => binding.workspaceId);
+    },
+    domainSignals: signals,
+    githubToken: env.GITHUB_TOKEN,
+    workspaceInfraRoots: {
+      "operaia-lab": process.cwd(),
+    },
   });
 
   // Fila disponivel para Assisted; default ASSISTED_QUEUE_MODE=true (kill-switch=false).

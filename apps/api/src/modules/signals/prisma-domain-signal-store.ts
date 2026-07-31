@@ -76,6 +76,31 @@ export class PrismaDomainSignalStore implements DomainSignalStore {
     return row ? mapBinding(row) : null;
   }
 
+  async findBindingsByExternalRef(input: {
+    readonly sourceType: string;
+    readonly externalRef: string;
+    readonly enabledOnly?: boolean;
+  }): Promise<readonly WorkspaceSourceBindingRecord[]> {
+    const rows = await prisma.workspaceSourceBinding.findMany({
+      where: {
+        sourceType: input.sourceType,
+        externalRef: input.externalRef.trim().toLowerCase(),
+        ...(input.enabledOnly ? { enabled: true } : {}),
+      },
+    });
+    return rows.map(mapBinding);
+  }
+
+  async listBindings(input?: {
+    readonly enabledOnly?: boolean;
+  }): Promise<readonly WorkspaceSourceBindingRecord[]> {
+    const rows = await prisma.workspaceSourceBinding.findMany({
+      where: input?.enabledOnly ? { enabled: true } : undefined,
+      orderBy: { createdAt: "asc" },
+    });
+    return rows.map(mapBinding);
+  }
+
   async createSignal(data: CreateDomainSignalData): Promise<DomainSignalRecord> {
     try {
       const row = await prisma.domainSignal.create({

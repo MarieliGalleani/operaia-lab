@@ -53,6 +53,23 @@ export interface DomainSignalStore {
     id: string,
   ): Promise<WorkspaceSourceBindingRecord | null>;
 
+  /**
+   * Resolve binding(s) por origem externa (ex.: owner/repo no webhook GitHub).
+   * Pode retornar multiplos workspaces ligados ao mesmo repo.
+   */
+  findBindingsByExternalRef(input: {
+    readonly sourceType: string;
+    readonly externalRef: string;
+    readonly enabledOnly?: boolean;
+  }): Promise<readonly WorkspaceSourceBindingRecord[]>;
+
+  /**
+   * Lista bindings (opcionalmente so enabled) — bootstrap multi-workspace.
+   */
+  listBindings(input?: {
+    readonly enabledOnly?: boolean;
+  }): Promise<readonly WorkspaceSourceBindingRecord[]>;
+
   createSignal(data: CreateDomainSignalData): Promise<DomainSignalRecord>;
 
   findByDelivery(input: {

@@ -6,7 +6,14 @@ import type { OfficeWorkspaceRecord } from "./workspace-source.js";
 
 /** Slugs estaveis usados pelo escritorio virtual (mesmo Project, id publico). */
 export const PROJECT_NAME_SLUGS: Readonly<Record<string, string>> = {
+  "OperaIA.lab": "operaia-lab",
   NEXO: "nexo",
+  Infraestrutura: "infra",
+  Deploy: "deploy",
+  FlowGrid: "flowgrid",
+  Hexalife: "hexalife",
+  OdontoClinic: "odontoclinic",
+  Estocai: "estocai",
   MenuFlow: "menuflow",
   Plataforma: "plataforma",
 };
@@ -15,8 +22,20 @@ const SLUG_TO_NAME: Readonly<Record<string, string>> = Object.fromEntries(
   Object.entries(PROJECT_NAME_SLUGS).map(([name, slug]) => [slug, name]),
 );
 
+/** Slug estavel a partir do nome — qualquer Workspace, sem privilegiar NEXO. */
+export function toWorkspaceSlug(name: string): string {
+  const slug = name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "workspace";
+}
+
 export function publicWorkspaceId(project: Project): string {
-  return PROJECT_NAME_SLUGS[project.name] ?? project.id;
+  return PROJECT_NAME_SLUGS[project.name] ?? toWorkspaceSlug(project.name);
 }
 
 export function resolveProjectNameFromSlug(workspaceId: string): string | undefined {

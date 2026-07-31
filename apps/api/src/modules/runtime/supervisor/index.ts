@@ -22,3 +22,20 @@ export type {
   HealthReport,
   SupervisorCycleContext,
 } from "./types.js";
+export {
+  GitHubRepositoryScanner,
+  GITHUB_REPO_SNAPSHOT_CHANGED_TYPE,
+  detectRelevantGithubChanges,
+} from "./github-repository-scanner.js";
+export type {
+  GithubRepositoryScanReport,
+  GitHubRepositoryScanInput,
+} from "./github-repository-scanner.js";
+export { FetchGithubRepoClient } from "./github-repo-client.js";
+export type { GithubRepoClient, GithubRepositoryInfo } from "./github-repo-client.js";
+export type {
+  GithubSnapshotStore,
+  WorkspaceGithubSnapshotRecord,
+} from "./github-snapshot-store.js";
+export { InMemoryGithubSnapshotStore } from "./infrastructure/in-memory-github-snapshot-store.js";
+export { PrismaGithubSnapshotStore } from "./infrastructure/prisma-github-snapshot-store.js";

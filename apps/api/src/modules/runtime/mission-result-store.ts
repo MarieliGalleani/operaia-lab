@@ -18,6 +18,15 @@ export interface CoordinatePhaseResult {
 export interface ExecutePhaseResult {
   readonly phase: "executed";
   readonly employeeResult: StoredEmployeeResult;
+  readonly executionReport?: {
+    readonly employeeId: string;
+    readonly summary: string;
+    readonly findings: readonly string[];
+    readonly risks: readonly string[];
+    readonly recommendations: readonly string[];
+    readonly confidence: number;
+    readonly executionTime: number;
+  };
 }
 
 export interface ConsolidatePhaseResult {

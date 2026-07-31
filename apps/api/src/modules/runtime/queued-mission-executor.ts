@@ -4,7 +4,7 @@ import type {
   EmployeeResult,
 } from "@operaia/employee-runtime";
 import { BriefingBuilder, Specialization } from "@operaia/employee-framework";
-import { buildStrategicPlan } from "@operaia/agents";
+import { inferDefaultEdges } from "@operaia/agents";
 import type { MemoryStore } from "@operaia/memory";
 import type { DigitalOffice } from "../employees/office-composition.js";
 import type { WorkspaceSource } from "../employees/workspace-source.js";
@@ -26,6 +26,7 @@ import type {
   WorkspacePortfolioSnapshot,
 } from "../organization/workspace-portfolio.js";
 import type { EmployeeWorkerLogger } from "./employee-worker.js";
+import { buildExecutionReport } from "./execution-report.js";
 import type { MissionQueue } from "./mission-queue.js";
 import {
   asJson,
@@ -37,6 +38,10 @@ import {
   toEmployeeResult,
 } from "./mission-result-store.js";
 import { CEO_EMPLOYEE_ID, MissionKind } from "./mission-states.js";
+import {
+  buildToolsForEmployee,
+  type EmployeeToolsFactory,
+} from "@operaia/employee-runtime";
 
 type WorkspaceSnapshot = NonNullable<
   Awaited<ReturnType<WorkspaceSource["toSnapshot"]>>
@@ -56,6 +61,11 @@ export interface QueuedMissionExecutorOptions {
    * So para migracao — default false.
    */
   readonly allowLearningPrismaFallback?: boolean;
+  /**
+   * Factory de ToolContext (GitHub ports + permission policy).
+   * Default: tools sem adapters.
+   */
+  readonly toolsFactory?: EmployeeToolsFactory;
 }
 
 /**
@@ -65,6 +75,7 @@ export interface QueuedMissionExecutorOptions {
 export class QueuedMissionExecutor {
   private portfolioProvider: PortfolioProvider | null = null;
   private readonly allowLearningPrismaFallback: boolean;
+  private toolsFactory: EmployeeToolsFactory;
 
   constructor(
     private readonly office: DigitalOffice,
@@ -77,10 +88,17 @@ export class QueuedMissionExecutor {
   ) {
     this.allowLearningPrismaFallback =
       options.allowLearningPrismaFallback ?? false;
+    this.toolsFactory =
+      options.toolsFactory ??
+      ((employeeId) => buildToolsForEmployee(employeeId));
   }
 
   setPortfolioProvider(provider: PortfolioProvider): void {
     this.portfolioProvider = provider;
+  }
+
+  setToolsFactory(factory: EmployeeToolsFactory): void {
+    this.toolsFactory = factory;
   }
 
   async execute(mission: Mission, workerEmployeeId: string): Promise<void> {
@@ -158,20 +176,18 @@ export class QueuedMissionExecutor {
       return;
     }
 
-    const pendingTitles = (context.workspace.tasks ?? [])
-      .filter((task) => task.status !== "DONE")
-      .map((task) => task.title);
-    const strategic = buildStrategicPlan({
-      objective: context.objective,
-      pendingTitles,
-    });
+    const specializations = delegations
+      .map((request) => parseSpecialization(request.specialization))
+      .filter((spec): spec is Specialization => Boolean(spec));
+    // Edges a partir das delegacoes validadas pela Opera (nao recalcula dominio).
+    const edges = inferDefaultEdges(specializations);
 
     const childBySpec = new Map<string, string>();
 
     for (const request of delegations) {
       const matched = matcher.match(request.specialization);
       const objective = request.task ?? request.reason ?? context.objective;
-      const hasIncoming = strategic.edges.some(
+      const hasIncoming = edges.some(
         (edge) => edge.toSpecialization === request.specialization,
       );
       const { mission: child } = await this.queue.enqueue({
@@ -201,7 +217,7 @@ export class QueuedMissionExecutor {
       );
     }
 
-    for (const edge of strategic.edges) {
+    for (const edge of edges) {
       const fromId = childBySpec.get(edge.fromSpecialization);
       const toId = childBySpec.get(edge.toSpecialization);
       if (fromId && toId) {
@@ -277,15 +293,33 @@ export class QueuedMissionExecutor {
     const started = Date.now();
     const { registry, runner, llm } = this.office;
     const employee = registry.require(workerEmployeeId).create({ llm });
+    const tools = await this.toolsFactory(
+      workerEmployeeId,
+      mission.workspaceId,
+    );
     const result = await runner.run(employee, {
       workspace: context.workspace,
       objective: context.objective,
       memoryNotes: context.memoryNotes,
+      tools,
+    });
+
+    const executionTime = Date.now() - started;
+    const executionReport = buildExecutionReport({
+      employeeId: workerEmployeeId,
+      summary: result.output.report.summary,
+      analysis: result.output.report.analysis,
+      risks: result.output.report.risks,
+      recommendations: result.output.report.recommendations,
+      findings: [result.output.decision.analyzed],
+      qualityPassed: result.output.quality.passed,
+      executionTime,
     });
 
     const stored: ExecutePhaseResult = {
       phase: "executed",
       employeeResult: serializeEmployeeResult(result),
+      executionReport,
     };
     await this.queue.complete(mission.id, asJson(stored));
 
@@ -300,7 +334,7 @@ export class QueuedMissionExecutor {
       risksFound: result.output.report.risks,
       lessonsLearned: `Execucao ${mission.requiredSpecialization ?? workerEmployeeId} concluida.`,
       reuseWhen: `Demandas de ${mission.requiredSpecialization}`,
-      durationMs: Date.now() - started,
+      durationMs: executionTime,
     });
 
     this.logger.info(
@@ -311,6 +345,7 @@ export class QueuedMissionExecutor {
         workerEmployeeId,
         specialization: mission.requiredSpecialization,
         parentMissionId: mission.parentMissionId,
+        confidence: executionReport.confidence,
       },
       "Especialista concluiu missao",
     );
@@ -464,6 +499,7 @@ export class QueuedMissionExecutor {
                 child.objective,
               ),
             ),
+            executionReport: stored.executionReport,
           },
         ];
       });

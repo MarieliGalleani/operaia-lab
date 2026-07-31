@@ -140,6 +140,10 @@ export async function createRealAssistedQueueBundle(): Promise<RealAssistedQueue
     throw new Error(`Workspace NEXO nao resolvido: ${probe.nexoId}`);
   }
 
+  // Garante backlog tecnico para o ciclo COORDINATE→EXECUTE (ambiente real pode
+  // ter zerado pendencias). Generico por projectId — nao assume NEXO-only.
+  await ensurePendingBacklog(taskRepository, nexo.projectId);
+
   return {
     lab,
     continuous,
@@ -147,6 +151,23 @@ export async function createRealAssistedQueueBundle(): Promise<RealAssistedQueue
     nexoWorkspaceId: nexo.id,
     nexoName: nexo.name,
   };
+}
+
+async function ensurePendingBacklog(
+  tasks: PrismaTaskRepository,
+  projectId: string,
+): Promise<void> {
+  const existing = await tasks.findAll({ projectId });
+  const pending = existing.filter((task) => task.status !== "DONE");
+  if (pending.length > 0) {
+    return;
+  }
+  await tasks.create({
+    projectId,
+    title: `assisted-proof-pending ${Date.now()}`,
+    status: "TODO",
+    priority: "HIGH",
+  });
 }
 
 export async function runAssistedMissionOnRealQueue(input: {

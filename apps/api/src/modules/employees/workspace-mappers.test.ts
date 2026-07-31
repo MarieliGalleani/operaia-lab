@@ -59,4 +59,18 @@ describe("Etapa 4 — workspace-mappers", () => {
     expect(workspace.objective).toContain("NEXO");
     expect(toEmployeeTask(tasks[0]!).urgency).toBe(5);
   });
+
+  it("slug generico para Project sem mapa estatico", () => {
+    const project: Project = {
+      id: "uuid-alpha",
+      name: "Alpha Lab",
+      description: null,
+      status: ProjectStatus.ACTIVE,
+      priority: Priority.MEDIUM,
+      goalId: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    expect(publicWorkspaceId(project)).toBe("alpha-lab");
+  });
 });

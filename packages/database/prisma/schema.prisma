@@ -401,6 +401,59 @@ model DomainSignal {
   @@map("domain_signals")
 }
 
+/// Snapshot operacional de repositorio GitHub por workspace (scan do Supervisor).
+model WorkspaceGithubSnapshot {
+  id                     String   @id @default(uuid())
+  workspaceId            String
+  bindingId              String?
+  repository             String
+  defaultBranch          String
+  lastCommitSha          String?
+  primaryLanguage        String?
+  openIssuesCount        Int      @default(0)
+  openPullRequestsCount  Int      @default(0)
+  /// updated_at / pushed_at remoto do GitHub
+  remoteUpdatedAt        DateTime?
+  scannedAt              DateTime
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([workspaceId, repository])
+  @@index([workspaceId, scannedAt])
+  @@map("workspace_github_snapshots")
+}
+
+/// Auditoria de acoes controladas (Action Runtime A.4).
+enum ActionExecutionStatus {
+  REQUESTED
+  APPROVED
+  RUNNING
+  SUCCESS
+  FAILED
+  DENIED
+}
+
+model ActionExecution {
+  id          String                @id @default(uuid())
+  workspaceId String
+  employeeId  String
+  actionId    String
+  target      String                @default("")
+  status      ActionExecutionStatus @default(REQUESTED)
+  requestedAt DateTime              @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  result      Json?
+  error       String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  @@index([workspaceId, requestedAt])
+  @@index([employeeId, requestedAt])
+  @@index([actionId, status])
+  @@map("action_executions")
+}
+
 /// Propostas estruturais — aprovacao humana obrigatoria (sem apply automatico).
 model ChangeProposal {
   id                   String         @id @default(uuid())
