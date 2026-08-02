@@ -10,7 +10,7 @@ export {
   needsSpecialistDelegation,
   type DelegationGateInput,
 } from "./ceo-delegation-gate.js";
-export { buildDirectExecutiveReply } from "./ceo-direct-reply.js";
+export { buildDirectExecutiveReply, buildOperationalReviewReply, buildConversationalCeoReply } from "./ceo-direct-reply.js";
 export { resolveRequiredSpecialization, resolveAllRequiredSpecializations, isBroadLaunchObjective } from "./ceo-specialization-resolver.js";
 export {
   buildStrategicPlan,

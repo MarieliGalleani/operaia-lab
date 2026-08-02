@@ -6,8 +6,13 @@ import type {
   EmployeeReport,
 } from "@operaia/employee-framework";
 import { TaskStatus } from "@operaia/shared";
+import { parseMissionIntentMarker } from "@operaia/mission-router";
 import { needsSpecialistDelegation } from "./ceo-delegation-gate.js";
-import { buildDirectExecutiveReply } from "./ceo-direct-reply.js";
+import {
+  buildConversationalCeoReply,
+  buildDirectExecutiveReply,
+  buildOperationalReviewReply,
+} from "./ceo-direct-reply.js";
 import { CeoPlanner } from "./ceo-planner.js";
 import { CeoPrioritizer } from "./ceo-prioritizer.js";
 import { CeoReviewer } from "./ceo-reviewer.js";
@@ -90,10 +95,51 @@ export class CeoBrain implements EmployeeBrain {
     return this.planAndDelegate(briefing);
   }
 
+  /**
+   * A.5.1 — GENERAL_CONVERSATION: sem template operacional / sem delegacao.
+   */
+  private conversationalDecision(
+    briefing: EmployeeBriefing,
+  ): EmployeeDecision {
+    const priorities = this.prioritizer.prioritize(briefing.tasks);
+    const review = this.reviewer.review(briefing);
+    const narrative = buildConversationalCeoReply(
+      briefing,
+      review,
+      priorities,
+    );
+
+    console.log("[ceo-gate]", {
+      objective: briefing.objective,
+      intentType: "GENERAL_CONVERSATION",
+      shouldDelegate: false,
+      mode: "conversational",
+    });
+
+    return {
+      analyzed: `Conversa no contexto de ${briefing.project}.`,
+      decision: narrative,
+      reasoning:
+        "GENERAL_CONVERSATION — resposta contextual sem ciclo operacional completo.",
+      recommendations: [],
+      delegations: [],
+      risks: [],
+      nextActions: [],
+    };
+  }
+
   /** Ciclo inicial: recebe recomendacao do DelegationEngine, valida e delega. */
   private async planAndDelegate(
     briefing: EmployeeBriefing,
   ): Promise<EmployeeDecision> {
+    const intentMeta = parseMissionIntentMarker(briefing.objective);
+    const intentType = intentMeta?.intentType ?? null;
+
+    // A.5.1 — GENERAL_CONVERSATION: resposta contextual, sem ciclo operacional.
+    if (intentType === "GENERAL_CONVERSATION") {
+      return this.conversationalDecision(briefing);
+    }
+
     const plan = this.planner.plan(briefing);
     const priorities = this.prioritizer.prioritize(briefing.tasks);
     const review = this.reviewer.review(briefing);
@@ -143,11 +189,14 @@ export class CeoBrain implements EmployeeBrain {
       shouldDelegate,
       engineDelegations: validated.delegations.length,
       gateDelegate,
+      intentType,
     });
 
     const narrative = shouldDelegate
       ? await this.generateSummary(briefing, plan, review, priorities)
-      : buildDirectExecutiveReply(briefing, review, priorities);
+      : intentType === "OPERATIONAL_REVIEW"
+        ? buildOperationalReviewReply(briefing, review, priorities)
+        : buildDirectExecutiveReply(briefing, review, priorities);
 
     let strategic: StrategicPlan | null = null;
     if (validated.delegations.length > 0) {

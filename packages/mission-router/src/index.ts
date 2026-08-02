@@ -29,3 +29,13 @@ export {
   MISSION_INTENT_MARKER,
   type IntentRouter,
 } from "./intent-router.js";
+
+export {
+  ConversationMissionRouter,
+  defaultConversationMissionRouter,
+  type ConversationMissionType,
+  type ConversationRouteContext,
+  type ConversationRouteInput,
+  type ConversationRouteResult,
+  type ConversationMissionRouterOptions,
+} from "./conversation-mission-router.js";

@@ -205,11 +205,32 @@ export class EmployeesApplication {
 
     let run;
     try {
+      console.log(
+        JSON.stringify({
+          level: "info",
+          component: "ceo-sala",
+          event: "ask_received",
+          message: input.question,
+          workspaceId: input.workspaceId,
+          employeeId: input.employeeId,
+        }),
+      );
       run = await this.missions.run({
         workspaceId: input.workspaceId,
         objective: input.question,
         employeeId: input.employeeId,
+        source: "ceo-sala",
       });
+      console.log(
+        JSON.stringify({
+          level: "info",
+          component: "ceo-sala",
+          event: "mission_created",
+          missionId: run.id,
+          message: input.question,
+          workspaceId: input.workspaceId,
+        }),
+      );
     } catch (error) {
       if (
         error instanceof Error &&

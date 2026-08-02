@@ -47,6 +47,11 @@ export function classifyIntent(message: string): IntentClassification {
     return review;
   }
 
+  const progress = matchExecutionProgress(text);
+  if (progress) {
+    return progress;
+  }
+
   return { intentType: IntentType.GENERAL_CONVERSATION, confidence: 0.55 };
 }
 
@@ -151,6 +156,21 @@ function matchOperationalReview(text: string): IntentClassification | null {
   ];
   if (patterns.some((re) => re.test(text))) {
     return { intentType: IntentType.OPERATIONAL_REVIEW, confidence: 0.9 };
+  }
+  return null;
+}
+
+/**
+ * Pedidos de avanço operacional (ex.: "Avance a NEXO") —
+ * CEO coordena com o quadro; nao e conversa livre.
+ */
+function matchExecutionProgress(text: string): IntentClassification | null {
+  if (
+    /\b(avan[cç]e|avance|finalizar|completar|entregar|desbloquear|trabalh[ae]r?|atacar|resolver\s+as\s+pend)/i.test(
+      text,
+    )
+  ) {
+    return { intentType: IntentType.OPERATIONAL_REVIEW, confidence: 0.82 };
   }
   return null;
 }

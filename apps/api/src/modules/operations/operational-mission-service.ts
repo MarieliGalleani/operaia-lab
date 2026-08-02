@@ -2,8 +2,9 @@ import { randomUUID } from "node:crypto";
 import type { RecordingLLMObserver } from "@operaia/ai-core";
 import type { MemoryStore } from "@operaia/memory";
 import {
-  defaultIntentRouter,
-  formatObjectiveWithIntent,
+  ConversationMissionRouter,
+  defaultConversationMissionRouter,
+  type ConversationRouteResult,
   type IntentRouter,
   type MissionIntent,
 } from "@operaia/mission-router";
@@ -46,6 +47,8 @@ export interface RunOperationalMissionInput {
   readonly objective: string;
   /** Employee porta-voz (default: Opera). */
   readonly employeeId?: string;
+  /** Origem conversacional (ex.: ceo-sala). */
+  readonly source?: string;
 }
 
 /**
@@ -72,8 +75,9 @@ export interface OperationalMissionServiceOptions {
    */
   readonly preferQueue?: boolean;
   readonly wait?: WaitUntilTerminalOptions;
-  /** A.4.2 — default RuleBasedIntentRouter. */
+  /** A.4.2 / A.5.1 — default ConversationMissionRouter. */
   readonly intentRouter?: IntentRouter;
+  readonly conversationRouter?: ConversationMissionRouter;
 }
 
 /**
@@ -81,15 +85,14 @@ export interface OperationalMissionServiceOptions {
  * Path B (default produto via ASSISTED_QUEUE_MODE): MissionQueue → wait → projector.
  * Path A (kill-switch / lab): MissionOrchestrator sync → OperationalRun.
  *
- * A.4.2: Mission Intent Router classifica a mensagem antes de criar a missao.
- * CEO permanece coordenadora (COORDINATE / sync start); intent marca o especialista.
+ * A.5.1: ConversationMissionRouter e a porta unica — toda mensagem passa pelo Intent Router.
  */
 export class OperationalMissionService {
   private readonly orchestrator: MissionOrchestrator;
   private queue: AssistedMissionQueuePort | undefined;
   private preferQueue: boolean;
   private readonly waitOptions: WaitUntilTerminalOptions;
-  private readonly intentRouter: IntentRouter;
+  private readonly conversationRouter: ConversationMissionRouter;
 
   constructor(
     office: DigitalOffice,
@@ -106,7 +109,11 @@ export class OperationalMissionService {
       preferQueue: options.preferQueue,
     }).preferQueue;
     this.waitOptions = options.wait ?? {};
-    this.intentRouter = options.intentRouter ?? defaultIntentRouter;
+    this.conversationRouter =
+      options.conversationRouter ??
+      (options.intentRouter
+        ? new ConversationMissionRouter({ intentRouter: options.intentRouter })
+        : defaultConversationMissionRouter);
   }
 
   /** Late-binding (product: ContinuousRuntime.queue apos composition). */
@@ -130,26 +137,76 @@ export class OperationalMissionService {
     return { preferQueue: this.preferQueue };
   }
 
-  /** Expoe o ultimo intent classificado (testes / observabilidade). */
+  /** Porta conversacional (A.5.1) — sala CEO / ask. */
+  routeConversation(input: {
+    readonly message: string;
+    readonly workspaceId: string;
+    readonly employeeId?: string;
+    readonly source?: string;
+  }): ConversationRouteResult {
+    return this.conversationRouter.route({
+      message: input.message,
+      workspaceId: input.workspaceId,
+      context: {
+        employeeId: input.employeeId,
+        source: input.source,
+      },
+    });
+  }
+
+  /** @deprecated Prefer routeConversation — mantido para testes A.4.2. */
   routeIntent(message: string, workspaceId: string): MissionIntent {
-    return this.intentRouter.route(message, workspaceId);
+    const routed = this.routeConversation({ message, workspaceId });
+    return {
+      message: routed.metadata.originalMessage,
+      workspaceId: routed.metadata.workspaceId,
+      intentType: routed.intentType,
+      priority: routed.metadata.priority,
+      suggestedEmployee: routed.employeeId,
+      confidence: routed.metadata.confidence,
+    };
   }
 
   async run(input: RunOperationalMissionInput): Promise<OperationalRun> {
-    const intent = this.intentRouter.route(input.objective, input.workspaceId);
-    const routed: RunOperationalMissionInput & { readonly intent: MissionIntent } =
-      {
-        ...input,
-        objective: formatObjectiveWithIntent(input.objective, intent),
-        intent,
-      };
-
-    console.log("[mission-intent-router]", {
-      workspaceId: intent.workspaceId,
-      intentType: intent.intentType,
-      suggestedEmployee: intent.suggestedEmployee,
-      confidence: intent.confidence,
+    const conversation = this.routeConversation({
+      message: input.objective,
+      workspaceId: input.workspaceId,
+      employeeId: input.employeeId,
+      source: input.source ?? "operational-mission-service",
     });
+
+    const intent: MissionIntent = {
+      message: conversation.metadata.originalMessage,
+      workspaceId: conversation.metadata.workspaceId,
+      intentType: conversation.intentType,
+      priority: conversation.metadata.priority,
+      suggestedEmployee: conversation.employeeId,
+      confidence: conversation.metadata.confidence,
+    };
+
+    const routed: RunOperationalMissionInput & {
+      readonly intent: MissionIntent;
+      readonly conversation: ConversationRouteResult;
+    } = {
+      ...input,
+      objective: conversation.objective,
+      intent,
+      conversation,
+    };
+
+    console.log(
+      JSON.stringify({
+        level: "info",
+        component: "operational-mission-service",
+        event: "mission_routed",
+        message: intent.message,
+        intent: intent.intentType,
+        employee: intent.suggestedEmployee,
+        missionType: conversation.missionType,
+        workspaceId: intent.workspaceId,
+        source: conversation.metadata.source ?? null,
+      }),
+    );
 
     if (this.preferQueue) {
       return this.runViaQueue(routed);
