@@ -481,6 +481,25 @@ importers:
         specifier: ^3.0.5
         version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(tsx@4.23.1)
 
+  packages/validation-suite:
+    dependencies:
+      '@operaia/action-runtime':
+        specifier: workspace:*
+        version: link:../action-runtime
+      '@operaia/agents':
+        specifier: workspace:*
+        version: link:../agents
+      '@operaia/employee-framework':
+        specifier: workspace:*
+        version: link:../employee-framework
+      '@operaia/mission-router':
+        specifier: workspace:*
+        version: link:../mission-router
+    devDependencies:
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(tsx@4.23.1)
+
   packages/workspace-runtime:
     dependencies:
       '@operaia/agent-runtime':

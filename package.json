@@ -12,6 +12,7 @@
     "dev:web": "pnpm --filter @operaia/web dev",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "validate:sprint-a": "pnpm --filter @operaia/validation-suite validate",
     "db:generate": "pnpm --filter @operaia/database generate",
     "db:migrate": "pnpm --filter @operaia/database migrate",
     "db:seed": "pnpm --filter @operaia/database seed",
