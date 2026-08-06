@@ -286,28 +286,33 @@ export async function runAskCycleViaHttp(input: {
     answer: { summary: string };
   };
 
-  const root = await prisma.mission.findFirst({
-    where: {
-      workspaceId: input.bundle.nexoWorkspaceId,
-      objective: input.objective,
-      missionKind: "COORDINATE",
+const root = await prisma.mission.findFirst({
+  where: {
+    workspaceId: input.bundle.nexoWorkspaceId,
+    missionKind: "COORDINATE",
+    objective: {
+      contains: input.objective,
     },
-    orderBy: { createdAt: "desc" },
-  });
-  if (!root) {
-    throw new Error(
-      `Mission COORDINATE nao encontrada apos ask (objective=${input.objective})`,
-    );
-  }
+  },
+  orderBy: {
+    createdAt: "desc",
+  },
+});
 
-  return collectMissionEvidence({
-    entry: "ask",
-    objective: input.objective,
-    rootMissionId: root.id,
-    usableResultLength: body.answer.summary.length,
-    orchestratorCalled,
-    httpStatusCode: result.statusCode,
-  });
+if (!root) {
+  throw new Error(
+    `Mission COORDINATE nao encontrada apos ask (objective=${input.objective})`,
+  );
+}
+
+return collectMissionEvidence({
+  entry: "ask",
+  objective: input.objective,
+  rootMissionId: root.id,
+  usableResultLength: body.answer.summary.length,
+  orchestratorCalled,
+  httpStatusCode: result.statusCode,
+});
 }
 
 export async function runOperationsCycleViaHttp(input: {
