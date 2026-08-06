@@ -31,6 +31,7 @@
     "@operaia/execution-engine": "workspace:*",
     "@operaia/memory": "workspace:*",
     "@operaia/mission-router": "workspace:*",
+    "@operaia/operational-health": "workspace:*",
     "@operaia/shared": "workspace:*",
     "@operaia/specialist-kit": "workspace:*",
     "@operaia/tool-runtime": "workspace:*",

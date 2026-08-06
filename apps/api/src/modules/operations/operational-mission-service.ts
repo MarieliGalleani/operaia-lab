@@ -8,6 +8,10 @@ import {
   type IntentRouter,
   type MissionIntent,
 } from "@operaia/mission-router";
+import {
+  defaultFailurePolicy,
+  NonCriticalOperation,
+} from "@operaia/operational-health";
 import type { DigitalOffice } from "../employees/office-composition.js";
 import { MissionOrchestrator } from "../employees/mission-orchestrator.js";
 import { presentMissionResult } from "../employees/mission-presenter.js";
@@ -376,11 +380,19 @@ export class OperationalMissionService {
       timing: mission.timing,
     };
 
-    await persistMissionMemory(this.memory, {
+    await defaultFailurePolicy.runNonCritical({
+      operation: NonCriticalOperation.OPERATIONAL_MEMORY,
       workspaceId: input.workspaceId,
-      missionId: run.id,
-      objective: displayObjective,
-      summary: run.usableResult,
+      correlationId: run.id,
+      component: "operational-mission-service",
+      run: async () => {
+        await persistMissionMemory(this.memory, {
+          workspaceId: input.workspaceId,
+          missionId: run.id,
+          objective: displayObjective,
+          summary: run.usableResult,
+        });
+      },
     });
 
     this.store.save(run);

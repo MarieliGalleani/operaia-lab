@@ -161,6 +161,7 @@ export class EmployeeWorker {
         } catch (error) {
           const message =
             error instanceof Error ? error.message : "erro desconhecido";
+          const stack = error instanceof Error ? error.stack : undefined;
           const failed = await this.options.queue.fail(claimed.id, message);
           const wasRetry = failed.status === "QUEUED";
           this.metrics.recordFailure(Date.now() - started, wasRetry);
@@ -170,7 +171,10 @@ export class EmployeeWorker {
               employeeId: this.employeeId,
               event: "mission_failed",
               missionId: claimed.id,
+              workspaceId: claimed.workspaceId,
+              objective: claimed.objective,
               error: message,
+              stack,
               requeued: wasRetry,
             },
             "Missao falhou",

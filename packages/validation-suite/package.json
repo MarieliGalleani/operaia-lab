@@ -17,7 +17,8 @@
     "@operaia/action-runtime": "workspace:*",
     "@operaia/agents": "workspace:*",
     "@operaia/employee-framework": "workspace:*",
-    "@operaia/mission-router": "workspace:*"
+    "@operaia/mission-router": "workspace:*",
+    "@operaia/operational-health": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^3.0.5"

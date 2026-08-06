@@ -20,6 +20,9 @@ export const SupervisorEvent = {
   SNAPSHOT_PERSISTED: "SNAPSHOT_PERSISTED",
   GITHUB_REPOS_SCANNED: "GITHUB_REPOS_SCANNED",
   SIGNAL_DECISIONS: "SIGNAL_DECISIONS",
+  /** A.5.3 — alerta operacional interno (nao cria missao). */
+  OPERATIONAL_ALERT: "OPERATIONAL_ALERT",
+  MAINTENANCE_RAN: "MAINTENANCE_RAN",
 } as const;
 
 export type SupervisorEvent =

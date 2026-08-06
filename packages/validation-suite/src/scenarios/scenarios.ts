@@ -14,9 +14,17 @@ import { policyValidationScenario } from "./policy-validation.js";
 import { recoveryScenario } from "./recovery.js";
 import { workerSelectionScenario } from "./worker-selection.js";
 import { workspaceIsolationScenario } from "./workspace-isolation.js";
+import {
+  fifoEvictionPolicyScenario,
+  healthHealthyScenario,
+  memoryQuotaThresholdsScenario,
+  orphanWaitingMaintenanceScenario,
+  softFailPolicyScenario,
+  supervisorAlertScenario,
+} from "./operational-hardening.js";
 import type { ValidationScenario } from "../scenario.js";
 
-/** Ordem oficial dos 12 cenarios obrigatorios da Sprint A.V. */
+/** Sprint A.V (12) + A.5.3 hardening (6). */
 export const ALL_VALIDATION_SCENARIOS: readonly ValidationScenario[] = [
   ceoConversationScenario,
   operationalReviewScenario,
@@ -30,6 +38,12 @@ export const ALL_VALIDATION_SCENARIOS: readonly ValidationScenario[] = [
   ledgerValidationScenario,
   conversationRoutingScenario,
   recoveryScenario,
+  memoryQuotaThresholdsScenario,
+  softFailPolicyScenario,
+  fifoEvictionPolicyScenario,
+  orphanWaitingMaintenanceScenario,
+  supervisorAlertScenario,
+  healthHealthyScenario,
 ];
 
 export {
@@ -45,4 +59,10 @@ export {
   techImplementationScenario,
   workerSelectionScenario,
   workspaceIsolationScenario,
+  memoryQuotaThresholdsScenario,
+  softFailPolicyScenario,
+  fifoEvictionPolicyScenario,
+  orphanWaitingMaintenanceScenario,
+  supervisorAlertScenario,
+  healthHealthyScenario,
 };

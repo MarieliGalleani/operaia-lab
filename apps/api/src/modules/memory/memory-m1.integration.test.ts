@@ -290,6 +290,50 @@ describe.skipIf(!READY.ok)("Memory M1.1 — PrismaOperationalMemoryStore", () =>
     await prisma.missionLearning.delete({ where: { id: learningId } });
     await prisma.mission.delete({ where: { id: missionId } });
   });
+
+  it("quota: FIFO eviction arquiva as mais antigas em vez de falhar", async () => {
+    const tight = new PrismaOperationalMemoryStore({ quotaPerWorkspace: 2 });
+    const ws = `m1-quota-${randomUUID().slice(0, 8)}`;
+    const id1 = randomUUID();
+    const id2 = randomUUID();
+    const id3 = randomUUID();
+
+    await persistMissionMemory(tight, {
+      workspaceId: ws,
+      missionId: id1,
+      objective: "quota-1",
+      summary: "primeira",
+    });
+    await persistMissionMemory(tight, {
+      workspaceId: ws,
+      missionId: id2,
+      objective: "quota-2",
+      summary: "segunda",
+    });
+    await persistMissionMemory(tight, {
+      workspaceId: ws,
+      missionId: id3,
+      objective: "quota-3",
+      summary: "terceira deve evictar",
+    });
+
+    const active = await prisma.operationalMemoryNote.count({
+      where: { workspaceId: ws, archivedAt: null },
+    });
+    expect(active).toBeLessThanOrEqual(2);
+
+    const archivedFirst = await prisma.operationalMemoryNote.findFirst({
+      where: { workspaceId: ws, sourceId: id1 },
+    });
+    expect(archivedFirst?.archivedAt).not.toBeNull();
+
+    const third = await prisma.operationalMemoryNote.findFirst({
+      where: { workspaceId: ws, sourceId: id3, archivedAt: null },
+    });
+    expect(third).toBeTruthy();
+
+    await prisma.operationalMemoryNote.deleteMany({ where: { workspaceId: ws } });
+  });
 });
 
 describe("Memory M1.1 — probe", () => {

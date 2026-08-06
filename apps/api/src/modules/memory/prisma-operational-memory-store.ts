@@ -86,7 +86,22 @@ export class PrismaOperationalMemoryStore implements MemoryStore {
         },
       });
       if (activeCount >= this.quota) {
-        throw new MemoryQuotaExceededError(workspaceId, this.quota);
+        // Indice derivado: evict FIFO em vez de derrubar a missao operacional.
+        const freed = await this.evictOldestActive(workspaceId, activeCount - this.quota + 1);
+        if (freed === 0) {
+          throw new MemoryQuotaExceededError(workspaceId, this.quota);
+        }
+        console.log(
+          JSON.stringify({
+            level: "warn",
+            component: "memory-m1",
+            event: "quota_fifo_eviction",
+            workspaceId,
+            activeCount,
+            quota: this.quota,
+            archived: freed,
+          }),
+        );
       }
     }
 
@@ -177,6 +192,37 @@ export class PrismaOperationalMemoryStore implements MemoryStore {
 
     scored.sort((a, b) => b.score - a.score);
     return scored.slice(0, topK);
+  }
+
+  /**
+   * Arquiva as notes ativas mais antigas do workspace (FIFO) para liberar quota.
+   * Retorna quantas foram arquivadas.
+   */
+  private async evictOldestActive(
+    workspaceId: string,
+    needed: number,
+  ): Promise<number> {
+    if (needed <= 0) {
+      return 0;
+    }
+    const oldest = await prisma.operationalMemoryNote.findMany({
+      where: {
+        workspaceId,
+        archivedAt: null,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      },
+      orderBy: { createdAt: "asc" },
+      take: needed,
+      select: { id: true },
+    });
+    if (oldest.length === 0) {
+      return 0;
+    }
+    const result = await prisma.operationalMemoryNote.updateMany({
+      where: { id: { in: oldest.map((row) => row.id) } },
+      data: { archivedAt: new Date() },
+    });
+    return result.count;
   }
 }
 

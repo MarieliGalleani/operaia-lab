@@ -13,6 +13,10 @@ import type { SignalDecisionEngine } from "../signal-decision-engine.js";
 import type { WorkspaceScanner } from "./workspace-scanner.js";
 import type { OperationalSnapshot, SupervisorCycleContext } from "./types.js";
 import { SupervisorEvent } from "./types.js";
+import type {
+  OperationalHealthService,
+  OperationalMaintenance,
+} from "@operaia/operational-health";
 
 export interface SupervisorLoopDeps {
   readonly healthMonitor: HealthMonitor;
@@ -31,6 +35,12 @@ export interface SupervisorLoopDeps {
   readonly githubRepositoryScanner?: GitHubRepositoryScanner;
   /** Opcional: decisao operacional sobre sinais emitidos no scan. */
   readonly signalDecisionEngine?: SignalDecisionEngine;
+  /** A.5.3 — health agregado + alertas (sem criar missoes). */
+  readonly operationalHealth?: OperationalHealthService;
+  /** A.5.3 — manutencao periodica idempotente. */
+  readonly operationalMaintenance?: OperationalMaintenance;
+  /** Intervalo em ciclos entre manutencoes (default 5). */
+  readonly maintenanceEveryCycles?: number;
 }
 
 /**
@@ -167,6 +177,35 @@ export class SupervisorLoop {
         workersAvailable: queue.workersAvailable,
         workersBusy: queue.workersBusy,
       });
+
+      // A.5.3 — alertas internos (registra apenas; nao cria COORDINATE).
+      if (this.deps.operationalHealth) {
+        const opHealth = await this.deps.operationalHealth.getHealth();
+        for (const alert of opHealth.alerts) {
+          this.deps.logger.emit(SupervisorEvent.OPERATIONAL_ALERT, {
+            type: alert.type,
+            severity: alert.severity,
+            message: alert.message,
+            workspaceId: alert.workspaceId ?? null,
+            payload: alert.payload,
+          });
+        }
+      }
+
+      const maintenanceEvery = this.deps.maintenanceEveryCycles ?? 5;
+      if (
+        this.deps.operationalMaintenance &&
+        this.cycle % maintenanceEvery === 0
+      ) {
+        const report = await this.deps.operationalMaintenance.run(
+          `sup-cycle-${this.cycle}`,
+        );
+        this.deps.logger.emit(SupervisorEvent.MAINTENANCE_RAN, {
+          cycle: this.cycle,
+          success: report.success,
+          results: report.results,
+        });
+      }
 
       const recovery = await this.deps.recoveryCoordinator.recover({
         missions,

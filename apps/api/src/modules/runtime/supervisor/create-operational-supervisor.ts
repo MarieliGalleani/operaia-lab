@@ -1,5 +1,10 @@
 import type { DomainSignalService } from "@operaia/domain-signals";
 import type { MemoryStore } from "@operaia/memory";
+import {
+  InMemoryAlertBus,
+  OperationalHealthService,
+  OperationalMaintenance,
+} from "@operaia/operational-health";
 import type { DigitalOffice } from "../../employees/office-composition.js";
 import type { WorkspaceSource } from "../../employees/workspace-source.js";
 import type { MissionExecutionStack } from "../../operations/mission-execution.js";
@@ -38,6 +43,12 @@ import { SnapshotGenerator } from "./snapshot-generator.js";
 import { StructuredSupervisorLogger } from "./structured-logger.js";
 import { SupervisorLoop } from "./supervisor-loop.js";
 import { WorkspaceScanner } from "./workspace-scanner.js";
+import {
+  PrismaLedgerMaintenance,
+  PrismaMemoryMaintenance,
+  PrismaOperationalMetricsProvider,
+  PrismaQueueMaintenance,
+} from "../operational-hardening-adapters.js";
 
 export interface CreateOperationalSupervisorInput {
   readonly office: DigitalOffice;
@@ -62,11 +73,18 @@ export interface CreateOperationalSupervisorInput {
   readonly githubSnapshotStore?: GithubSnapshotStore;
   readonly githubRepositoryScanner?: GitHubRepositoryScanner;
   readonly signalDecisionEngine?: SignalDecisionEngine;
+  /** A.5.3 — override; default Prisma metrics + maintenance. */
+  readonly operationalHealth?: OperationalHealthService;
+  readonly operationalMaintenance?: OperationalMaintenance;
+  readonly disableOperationalHardening?: boolean;
 }
 
 export interface OperationalSupervisorBundle {
   readonly supervisor: SupervisorLoop;
   readonly eventStore: OperationalEventStorePort;
+  readonly operationalHealth: OperationalHealthService;
+  readonly operationalMaintenance: OperationalMaintenance;
+  readonly alertBus: InMemoryAlertBus;
 }
 
 /**
@@ -135,6 +153,49 @@ export function createOperationalSupervisor(
         })
       : undefined);
 
+  const alertBus = new InMemoryAlertBus();
+  const operationalHealth =
+    input.operationalHealth ??
+    new OperationalHealthService({
+      alertBus,
+      workspaceId: "nexo",
+      emitAlerts: !input.disableOperationalHardening,
+      metrics: input.disableOperationalHardening
+        ? {
+            collect: () => ({
+              memoryActiveNotes: 0,
+              memoryQuota: 2000,
+              queueWaiting: 0,
+              queueDepth: 0,
+              consecutiveFailed: 0,
+              workersAlive: input.workers.aliveCount(),
+              workersExpected: input.workers.list().length,
+              runtimeOk: true,
+              schedulerRunning: true,
+              actionsOk: true,
+            }),
+          }
+        : new PrismaOperationalMetricsProvider({
+            workspaceId: "nexo",
+            workersAlive: () => input.workers.aliveCount(),
+            workersExpected: () => input.workers.list().length,
+            schedulerRunning: () => true,
+            runtimeOk: () => true,
+          }),
+    });
+  const operationalMaintenance =
+    input.operationalMaintenance ??
+    (input.disableOperationalHardening
+      ? new OperationalMaintenance({})
+      : new OperationalMaintenance({
+          workspaceId: "nexo",
+          memoryTargetActiveMax: 1_600,
+          ledgerRetentionDays: 30,
+          memory: new PrismaMemoryMaintenance("nexo"),
+          queue: new PrismaQueueMaintenance(),
+          ledger: new PrismaLedgerMaintenance(),
+        }));
+
   const supervisor = new SupervisorLoop({
     healthMonitor: new HealthMonitor(buildHealthChecks(input), clock),
     workspaceScanner: new WorkspaceScanner(
@@ -170,9 +231,22 @@ export function createOperationalSupervisor(
     staleRunningMs: input.staleRunningMs,
     githubRepositoryScanner,
     signalDecisionEngine,
+    operationalHealth: input.disableOperationalHardening
+      ? undefined
+      : operationalHealth,
+    operationalMaintenance: input.disableOperationalHardening
+      ? undefined
+      : operationalMaintenance,
+    maintenanceEveryCycles: 5,
   });
 
-  return { supervisor, eventStore };
+  return {
+    supervisor,
+    eventStore,
+    operationalHealth,
+    operationalMaintenance,
+    alertBus,
+  };
 }
 
 function buildHealthChecks(

@@ -5,11 +5,11 @@ import {
   buildValidationReport,
 } from "../src/index.js";
 
-describe("Sprint A.V — Operational Validation Suite", () => {
-  it("expoe os 12 cenarios obrigatorios", () => {
-    expect(ALL_VALIDATION_SCENARIOS).toHaveLength(12);
+describe("Sprint A.V + A.5.3 — Operational Validation Suite", () => {
+  it("expoe 12 cenarios A.V + 6 hardening A.5.3", () => {
+    expect(ALL_VALIDATION_SCENARIOS).toHaveLength(18);
     const ids = ALL_VALIDATION_SCENARIOS.map((s) => s.id);
-    expect(ids).toEqual([
+    expect(ids.slice(0, 12)).toEqual([
       "A.V.1",
       "A.V.2",
       "A.V.3",
@@ -23,6 +23,14 @@ describe("Sprint A.V — Operational Validation Suite", () => {
       "A.V.11",
       "A.V.12",
     ]);
+    expect(ids.slice(12)).toEqual([
+      "A.5.3.1",
+      "A.5.3.2",
+      "A.5.3.3",
+      "A.5.3.4",
+      "A.5.3.5",
+      "A.5.3.6",
+    ]);
   });
 
   it("ValidationRunner.run() retorna sucesso em todos os cenarios", async () => {
@@ -31,12 +39,13 @@ describe("Sprint A.V — Operational Validation Suite", () => {
         "@operaia/validation-suite": "0.1.0",
         "@operaia/mission-router": "0.1.0",
         "@operaia/action-runtime": "0.1.0",
+        "@operaia/operational-health": "0.1.0",
       },
     });
     const result = await runner.run();
 
-    expect(result.executedScenarios).toBe(12);
-    expect(result.passed).toBe(12);
+    expect(result.executedScenarios).toBe(18);
+    expect(result.passed).toBe(18);
     expect(result.failed).toBe(0);
     expect(result.success).toBe(true);
     expect(result.duration).toBeGreaterThanOrEqual(0);
@@ -44,7 +53,7 @@ describe("Sprint A.V — Operational Validation Suite", () => {
     expect(result.report.text).toContain("Resultado final");
     expect(result.proof.title).toBe("Sprint A Operational Proof");
     expect(result.proof.markdown).toContain("Arquitetura validada");
-    expect(result.proof.approvedFlows).toHaveLength(12);
+    expect(result.proof.approvedFlows).toHaveLength(18);
     expect(result.proof.rejectedFlows).toHaveLength(0);
   });
 

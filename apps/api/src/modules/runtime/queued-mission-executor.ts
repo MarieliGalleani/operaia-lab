@@ -6,6 +6,10 @@ import type {
 import { BriefingBuilder, Specialization } from "@operaia/employee-framework";
 import { inferDefaultEdges } from "@operaia/agents";
 import type { MemoryStore } from "@operaia/memory";
+import {
+  defaultFailurePolicy,
+  NonCriticalOperation,
+} from "@operaia/operational-health";
 import type { DigitalOffice } from "../employees/office-composition.js";
 import type { WorkspaceSource } from "../employees/workspace-source.js";
 import { buildDomainSyncActions } from "../operations/mission-domain-sync.js";
@@ -276,24 +280,31 @@ export class QueuedMissionExecutor {
     };
 
     await this.queue.complete(mission.id, asJson(result));
-    await persistMissionMemory(this.memory, {
-      workspaceId: mission.workspaceId,
-      missionId: mission.id,
-      objective: context.objective,
-      summary: result.usableResult,
-    });
-    await recordMissionLearning(this.memory, {
+    await this.safePersistMemorySideEffects({
       missionId: mission.id,
       workspaceId: mission.workspaceId,
-      projectId: mission.projectId,
-      objective: context.objective,
-      decision: initial.output.decision.decision,
-      justification: initial.output.decision.reasoning,
-      result: result.usableResult,
-      lessonsLearned: "Resposta direta da Opera sem delegacao.",
-      reuseWhen: "Consultas executivas sem pendencia tecnica.",
-      avoidWhen: "Objetivos que exigem multiplos dominios.",
-      durationMs: Date.now() - started,
+      phase: "finishWithoutDelegation",
+      run: async () => {
+        await persistMissionMemory(this.memory, {
+          workspaceId: mission.workspaceId,
+          missionId: mission.id,
+          objective: context.objective,
+          summary: result.usableResult,
+        });
+        await recordMissionLearning(this.memory, {
+          missionId: mission.id,
+          workspaceId: mission.workspaceId,
+          projectId: mission.projectId,
+          objective: context.objective,
+          decision: initial.output.decision.decision,
+          justification: initial.output.decision.reasoning,
+          result: result.usableResult,
+          lessonsLearned: "Resposta direta da Opera sem delegacao.",
+          reuseWhen: "Consultas executivas sem pendencia tecnica.",
+          avoidWhen: "Objetivos que exigem multiplos dominios.",
+          durationMs: Date.now() - started,
+        });
+      },
     });
   }
 
@@ -340,18 +351,25 @@ export class QueuedMissionExecutor {
     };
     await this.queue.complete(mission.id, asJson(stored));
 
-    await recordMissionLearning(this.memory, {
+    await this.safePersistMemorySideEffects({
       missionId: mission.id,
       workspaceId: mission.workspaceId,
-      projectId: mission.projectId,
-      objective: context.objective,
-      decision: result.output.decision.decision,
-      justification: result.output.decision.reasoning,
-      result: result.output.report.summary,
-      risksFound: result.output.report.risks,
-      lessonsLearned: `Execucao ${mission.requiredSpecialization ?? workerEmployeeId} concluida.`,
-      reuseWhen: `Demandas de ${mission.requiredSpecialization}`,
-      durationMs: executionTime,
+      phase: "execute",
+      run: async () => {
+        await recordMissionLearning(this.memory, {
+          missionId: mission.id,
+          workspaceId: mission.workspaceId,
+          projectId: mission.projectId,
+          objective: context.objective,
+          decision: result.output.decision.decision,
+          justification: result.output.decision.reasoning,
+          result: result.output.report.summary,
+          risksFound: result.output.report.risks,
+          lessonsLearned: `Execucao ${mission.requiredSpecialization ?? workerEmployeeId} concluida.`,
+          reuseWhen: `Demandas de ${mission.requiredSpecialization}`,
+          durationMs: executionTime,
+        });
+      },
     });
 
     this.logger.info(
@@ -441,29 +459,37 @@ export class QueuedMissionExecutor {
       asJson(result),
     );
 
-    await persistMissionMemory(this.memory, {
+    await this.safePersistMemorySideEffects({
+      missionId: mission.id,
       workspaceId: mission.workspaceId,
-      missionId: rootMissionId,
-      objective: root.objective,
-      summary: result.usableResult,
-    });
+      rootMissionId,
+      phase: "consolidate",
+      run: async () => {
+        await persistMissionMemory(this.memory, {
+          workspaceId: mission.workspaceId,
+          missionId: rootMissionId,
+          objective: root.objective,
+          summary: result.usableResult,
+        });
 
-    await recordMissionLearning(this.memory, {
-      missionId: rootMissionId,
-      workspaceId: mission.workspaceId,
-      projectId: mission.projectId,
-      objective: root.objective,
-      decision: final.output.decision.decision,
-      justification: final.output.decision.reasoning,
-      result: result.usableResult,
-      impact: `${outcomes.filter((o) => o.matched).length} especialistas`,
-      risksFound: final.output.decision.risks,
-      lessonsLearned:
-        "Consolidacao multi-especialista via Mission Queue assincrona.",
-      reuseWhen: "Objetivos multi-dominio com delegacao paralela/sequencial.",
-      avoidWhen: "Consultas simples sem necessidade de especialistas.",
-      durationMs: specialistMs + consolidationMs,
-      metrics: { specialistCount: outcomes.length, consolidationMs },
+        await recordMissionLearning(this.memory, {
+          missionId: rootMissionId,
+          workspaceId: mission.workspaceId,
+          projectId: mission.projectId,
+          objective: root.objective,
+          decision: final.output.decision.decision,
+          justification: final.output.decision.reasoning,
+          result: result.usableResult,
+          impact: `${outcomes.filter((o) => o.matched).length} especialistas`,
+          risksFound: final.output.decision.risks,
+          lessonsLearned:
+            "Consolidacao multi-especialista via Mission Queue assincrona.",
+          reuseWhen: "Objetivos multi-dominio com delegacao paralela/sequencial.",
+          avoidWhen: "Consultas simples sem necessidade de especialistas.",
+          durationMs: specialistMs + consolidationMs,
+          metrics: { specialistCount: outcomes.length, consolidationMs },
+        });
+      },
     });
 
     this.logger.info(
@@ -477,6 +503,44 @@ export class QueuedMissionExecutor {
       },
       "Opera consolidou missao distribuida",
     );
+  }
+
+  /**
+   * Memoria/Learning sao NON_CRITICAL (FailurePolicy A.5.3).
+   * Falha apos complete() nunca reverte missao SUCCESS → FAILED.
+   */
+  private async safePersistMemorySideEffects(input: {
+    readonly missionId: string;
+    readonly workspaceId: string;
+    readonly phase: string;
+    readonly rootMissionId?: string;
+    readonly run: () => Promise<void>;
+  }): Promise<void> {
+    await defaultFailurePolicy.runNonCritical({
+      operation: NonCriticalOperation.OPERATIONAL_MEMORY,
+      workspaceId: input.workspaceId,
+      correlationId: input.missionId,
+      component: "queued-mission-executor",
+      run: input.run,
+      onFailure: (error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        const stack = error instanceof Error ? error.stack : undefined;
+        this.logger.error(
+          {
+            component: "queued-mission-executor",
+            event: "memory_side_effect_failed",
+            missionId: input.missionId,
+            workspaceId: input.workspaceId,
+            rootMissionId: input.rootMissionId ?? null,
+            phase: input.phase,
+            criticality: "NON_CRITICAL",
+            error: message,
+            stack,
+          },
+          "Falha NON_CRITICAL pos-missao (missao permanece concluida)",
+        );
+      },
+    });
   }
 
   private buildOutcomesFromChildren(

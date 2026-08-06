@@ -44,4 +44,10 @@ export {
   techImplementationScenario,
   workerSelectionScenario,
   workspaceIsolationScenario,
+  memoryQuotaThresholdsScenario,
+  softFailPolicyScenario,
+  fifoEvictionPolicyScenario,
+  orphanWaitingMaintenanceScenario,
+  supervisorAlertScenario,
+  healthHealthyScenario,
 } from "./scenarios/scenarios.js";
