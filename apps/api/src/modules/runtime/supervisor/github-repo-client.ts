@@ -133,7 +133,12 @@ export class FetchGithubRepoClient implements GithubRepoClient {
   ): Promise<number> {
     const path = `/repos/${owner}/${repo}/pulls?state=open&per_page=1`;
     const response = await this.api.request(path);
+
     if (!response.ok) {
+      if (response.status === 403 || response.status === 404) {
+        return 0;
+      }
+
       throw new Error(
         `GitHub pulls ${owner}/${repo}: HTTP ${response.status}`,
       );
