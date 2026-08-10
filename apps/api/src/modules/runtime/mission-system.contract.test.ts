@@ -34,6 +34,7 @@ import {
   type CoordinatePhaseResult,
 } from "./mission-result-store.js";
 import { CoordinationDispatcher } from "./supervisor/coordination-dispatcher.js";
+import { InMemoryCoordinationLatchStore } from "./supervisor/infrastructure/in-memory-coordination-latch-store.js";
 import type { SupervisorLoggerPort } from "./supervisor/ports.js";
 
 /** Contrato público HTTP Runtime POST /missions (espelho da rota — Fase 0). */
@@ -197,7 +198,7 @@ describe("ADR-007 Fase 0 — contrato Mission System (MissionQueue)", () => {
         ],
       };
 
-      await new CoordinationDispatcher(queue as never, noopLogger()).dispatch({
+      await new CoordinationDispatcher(queue as never, noopLogger(), new InMemoryCoordinationLatchStore()).dispatch({
         workspaces,
         missions: {
           scannedAt: new Date().toISOString(),

@@ -10,6 +10,13 @@ export {
   CoordinationDispatcher,
   SupervisorDispatcher,
 } from "./coordination-dispatcher.js";
+export type {
+  CoordinationLatchKey,
+  CoordinationLatchPort,
+  CoordinationAcquireResult,
+} from "./coordination-latch-store.js";
+export { InMemoryCoordinationLatchStore } from "./infrastructure/in-memory-coordination-latch-store.js";
+export { PrismaCoordinationLatchStore } from "./infrastructure/prisma-coordination-latch-store.js";
 export { SnapshotGenerator } from "./snapshot-generator.js";
 export { StructuredSupervisorLogger } from "./structured-logger.js";
 export {

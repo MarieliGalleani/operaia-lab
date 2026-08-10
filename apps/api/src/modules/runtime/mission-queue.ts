@@ -206,6 +206,30 @@ export class MissionQueue {
   }
 
   /**
+   * Localiza missao por objectiveHash (qualquer status), opcionalmente
+   * desde createdAtGte — usado no recovery de latch PENDING orfao.
+   */
+  async findByObjectiveHash(
+    workspaceId: string,
+    objectiveHash: string,
+    options?: { readonly createdAtGte?: Date },
+  ): Promise<{ id: string; status: string } | null> {
+    const row = await prisma.mission.findFirst({
+      where: {
+        workspaceId,
+        objectiveHash,
+        missionKind: PrismaMissionKind.COORDINATE,
+        ...(options?.createdAtGte
+          ? { createdAt: { gte: options.createdAtGte } }
+          : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, status: true },
+    });
+    return row;
+  }
+
+  /**
    * CEO: COORDINATE ou CONSOLIDATE.
    * Especialistas: EXECUTE por specialization.
    */

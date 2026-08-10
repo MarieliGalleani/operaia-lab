@@ -20,6 +20,7 @@ import {
 } from "./github-repo-client.js";
 import { GitHubRepositoryScanner } from "./github-repository-scanner.js";
 import type { GithubSnapshotStore } from "./github-snapshot-store.js";
+import type { CoordinationLatchPort } from "./coordination-latch-store.js";
 import { HealthMonitor } from "./health-monitor.js";
 import { InMemorySnapshotStore } from "./infrastructure/in-memory-snapshot-store.js";
 import { MissionQueueAdapter } from "./infrastructure/mission-queue-adapter.js";
@@ -28,6 +29,7 @@ import {
   PersistingSupervisorLogger,
   type OperationalEventStorePort,
 } from "./infrastructure/operational-event-store.js";
+import { PrismaCoordinationLatchStore } from "./infrastructure/prisma-coordination-latch-store.js";
 import { PrismaGithubSnapshotStore } from "./infrastructure/prisma-github-snapshot-store.js";
 import { MissionScanner } from "./mission-scanner.js";
 import type {
@@ -73,6 +75,8 @@ export interface CreateOperationalSupervisorInput {
   readonly githubSnapshotStore?: GithubSnapshotStore;
   readonly githubRepositoryScanner?: GitHubRepositoryScanner;
   readonly signalDecisionEngine?: SignalDecisionEngine;
+  /** Latch edge-triggered persistente; default Prisma. */
+  readonly coordinationLatchStore?: CoordinationLatchPort;
   /** A.5.3 — override; default Prisma metrics + maintenance. */
   readonly operationalHealth?: OperationalHealthService;
   readonly operationalMaintenance?: OperationalMaintenance;
@@ -223,6 +227,8 @@ export function createOperationalSupervisor(
     coordinationDispatcher: new CoordinationDispatcher(
       queuePort,
       supervisorLogger,
+      input.coordinationLatchStore ?? new PrismaCoordinationLatchStore(),
+      input.intervalMs,
     ),
     snapshots: new SnapshotGenerator(clock),
     snapshotStore: input.snapshotStore ?? new InMemorySnapshotStore(),

@@ -17,6 +17,7 @@ export {
   type DomainSignal,
   type WorkspaceSourceBinding,
   type WorkspaceGithubSnapshot,
+  type CoordinationSignalLatch,
   type ActionExecution,
   MissionStatus,
   MissionKind,
@@ -26,5 +27,6 @@ export {
   DomainSignalStatus,
   DomainSignalEvaluationDecision,
   ActionExecutionStatus,
+  CoordinationLatchStatus,
   Prisma,
 } from "@prisma/client";

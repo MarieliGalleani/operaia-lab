@@ -1,4 +1,9 @@
 import { CEO_EMPLOYEE_ID } from "../mission-states.js";
+import { hashObjective } from "../mission-queue.js";
+import type {
+  CoordinationLatchKey,
+  CoordinationLatchPort,
+} from "./coordination-latch-store.js";
 import type { MissionQueuePort, SupervisorLoggerPort } from "./ports.js";
 import type {
   CoordinationReason,
@@ -14,14 +19,20 @@ import { SupervisorEvent } from "./types.js";
 /**
  * CoordinationDispatcher — cria missoes COORDINATE para a Opera.
  *
- * Nao interpreta objetivos, nao escolhe especialistas, nao cria planos,
- * nao escolhe projeto/ancora, nao copia prioridade.
- * Sem sinais operacionais: encerra o ciclo sem criar missao.
+ * Edge-trigger persistente via CoordinationLatchPort (workspaceId:reason):
+ * - tryAcquire → PENDING
+ * - enqueue COORDINATE
+ * - complete → CONSUMED
+ * - PENDING orfao (crash) e reclamado no proximo ciclo; missao ja existente
+ *   desde latchedAt e reaproveitada (sem duplicata).
  */
 export class CoordinationDispatcher {
   constructor(
     private readonly queue: MissionQueuePort,
     private readonly logger: SupervisorLoggerPort,
+    private readonly latches: CoordinationLatchPort,
+    /** Idade minima de PENDING orfao para reclaim (gap C.2). */
+    private readonly pendingStaleMs: number = 60_000,
   ) {}
 
   async dispatch(input: {
@@ -47,6 +58,7 @@ export class CoordinationDispatcher {
       queue: input.queue,
     });
     if (requests.length === 0) {
+      await this.latches.releaseAll();
       return {
         dispatched: 0,
         skipped: 1,
@@ -56,28 +68,78 @@ export class CoordinationDispatcher {
       };
     }
 
+    const activeKeys: CoordinationLatchKey[] = requests.map((req) => ({
+      workspaceId: req.workspaceId,
+      reason: req.reason,
+    }));
+    await this.latches.releaseAbsent(activeKeys);
+
     const details: string[] = [];
     let dispatched = 0;
     const created: CoordinationRequest[] = [];
 
     for (const req of requests) {
-      const objective = buildCoordinationObjective(req);
-      const result = await this.queue.enqueue({
+      const latchKey: CoordinationLatchKey = {
         workspaceId: req.workspaceId,
-        projectId: req.projectId,
-        objective,
-        ownerEmployeeId: CEO_EMPLOYEE_ID,
-        dedupe: true,
+        reason: req.reason,
+      };
+
+      const gate = await this.latches.tryAcquire(latchKey, {
+        staleAfterMs: this.pendingStaleMs,
       });
-      if (result.created) {
-        dispatched += 1;
-        created.push(req);
-        this.logger.emit(SupervisorEvent.COORDINATION_CREATED, {
+      if (!gate.acquired) {
+        continue;
+      }
+
+      try {
+        const objective = buildCoordinationObjective(req);
+        const objectiveHash = hashObjective(req.workspaceId, objective);
+
+        // Recovery gap C.2: so em reclaim de PENDING orfao.
+        if (
+          gate.mode === "reclaim" &&
+          gate.latchedAt &&
+          this.queue.findByObjectiveHash
+        ) {
+          const existing = await this.queue.findByObjectiveHash(
+            req.workspaceId,
+            objectiveHash,
+            { createdAtGte: gate.latchedAt },
+          );
+          if (existing) {
+            await this.latches.complete(latchKey, existing.id);
+            continue;
+          }
+        }
+
+        const result = await this.queue.enqueue({
           workspaceId: req.workspaceId,
-          reason: req.reason,
-          missionId: result.id,
+          projectId: req.projectId,
+          objective,
+          ownerEmployeeId: CEO_EMPLOYEE_ID,
+          dedupe: true,
         });
-        details.push(`${req.reason}:${req.workspaceId}`);
+
+        if (!result.id) {
+          await this.latches.release(latchKey);
+          continue;
+        }
+
+        await this.latches.complete(latchKey, result.id);
+
+        if (result.created) {
+          dispatched += 1;
+          created.push(req);
+          this.logger.emit(SupervisorEvent.COORDINATION_CREATED, {
+            workspaceId: req.workspaceId,
+            reason: req.reason,
+            missionId: result.id,
+          });
+          details.push(`${req.reason}:${req.workspaceId}`);
+        }
+      } catch (error) {
+        await this.latches.release(latchKey);
+        throw error;
       }
     }
 
@@ -143,8 +205,6 @@ function collectCoordinationRequests(input: {
     });
   }
 
-  // Congestao: sinal operacional atribuido a workspaces ja sob atencao
-  // (nao escolhe ancora / prioridade de portfolio).
   if (input.queue.congested) {
     for (const ws of input.workspaces.workspaces) {
       if (!ws.needsAttention && ws.openMissions === 0) {
@@ -159,14 +219,10 @@ function collectCoordinationRequests(input: {
     }
   }
 
-  // Recovery coberta por missoes com needsCoordination.
-  // Sem workspace/missao atribuivel: nao inventa ancora.
-
   return requests;
 }
 
 function buildCoordinationObjective(req: CoordinationRequest): string {
-  // Texto operacional neutro — Opera interpreta e decide.
   return `[COORDINATE/${req.reason}] Atencao operacional no workspace ${req.workspaceId}. ${req.detail}`;
 }
 

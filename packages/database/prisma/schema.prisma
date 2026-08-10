@@ -423,6 +423,31 @@ model WorkspaceGithubSnapshot {
   @@map("workspace_github_snapshots")
 }
 
+/// Latch edge-triggered do Supervisor: workspaceId+reason → no maximo 1 COORDINATE
+/// enquanto o sinal operacional persistir (sobrevive restart / multi-instancia).
+/// PENDING = borda adquirida (missao ainda nao confirmada); CONSUMED = entregue.
+enum CoordinationLatchStatus {
+  PENDING
+  CONSUMED
+}
+
+model CoordinationSignalLatch {
+  id            String                   @id @default(uuid())
+  workspaceId   String
+  /// CoordinationReason estavel (ex.: backlog, recuperacao).
+  reason        String
+  status        CoordinationLatchStatus  @default(PENDING)
+  latchedAt     DateTime                 @default(now())
+  lastMissionId String?
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  @@unique([workspaceId, reason])
+  @@index([workspaceId])
+  @@index([status])
+  @@map("coordination_signal_latches")
+}
+
 /// Auditoria de acoes controladas (Action Runtime A.4).
 enum ActionExecutionStatus {
   REQUESTED

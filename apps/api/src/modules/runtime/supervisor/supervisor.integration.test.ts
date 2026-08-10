@@ -7,6 +7,7 @@ import { InMemoryWorkspaceSource } from "../../employees/in-memory-workspace-sou
 import { buildTestWorkspaceCatalog } from "../../employees/test-workspace-catalog.js";
 import { createLabRuntime } from "../../operations/lab-runtime.js";
 import { CoordinationDispatcher } from "./coordination-dispatcher.js";
+import { InMemoryCoordinationLatchStore } from "./infrastructure/in-memory-coordination-latch-store.js";
 import { HealthMonitor } from "./health-monitor.js";
 import { InMemorySnapshotStore } from "./infrastructure/in-memory-snapshot-store.js";
 import {
@@ -116,7 +117,7 @@ describe("Mission 4 — Supervisor permanente (integration)", () => {
         clock,
         30_000,
       ),
-      coordinationDispatcher: new CoordinationDispatcher(queue, logger),
+      coordinationDispatcher: new CoordinationDispatcher(queue, logger, new InMemoryCoordinationLatchStore()),
       snapshots: new SnapshotGenerator(clock),
       snapshotStore: new InMemorySnapshotStore(),
       logger,
@@ -197,7 +198,7 @@ describe("Mission 4 — Supervisor permanente (integration)", () => {
         clock,
         30_000,
       ),
-      coordinationDispatcher: new CoordinationDispatcher(queue, logger),
+      coordinationDispatcher: new CoordinationDispatcher(queue, logger, new InMemoryCoordinationLatchStore()),
       snapshots: new SnapshotGenerator(clock),
       snapshotStore: new InMemorySnapshotStore(),
       logger,

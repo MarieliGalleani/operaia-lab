@@ -56,6 +56,14 @@ export class MissionQueueAdapter implements MissionQueuePort {
     });
     return { created: result.created, id: result.mission.id };
   }
+
+  async findByObjectiveHash(
+    workspaceId: string,
+    objectiveHash: string,
+    options?: { readonly createdAtGte?: Date },
+  ) {
+    return this.queue.findByObjectiveHash(workspaceId, objectiveHash, options);
+  }
 }
 
 function toMissionView(mission: Mission): MissionView {

@@ -82,6 +82,15 @@ export interface MissionQueuePort {
     readonly priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
     readonly dedupe?: boolean;
   }): Promise<{ readonly created: boolean; readonly id?: string }>;
+  /**
+   * Busca missao por objectiveHash (recovery de latch PENDING orfao).
+   * Opcional nos mocks legados; Prisma adapter implementa.
+   */
+  findByObjectiveHash?(
+    workspaceId: string,
+    objectiveHash: string,
+    options?: { readonly createdAtGte?: Date },
+  ): Promise<{ readonly id: string; readonly status: string } | null>;
 }
 
 export interface WorkerViewPort {

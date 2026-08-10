@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { InMemoryWorkspaceSource } from "../../employees/in-memory-workspace-source.js";
 import { buildTestWorkspaceCatalog } from "../../employees/test-workspace-catalog.js";
 import { CEO_EMPLOYEE_ID } from "../mission-states.js";
+import { hashObjective } from "../mission-queue.js";
 import { CoordinationDispatcher } from "./coordination-dispatcher.js";
 import { HealthMonitor } from "./health-monitor.js";
+import { InMemoryCoordinationLatchStore } from "./infrastructure/in-memory-coordination-latch-store.js";
 import { InMemorySnapshotStore } from "./infrastructure/in-memory-snapshot-store.js";
 import {
   InMemoryOperationalEventStore,
@@ -27,6 +29,10 @@ import { WorkspaceScanner } from "./workspace-scanner.js";
 
 const fixedNow = new Date("2026-07-28T16:00:00.000Z");
 const clock: ClockPort = { now: () => fixedNow };
+
+function freshLatches() {
+  return new InMemoryCoordinationLatchStore();
+}
 
 type EnqueuedMission = {
   readonly workspaceId: string;
@@ -57,11 +63,29 @@ function createQueue(
   overrides: Partial<MissionQueuePort> & {
     readonly rows?: readonly MissionView[];
   } = {},
-): MissionQueuePort & { enqueued: EnqueuedMission[] } {
+): MissionQueuePort & {
+  enqueued: EnqueuedMission[];
+  missionsByHash: Map<string, { id: string; status: string; createdAt: Date; objectiveHash: string; workspaceId: string }>;
+} {
   const rows = overrides.rows ?? [];
   const enqueued: EnqueuedMission[] = [];
-  return {
+  const missionsByHash = new Map<
+    string,
+    {
+      id: string;
+      status: string;
+      createdAt: Date;
+      objectiveHash: string;
+      workspaceId: string;
+    }
+  >();
+
+  const base: MissionQueuePort & {
+    enqueued: EnqueuedMission[];
+    missionsByHash: typeof missionsByHash;
+  } = {
     enqueued,
+    missionsByHash,
     async depths() {
       return {
         queued: rows.filter((r) => r.status === "QUEUED").length,
@@ -86,6 +110,16 @@ function createQueue(
       return 1;
     },
     async enqueue(input) {
+      const objectiveHash = hashObjective(input.workspaceId, input.objective);
+      const existingOpen = [...missionsByHash.values()].find(
+        (m) =>
+          m.workspaceId === input.workspaceId &&
+          m.objectiveHash === objectiveHash &&
+          ["CREATED", "QUEUED", "RUNNING", "WAITING"].includes(m.status),
+      );
+      if (input.dedupe && existingOpen) {
+        return { created: false, id: existingOpen.id };
+      }
       enqueued.push({
         workspaceId: input.workspaceId,
         projectId: input.projectId,
@@ -94,10 +128,31 @@ function createQueue(
         priority: input.priority,
         dedupe: input.dedupe,
       });
-      return { created: true, id: `coord-${enqueued.length}` };
+      const id = `coord-${enqueued.length}`;
+      missionsByHash.set(id, {
+        id,
+        status: "QUEUED",
+        createdAt: new Date(),
+        objectiveHash,
+        workspaceId: input.workspaceId,
+      });
+      return { created: true, id };
     },
-    ...overrides,
+    async findByObjectiveHash(workspaceId, objectiveHash, options) {
+      const matches = [...missionsByHash.values()]
+        .filter(
+          (m) =>
+            m.workspaceId === workspaceId &&
+            m.objectiveHash === objectiveHash &&
+            (!options?.createdAtGte || m.createdAt >= options.createdAtGte),
+        )
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      const hit = matches[0];
+      return hit ? { id: hit.id, status: hit.status } : null;
+    },
   };
+
+  return { ...base, ...overrides, enqueued, missionsByHash };
 }
 
 function noopLogger(): SupervisorLoggerPort {
@@ -312,7 +367,7 @@ describe("Operational Supervisor v2 — missao permanente", () => {
       30_000,
     ).scan();
 
-    const dispatcher = new CoordinationDispatcher(queue, logger);
+    const dispatcher = new CoordinationDispatcher(queue, logger, freshLatches());
     const result = await dispatcher.dispatch({
       workspaces: withAttention,
       missions,
@@ -343,7 +398,7 @@ describe("Operational Supervisor v2 — missao permanente", () => {
       30_000,
     ).scan();
 
-    const result = await new CoordinationDispatcher(queue, logger).dispatch({
+    const result = await new CoordinationDispatcher(queue, logger, freshLatches()).dispatch({
       workspaces: emptyWorkspaceReport(),
       missions,
       queue: { ...queueReport, congested: false },
@@ -404,7 +459,7 @@ describe("Operational Supervisor v2 — missao permanente", () => {
         clock,
         30_000,
       ),
-      coordinationDispatcher: new CoordinationDispatcher(queue, logger),
+      coordinationDispatcher: new CoordinationDispatcher(queue, logger, freshLatches()),
       snapshots: new SnapshotGenerator(clock),
       snapshotStore: new InMemorySnapshotStore(),
       logger,
@@ -434,7 +489,7 @@ describe("Operational Supervisor — invariantes arquiteturais", () => {
       30_000,
     ).scan();
 
-    await new CoordinationDispatcher(queue, noopLogger()).dispatch({
+    await new CoordinationDispatcher(queue, noopLogger(), freshLatches()).dispatch({
       workspaces: await attentionWorkspaces(queue),
       missions,
       queue: queueReport,
@@ -459,7 +514,7 @@ describe("Operational Supervisor — invariantes arquiteturais", () => {
       30_000,
     ).scan();
 
-    await new CoordinationDispatcher(queue, noopLogger()).dispatch({
+    await new CoordinationDispatcher(queue, noopLogger(), freshLatches()).dispatch({
       workspaces: await attentionWorkspaces(queue),
       missions,
       queue: queueReport,
@@ -498,7 +553,7 @@ describe("Operational Supervisor — invariantes arquiteturais", () => {
       30_000,
     ).scan();
 
-    await new CoordinationDispatcher(queue, noopLogger()).dispatch({
+    await new CoordinationDispatcher(queue, noopLogger(), freshLatches()).dispatch({
       workspaces: await attentionWorkspaces(queue),
       missions,
       queue: queueReport,
@@ -528,7 +583,7 @@ describe("Operational Supervisor — invariantes arquiteturais", () => {
       30_000,
     ).scan();
 
-    const result = await new CoordinationDispatcher(queue, noopLogger()).dispatch(
+    const result = await new CoordinationDispatcher(queue, noopLogger(), freshLatches()).dispatch(
       {
         workspaces: emptyWorkspaceReport(),
         missions,
@@ -559,7 +614,7 @@ describe("Operational Supervisor — invariantes arquiteturais", () => {
       30_000,
     ).scan();
 
-    const result = await new CoordinationDispatcher(queue, logger).dispatch({
+    const result = await new CoordinationDispatcher(queue, logger, freshLatches()).dispatch({
       workspaces: await attentionWorkspaces(queue),
       missions,
       queue: queueReport,
@@ -603,7 +658,7 @@ describe("Operational Supervisor — invariantes arquiteturais", () => {
         clock,
         30_000,
       ),
-      coordinationDispatcher: new CoordinationDispatcher(queue, logger),
+      coordinationDispatcher: new CoordinationDispatcher(queue, logger, freshLatches()),
       snapshots: new SnapshotGenerator(clock),
       snapshotStore: new InMemorySnapshotStore(),
       logger,
@@ -616,5 +671,323 @@ describe("Operational Supervisor — invariantes arquiteturais", () => {
     expect(ctx!.health.overall).toBe("fail");
     expect(ctx!.dispatch.dispatched).toBe(0);
     expect(queue.enqueued).toHaveLength(0);
+  });
+});
+
+describe("Coordination latch edge-triggered (PENDING/CONSUMED)", () => {
+  const emptyMissions = {
+    scannedAt: fixedNow.toISOString(),
+    items: [] as const,
+    resumableCount: 0,
+    coordinationNeeded: 0,
+    byStatus: {},
+  };
+
+  const idleQueue = {
+    scannedAt: fixedNow.toISOString(),
+    pending: 0,
+    running: 0,
+    failed: 0,
+    waiting: 0,
+    retry: 0,
+    stuck: 0,
+    depth: 0,
+    congested: false,
+    workersAvailable: 0,
+    workersBusy: 0,
+    depths: { queued: 0, running: 0, waiting: 0, failed: 0 },
+  };
+
+  function reportWith(
+    items: readonly {
+      readonly workspaceId: string;
+      readonly reasons: readonly (
+        | "backlog"
+        | "mudanca_importante"
+        | "recuperacao"
+      )[];
+    }[],
+  ): WorkspaceScanReport {
+    return {
+      scannedAt: fixedNow.toISOString(),
+      activeCount: items.length,
+      readyCount: items.length,
+      attentionCount: items.filter((i) => i.reasons.length > 0).length,
+      workspaces: items.map((item) => ({
+        workspaceId: item.workspaceId,
+        name: item.workspaceId.toUpperCase(),
+        status: "ACTIVE",
+        projectId: item.workspaceId,
+        pendingTasks: item.reasons.includes("backlog") ? 2 : 0,
+        teamSize: 1,
+        hasActiveMission: false,
+        hasBlockedMission: false,
+        hasWaitingMission: false,
+        hasReadyMission: false,
+        hasBacklog: item.reasons.includes("backlog"),
+        hasChanges: item.reasons.length > 0,
+        needsAttention: item.reasons.length > 0,
+        attentionReasons: item.reasons.filter(
+          (r) => r === "backlog" || r === "mudanca_importante",
+        ),
+        openMissions: 0,
+        ready: true,
+        issues: [],
+      })),
+    };
+  }
+
+  function missionsWithRecuperacao(workspaceId: string) {
+    return {
+      scannedAt: fixedNow.toISOString(),
+      items: [
+        {
+          missionId: "failed-1",
+          workspaceId,
+          status: "FAILED",
+          category: "FAILED" as const,
+          attempt: 3,
+          maxAttempts: 3,
+          canResume: false,
+          needsCoordination: true,
+          reason: "FAILED sem tentativas",
+        },
+      ],
+      resumableCount: 0,
+      coordinationNeeded: 1,
+      byStatus: { FAILED: 1 },
+    };
+  }
+
+  const backlogPayload = {
+    workspaces: reportWith([{ workspaceId: "nexo", reasons: ["backlog"] }]),
+    missions: emptyMissions,
+    queue: idleQueue,
+    recovery: emptyRecovery(),
+    healthOk: true,
+  };
+
+  /** 1 — fluxo normal */
+  it("c2.1: acquire → enqueue → complete = 1 missao + latch CONSUMED", async () => {
+    const queue = createQueue({ rows: [] });
+    const latches = freshLatches();
+    const dispatcher = new CoordinationDispatcher(queue, noopLogger(), latches);
+
+    const result = await dispatcher.dispatch(backlogPayload);
+    expect(result.dispatched).toBe(1);
+    expect(queue.enqueued).toHaveLength(1);
+    const latch = latches.getForTest({ workspaceId: "nexo", reason: "backlog" });
+    expect(latch?.status).toBe("CONSUMED");
+    expect(latch?.lastMissionId).toBe("coord-1");
+  });
+
+  /** 2 — enqueue lanca erro */
+  it("c2.2: enqueue throws → latch liberado → retry permitido", async () => {
+    const latches = freshLatches();
+    let attempts = 0;
+    const queue = createQueue({
+      async enqueue() {
+        attempts += 1;
+        if (attempts === 1) {
+          throw new Error("enqueue failed");
+        }
+        return { created: true, id: "coord-retry" };
+      },
+    });
+    const dispatcher = new CoordinationDispatcher(queue, noopLogger(), latches);
+
+    await expect(dispatcher.dispatch(backlogPayload)).rejects.toThrow(
+      "enqueue failed",
+    );
+    expect(
+      latches.getForTest({ workspaceId: "nexo", reason: "backlog" }),
+    ).toBeUndefined();
+
+    const retry = await dispatcher.dispatch(backlogPayload);
+    expect(retry.dispatched).toBe(1);
+    expect(
+      latches.getForTest({ workspaceId: "nexo", reason: "backlog" })?.status,
+    ).toBe("CONSUMED");
+  });
+
+  /** 3 — crash entre acquire e enqueue (PENDING orfao) */
+  it("c2.3: PENDING orfao stale e recuperado → cria COORDINATE sem duplicata", async () => {
+    const queue = createQueue({ rows: [] });
+    const latches = freshLatches();
+    latches.leavePendingOrphanForTest({
+      workspaceId: "nexo",
+      reason: "backlog",
+    });
+    const dispatcher = new CoordinationDispatcher(
+      queue,
+      noopLogger(),
+      latches,
+      60_000,
+    );
+
+    const result = await dispatcher.dispatch(backlogPayload);
+    expect(result.dispatched).toBe(1);
+    expect(queue.enqueued).toHaveLength(1);
+    expect(
+      latches.getForTest({ workspaceId: "nexo", reason: "backlog" })?.status,
+    ).toBe("CONSUMED");
+  });
+
+  /** 4 — missao ja existente na borda */
+  it("c2.4: PENDING orfao com missao ja existente → complete sem duplicata", async () => {
+    const queue = createQueue({ rows: [] });
+    const latches = freshLatches();
+    const orphanAt = new Date(Date.now() - 120_000);
+    latches.leavePendingOrphanForTest(
+      { workspaceId: "nexo", reason: "backlog" },
+      orphanAt,
+    );
+
+    const objective =
+      "[COORDINATE/backlog] Atencao operacional no workspace nexo. workspace NEXO: backlog";
+    const h = hashObjective("nexo", objective);
+    queue.missionsByHash.set("preexisting", {
+      id: "preexisting",
+      status: "COMPLETED",
+      createdAt: new Date(orphanAt.getTime() + 1_000),
+      objectiveHash: h,
+      workspaceId: "nexo",
+    });
+
+    const dispatcher = new CoordinationDispatcher(
+      queue,
+      noopLogger(),
+      latches,
+      60_000,
+    );
+    const result = await dispatcher.dispatch(backlogPayload);
+    expect(result.dispatched).toBe(0);
+    expect(queue.enqueued).toHaveLength(0);
+    const latch = latches.getForTest({ workspaceId: "nexo", reason: "backlog" });
+    expect(latch?.status).toBe("CONSUMED");
+    expect(latch?.lastMissionId).toBe("preexisting");
+  });
+
+  /** 5 — concorrencia */
+  it("c2.5: tryAcquire concorrente — apenas um acquired", async () => {
+    const store = freshLatches();
+    const key = { workspaceId: "nexo", reason: "backlog" };
+    const results = await Promise.all([
+      store.tryAcquire(key),
+      store.tryAcquire(key),
+      store.tryAcquire(key),
+      store.tryAcquire(key),
+    ]);
+    expect(results.filter((r) => r.acquired)).toHaveLength(1);
+    expect(results.filter((r) => !r.acquired)).toHaveLength(3);
+  });
+
+  /** 6 — sinal persistente */
+  it("c2.6: sinal persistente → 0 novas COORDINATE", async () => {
+    const queue = createQueue({ rows: [] });
+    const dispatcher = new CoordinationDispatcher(
+      queue,
+      noopLogger(),
+      freshLatches(),
+    );
+    expect((await dispatcher.dispatch(backlogPayload)).dispatched).toBe(1);
+    expect((await dispatcher.dispatch(backlogPayload)).dispatched).toBe(0);
+    expect((await dispatcher.dispatch(backlogPayload)).dispatched).toBe(0);
+    expect(queue.enqueued).toHaveLength(1);
+  });
+
+  /** 7 — sinal desaparece e retorna */
+  it("c2.7: sinal some e volta → nova COORDINATE", async () => {
+    const queue = createQueue({ rows: [] });
+    const latches = freshLatches();
+    const dispatcher = new CoordinationDispatcher(
+      queue,
+      noopLogger(),
+      latches,
+    );
+    const present = {
+      workspaces: reportWith([{ workspaceId: "nexo", reasons: ["backlog"] }]),
+      missions: emptyMissions,
+      queue: idleQueue,
+      recovery: emptyRecovery(),
+      healthOk: true,
+    };
+    const absent = {
+      workspaces: reportWith([{ workspaceId: "nexo", reasons: [] }]),
+      missions: emptyMissions,
+      queue: idleQueue,
+      recovery: emptyRecovery(),
+      healthOk: true,
+    };
+
+    expect((await dispatcher.dispatch(present)).dispatched).toBe(1);
+    expect(
+      latches.getForTest({ workspaceId: "nexo", reason: "backlog" })?.status,
+    ).toBe("CONSUMED");
+
+    // Borda anterior concluida — missao terminal + latch liberado ao sumir sinal.
+    for (const m of queue.missionsByHash.values()) {
+      m.status = "COMPLETED";
+    }
+    expect((await dispatcher.dispatch(absent)).dispatched).toBe(0);
+    expect(
+      latches.getForTest({ workspaceId: "nexo", reason: "backlog" }),
+    ).toBeUndefined();
+
+    expect((await dispatcher.dispatch(present)).dispatched).toBe(1);
+    expect(queue.enqueued).toHaveLength(2);
+    expect(
+      latches.getForTest({ workspaceId: "nexo", reason: "backlog" })?.status,
+    ).toBe("CONSUMED");
+  });
+
+  it("caso3: backlog+mudanca_importante+recuperacao → 3 latches", async () => {
+    const queue = createQueue({ rows: [] });
+    const dispatcher = new CoordinationDispatcher(
+      queue,
+      noopLogger(),
+      freshLatches(),
+    );
+    const payload = {
+      workspaces: reportWith([
+        { workspaceId: "nexo", reasons: ["backlog", "mudanca_importante"] },
+      ]),
+      missions: missionsWithRecuperacao("nexo"),
+      queue: idleQueue,
+      recovery: emptyRecovery(),
+      healthOk: true,
+    };
+    expect((await dispatcher.dispatch(payload)).dispatched).toBe(3);
+    expect((await dispatcher.dispatch(payload)).dispatched).toBe(0);
+  });
+
+  it("caso4: latches independentes por workspace", async () => {
+    const queue = createQueue({ rows: [] });
+    const dispatcher = new CoordinationDispatcher(
+      queue,
+      noopLogger(),
+      freshLatches(),
+    );
+    const both = {
+      workspaces: reportWith([
+        { workspaceId: "nexo", reasons: ["backlog"] },
+        { workspaceId: "outro-workspace", reasons: ["backlog"] },
+      ]),
+      missions: emptyMissions,
+      queue: idleQueue,
+      recovery: emptyRecovery(),
+      healthOk: true,
+    };
+    expect((await dispatcher.dispatch(both)).dispatched).toBe(2);
+    expect((await dispatcher.dispatch(both)).dispatched).toBe(0);
+  });
+
+  it("caso5: restart preserva CONSUMED via store compartilhado", async () => {
+    const queue = createQueue({ rows: [] });
+    const sharedStore = freshLatches();
+    const before = new CoordinationDispatcher(queue, noopLogger(), sharedStore);
+    expect((await before.dispatch(backlogPayload)).dispatched).toBe(1);
+    const after = new CoordinationDispatcher(queue, noopLogger(), sharedStore);
+    expect((await after.dispatch(backlogPayload)).dispatched).toBe(0);
   });
 });
