@@ -61,6 +61,7 @@ export interface MissionView {
   readonly startedAt: Date | null;
   readonly lastError: string | null;
   readonly missionKind: string;
+  readonly ownerEmployeeId: string;
 }
 
 /** Porta da fila operacional — abstrai MissionQueue. */
@@ -74,6 +75,11 @@ export interface MissionQueuePort {
   recoverStaleRunning(staleAfterMs: number): Promise<number>;
   recoverWaitingParents(): Promise<number>;
   recoverBlockedDag(): Promise<number>;
+  /**
+   * MQ-3 — ids RUNNING cujo WorkerHeartbeat nao prova liveness.
+   * Opcional em mocks legados; adapter Prisma implementa.
+   */
+  listAbandonedRunningIds?(livenessMs: number): Promise<readonly string[]>;
   enqueue(input: {
     readonly workspaceId: string;
     readonly projectId?: string | null;

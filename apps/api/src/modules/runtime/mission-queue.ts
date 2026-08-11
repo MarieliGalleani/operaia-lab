@@ -16,6 +16,7 @@ import {
   asJson,
   mergeConsolidatePreservingInitial,
 } from "./mission-result-store.js";
+import { isRunningMissionAbandoned } from "./worker-liveness.js";
 
 export interface EnqueueMissionInput {
   readonly workspaceId: string;
@@ -38,6 +39,24 @@ export class MissionEnqueueContractError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "MissionEnqueueContractError";
+  }
+}
+
+/**
+ * MQ-2 — a execucao perdeu ownership (leaseVersion/status nao batem).
+ * Deterministico: complete/fail/markWaiting devem rejeitar, nao engolir.
+ */
+export class StaleMissionOwnershipError extends Error {
+  readonly missionId: string;
+  readonly expectedLeaseVersion: number;
+
+  constructor(missionId: string, expectedLeaseVersion: number) {
+    super(
+      `StaleMissionOwnership: mission=${missionId} leaseVersion=${expectedLeaseVersion}`,
+    );
+    this.name = "StaleMissionOwnershipError";
+    this.missionId = missionId;
+    this.expectedLeaseVersion = expectedLeaseVersion;
   }
 }
 
@@ -285,6 +304,7 @@ export class MissionQueue {
           status: MissionStatus.RUNNING,
           startedAt: new Date(),
           attempt: { increment: 1 },
+          leaseVersion: { increment: 1 },
           progress: 10,
           ownerEmployeeId: criteria.employeeId,
         },
@@ -299,6 +319,7 @@ export class MissionQueue {
             employeeId: criteria.employeeId,
             specialization: criteria.specialization,
             missionKind: updated.missionKind,
+            leaseVersion: updated.leaseVersion,
           } as Prisma.InputJsonValue,
         },
       });
@@ -310,19 +331,31 @@ export class MissionQueue {
   async markWaiting(
     missionId: string,
     partialResult: Prisma.InputJsonValue,
+    expectedLeaseVersion: number,
   ): Promise<Mission> {
-    const mission = await prisma.mission.update({
-      where: { id: missionId },
+    const updated = await prisma.mission.updateMany({
+      where: {
+        id: missionId,
+        status: MissionStatus.RUNNING,
+        leaseVersion: expectedLeaseVersion,
+      },
       data: {
         status: MissionStatus.WAITING,
         progress: 50,
         resultJson: partialResult,
       },
     });
+    if (updated.count !== 1) {
+      throw new StaleMissionOwnershipError(missionId, expectedLeaseVersion);
+    }
+    const mission = await prisma.mission.findUniqueOrThrow({
+      where: { id: missionId },
+    });
     await this.appendEvent(missionId, "waiting", "Aguardando filhos", {
       childCount: await prisma.mission.count({
         where: { parentMissionId: missionId },
       }),
+      leaseVersion: expectedLeaseVersion,
     });
     return mission;
   }
@@ -330,9 +363,14 @@ export class MissionQueue {
   async complete(
     missionId: string,
     result: Prisma.InputJsonValue,
+    expectedLeaseVersion: number,
   ): Promise<Mission> {
-    const mission = await prisma.mission.update({
-      where: { id: missionId },
+    const updated = await prisma.mission.updateMany({
+      where: {
+        id: missionId,
+        status: MissionStatus.RUNNING,
+        leaseVersion: expectedLeaseVersion,
+      },
       data: {
         status: MissionStatus.COMPLETED,
         progress: 100,
@@ -341,7 +379,15 @@ export class MissionQueue {
         lastError: null,
       },
     });
-    await this.appendEvent(missionId, "completed", "Missao concluida");
+    if (updated.count !== 1) {
+      throw new StaleMissionOwnershipError(missionId, expectedLeaseVersion);
+    }
+    const mission = await prisma.mission.findUniqueOrThrow({
+      where: { id: missionId },
+    });
+    await this.appendEvent(missionId, "completed", "Missao concluida", {
+      leaseVersion: expectedLeaseVersion,
+    });
     await this.promoteReadyDependents(missionId);
     return mission;
   }
@@ -404,6 +450,7 @@ export class MissionQueue {
     consolidateMissionId: string,
     rootMissionId: string,
     result: Prisma.InputJsonValue,
+    expectedLeaseVersion: number,
   ): Promise<{ consolidate: Mission; root: Mission }> {
     const rootBefore = await prisma.mission.findUnique({
       where: { id: rootMissionId },
@@ -419,7 +466,11 @@ export class MissionQueue {
     );
     const mergedJson = asJson(merged);
 
-    const consolidate = await this.complete(consolidateMissionId, mergedJson);
+    const consolidate = await this.complete(
+      consolidateMissionId,
+      mergedJson,
+      expectedLeaseVersion,
+    );
     const root = await prisma.mission.update({
       where: { id: rootMissionId },
       data: {
@@ -434,14 +485,29 @@ export class MissionQueue {
     return { consolidate, root };
   }
 
-  async fail(missionId: string, error: string): Promise<Mission> {
+  async fail(
+    missionId: string,
+    error: string,
+    expectedLeaseVersion: number,
+  ): Promise<Mission> {
     const current = await prisma.mission.findUniqueOrThrow({
       where: { id: missionId },
     });
 
+    if (
+      current.status !== MissionStatus.RUNNING ||
+      current.leaseVersion !== expectedLeaseVersion
+    ) {
+      throw new StaleMissionOwnershipError(missionId, expectedLeaseVersion);
+    }
+
     const canRetry = current.attempt < current.maxAttempts;
-    const mission = await prisma.mission.update({
-      where: { id: missionId },
+    const updated = await prisma.mission.updateMany({
+      where: {
+        id: missionId,
+        status: MissionStatus.RUNNING,
+        leaseVersion: expectedLeaseVersion,
+      },
       data: canRetry
         ? {
             status: MissionStatus.QUEUED,
@@ -458,11 +524,23 @@ export class MissionQueue {
           },
     });
 
+    if (updated.count !== 1) {
+      throw new StaleMissionOwnershipError(missionId, expectedLeaseVersion);
+    }
+
+    const mission = await prisma.mission.findUniqueOrThrow({
+      where: { id: missionId },
+    });
+
     await this.appendEvent(
       missionId,
       canRetry ? "requeued" : "failed",
       canRetry ? `Retry agendado: ${error}` : `Falha final: ${error}`,
-      { attempt: current.attempt, maxAttempts: current.maxAttempts },
+      {
+        attempt: current.attempt,
+        maxAttempts: current.maxAttempts,
+        leaseVersion: expectedLeaseVersion,
+      },
     );
 
     return mission;
@@ -623,33 +701,92 @@ export class MissionQueue {
     return { queued, running, waiting, failed };
   }
 
-  async recoverStaleRunning(staleAfterMs: number): Promise<number> {
-    const cutoff = new Date(Date.now() - staleAfterMs);
-    const stale = await prisma.mission.findMany({
-      where: {
-        status: MissionStatus.RUNNING,
-        updatedAt: { lt: cutoff },
-      },
-    });
+  /**
+   * MQ-3 — RUNNING abandonadas segundo WorkerHeartbeat (nao Mission.updatedAt).
+   * `livenessMs <= 0` forca todos os RUNNING (provas / boot observavel).
+   */
+  async listAbandonedRunningIds(livenessMs: number): Promise<readonly string[]> {
+    const abandoned = await this.findAbandonedRunning(livenessMs);
+    return abandoned.map((mission) => mission.id);
+  }
 
+  async recoverStaleRunning(staleAfterMs: number): Promise<number> {
+    // staleAfterMs = janela de liveness do heartbeat (lastSeenAt), nao idade de updatedAt.
+    const stale = await this.findAbandonedRunning(staleAfterMs);
+
+    let recovered = 0;
     for (const mission of stale) {
-      await prisma.mission.update({
-        where: { id: mission.id },
+      // MQ-2: invalida ownership (leaseVersion++) na mesma atualizacao condicional.
+      const updated = await prisma.mission.updateMany({
+        where: {
+          id: mission.id,
+          status: MissionStatus.RUNNING,
+          leaseVersion: mission.leaseVersion,
+        },
         data: {
           status: MissionStatus.QUEUED,
           startedAt: null,
           lastError: "Recuperada apos RUNNING orfao (restart/stale)",
           scheduledAt: new Date(),
+          leaseVersion: { increment: 1 },
         },
       });
+      if (updated.count !== 1) {
+        continue;
+      }
       await this.appendEvent(
         mission.id,
         "recovered",
         "RUNNING orfao reenfileirado",
+        { previousLeaseVersion: mission.leaseVersion },
       );
+      recovered += 1;
     }
 
-    return stale.length;
+    return recovered;
+  }
+
+  /**
+   * RUNNING cujo owner nao prova liveness via WorkerHeartbeat.
+   */
+  private async findAbandonedRunning(
+    livenessMs: number,
+  ): Promise<readonly Mission[]> {
+    const running = await prisma.mission.findMany({
+      where: { status: MissionStatus.RUNNING },
+    });
+    if (running.length === 0) {
+      return [];
+    }
+
+    const ownerIds = [...new Set(running.map((m) => m.ownerEmployeeId))];
+    const heartbeats = await prisma.workerHeartbeat.findMany({
+      where: { employeeId: { in: ownerIds } },
+      select: {
+        employeeId: true,
+        currentMissionId: true,
+        lastSeenAt: true,
+      },
+    });
+    const byOwner = new Map(
+      heartbeats.map((row) => [
+        row.employeeId,
+        {
+          currentMissionId: row.currentMissionId,
+          lastSeenAt: row.lastSeenAt,
+        },
+      ]),
+    );
+    const nowMs = Date.now();
+
+    return running.filter((mission) =>
+      isRunningMissionAbandoned({
+        missionId: mission.id,
+        heartbeat: byOwner.get(mission.ownerEmployeeId),
+        nowMs,
+        livenessMs,
+      }),
+    );
   }
 
   /** Re-enfileira consolidacao para raizes WAITING com filhos prontos. */

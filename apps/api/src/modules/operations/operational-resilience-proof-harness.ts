@@ -128,8 +128,8 @@ async function eventTypesFor(missionId: string): Promise<string[]> {
 }
 
 /**
- * Forca RUNNING orfao com updatedAt antigo.
- * Prisma @updatedAt sobrescreve updates normais — raw SQL necessario.
+ * Forca RUNNING orfao (MQ-3): sem liveness de WorkerHeartbeat.
+ * updatedAt antigo permanece so para observabilidade; reclaim usa heartbeat.
  */
 async function forceOrphanRunning(missionId: string): Promise<void> {
   await prisma.$executeRaw`
@@ -141,6 +141,25 @@ async function forceOrphanRunning(missionId: string): Promise<void> {
       attempt = GREATEST(attempt, 1)
     WHERE id = ${missionId}
   `;
+  const mission = await prisma.mission.findUniqueOrThrow({
+    where: { id: missionId },
+  });
+  const staleAt = new Date(Date.now() - 60_000);
+  await prisma.workerHeartbeat.upsert({
+    where: { employeeId: mission.ownerEmployeeId },
+    create: {
+      employeeId: mission.ownerEmployeeId,
+      status: "stopped",
+      currentMissionId: null,
+      startedAt: staleAt,
+      lastSeenAt: staleAt,
+    },
+    update: {
+      status: "stopped",
+      currentMissionId: null,
+      lastSeenAt: staleAt,
+    },
+  });
 }
 
 async function waitForStatus(
@@ -431,9 +450,13 @@ export async function runWorkerFailureScenario(
 
   // Simula falha do worker no meio: fail → requeue (attempt < maxAttempts).
   await forceOrphanRunning(mission.id);
+  const beforeFail = await prisma.mission.findUniqueOrThrow({
+    where: { id: mission.id },
+  });
   const failed = await bundle.queue.fail(
     mission.id,
     "Resilience proof — worker interrompido",
+    beforeFail.leaseVersion,
   );
   const eventsAfterFail = await eventTypesFor(mission.id);
 

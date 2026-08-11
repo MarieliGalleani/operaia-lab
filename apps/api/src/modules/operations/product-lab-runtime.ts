@@ -21,6 +21,7 @@ import { ensureOfficialOperationalCatalog } from "../projects/ensure-official-op
 import { PrismaDomainSignalStore } from "../signals/prisma-domain-signal-store.js";
 import { PrismaTaskRepository } from "../tasks/infrastructure/prisma-task.repository.js";
 import { ContinuousRuntime } from "../runtime/continuous-runtime.js";
+import { resolveWorkerLivenessMs } from "../runtime/worker-liveness.js";
 
 export interface ProductRuntime {
   readonly lab: LabRuntime;
@@ -82,7 +83,9 @@ export function createProductLabRuntime(): ProductRuntime {
     pollIntervalMs: env.WORKER_POLL_INTERVAL_MS,
     heartbeatIntervalMs: env.WORKER_HEARTBEAT_INTERVAL_MS,
     schedulerIntervalMs: env.SCHEDULER_INTERVAL_MS,
-    staleRunningMs: env.MISSION_STALE_RUNNING_MS,
+    // MQ-3: grace = 3 batimentos perdidos (default 15s com HB=5s).
+    // MISSION_STALE_RUNNING_MS nao e mais autoridade de reclaim por updatedAt.
+    staleRunningMs: resolveWorkerLivenessMs(env.WORKER_HEARTBEAT_INTERVAL_MS),
     allowLearningPrismaFallback: env.MEMORY_M1_LEARNING_FALLBACK,
     ensureOfficialCatalog: () =>
       ensureOfficialOperationalCatalog({

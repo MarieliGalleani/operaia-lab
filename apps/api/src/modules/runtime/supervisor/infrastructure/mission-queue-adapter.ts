@@ -30,6 +30,10 @@ export class MissionQueueAdapter implements MissionQueuePort {
     return this.queue.recoverStaleRunning(staleAfterMs);
   }
 
+  listAbandonedRunningIds(livenessMs: number) {
+    return this.queue.listAbandonedRunningIds(livenessMs);
+  }
+
   recoverWaitingParents() {
     return this.queue.recoverWaitingParents();
   }
@@ -78,5 +82,6 @@ function toMissionView(mission: Mission): MissionView {
     startedAt: mission.startedAt,
     lastError: mission.lastError,
     missionKind: mission.missionKind,
+    ownerEmployeeId: mission.ownerEmployeeId,
   };
 }

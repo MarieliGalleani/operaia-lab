@@ -8,6 +8,7 @@ import type {
 /**
  * MissionScanner — observa estados de missao.
  * Detecta timeout/stale/retry/waiting. Nao resolve — apenas encaminha.
+ * MQ-3: STALE = RUNNING sem liveness de WorkerHeartbeat (nao Mission.updatedAt).
  */
 export class MissionScanner {
   constructor(
@@ -29,6 +30,10 @@ export class MissionScanner {
 
     const batches = await Promise.all(
       statuses.map((status) => this.queue.list({ status, take: 100 })),
+    );
+
+    const abandonedRunning = new Set(
+      (await this.queue.listAbandonedRunningIds?.(this.staleRunningMs)) ?? [],
     );
 
     const byStatus: Record<string, number> = {};
@@ -66,14 +71,16 @@ export class MissionScanner {
           continue;
         }
         if (status === "RUNNING") {
-          const stuck = isStuck(mission, this.staleRunningMs, this.clock.now());
+          const stuck = abandonedRunning.has(mission.id);
           items.push(
             toItem(
               mission,
               stuck ? "STALE" : "RUNNING",
               stuck,
               stuck,
-              stuck ? "RUNNING stale/timeout" : "Em execucao",
+              stuck
+                ? "RUNNING sem liveness de WorkerHeartbeat"
+                : "Em execucao",
             ),
           );
           continue;
@@ -120,12 +127,4 @@ function toItem(
     needsCoordination,
     reason,
   };
-}
-
-function isStuck(mission: MissionView, staleAfterMs: number, now: Date): boolean {
-  const anchor = mission.updatedAt ?? mission.startedAt;
-  if (!anchor) {
-    return false;
-  }
-  return now.getTime() - anchor.getTime() >= staleAfterMs;
 }

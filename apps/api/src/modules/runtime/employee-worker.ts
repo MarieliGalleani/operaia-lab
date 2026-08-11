@@ -1,6 +1,9 @@
 import { prisma, type Prisma } from "@operaia/database";
 import type { EmployeeProfile } from "@operaia/employee-framework";
-import type { MissionQueue } from "./mission-queue.js";
+import {
+  StaleMissionOwnershipError,
+  type MissionQueue,
+} from "./mission-queue.js";
 import type { QueuedMissionExecutor } from "./queued-mission-executor.js";
 import {
   WorkerMetrics,
@@ -26,6 +29,7 @@ export interface EmployeeWorkerOptions {
 /**
  * Worker logico permanente de um Employee do roster.
  * Todos consomem a Mission Queue filtrando por specialization / missionKind.
+ * MQ-3: durante execute(), heartbeat continua via timer paralelo.
  */
 export class EmployeeWorker {
   private readonly metrics = new WorkerMetrics();
@@ -36,6 +40,8 @@ export class EmployeeWorker {
   private running = false;
   private loopPromise: Promise<void> | null = null;
   private stopRequested = false;
+  private executionHeartbeatTimer: ReturnType<typeof setInterval> | null =
+    null;
 
   constructor(private readonly options: EmployeeWorkerOptions) {}
 
@@ -68,6 +74,7 @@ export class EmployeeWorker {
   async stop(): Promise<void> {
     this.stopRequested = true;
     this.status = "stopping";
+    this.stopExecutionHeartbeat();
     await this.persistHeartbeat();
     if (this.loopPromise) {
       await this.loopPromise;
@@ -129,6 +136,7 @@ export class EmployeeWorker {
         this.status = "busy";
         this.currentMissionId = claimed.id;
         await this.persistHeartbeat();
+        this.startExecutionHeartbeat();
         const started = Date.now();
 
         this.options.logger.info(
@@ -159,32 +167,71 @@ export class EmployeeWorker {
             "Missao concluida",
           );
         } catch (error) {
-          const message =
-            error instanceof Error ? error.message : "erro desconhecido";
-          const stack = error instanceof Error ? error.stack : undefined;
-          const failed = await this.options.queue.fail(claimed.id, message);
-          const wasRetry = failed.status === "QUEUED";
-          this.metrics.recordFailure(Date.now() - started, wasRetry);
-          this.options.logger.error(
-            {
-              component: "employee-worker",
-              employeeId: this.employeeId,
-              event: "mission_failed",
-              missionId: claimed.id,
-              workspaceId: claimed.workspaceId,
-              objective: claimed.objective,
-              error: message,
-              stack,
-              requeued: wasRetry,
-            },
-            "Missao falhou",
-          );
+          if (error instanceof StaleMissionOwnershipError) {
+            this.options.logger.warn(
+              {
+                component: "employee-worker",
+                employeeId: this.employeeId,
+                event: "stale_ownership",
+                missionId: claimed.id,
+                leaseVersion: claimed.leaseVersion,
+                error: error.message,
+              },
+              "Execucao perdeu ownership — complete/fail ignorado",
+            );
+          } else {
+            const message =
+              error instanceof Error ? error.message : "erro desconhecido";
+            const stack = error instanceof Error ? error.stack : undefined;
+            try {
+              const failed = await this.options.queue.fail(
+                claimed.id,
+                message,
+                claimed.leaseVersion,
+              );
+              const wasRetry = failed.status === "QUEUED";
+              this.metrics.recordFailure(Date.now() - started, wasRetry);
+              this.options.logger.error(
+                {
+                  component: "employee-worker",
+                  employeeId: this.employeeId,
+                  event: "mission_failed",
+                  missionId: claimed.id,
+                  workspaceId: claimed.workspaceId,
+                  objective: claimed.objective,
+                  error: message,
+                  stack,
+                  requeued: wasRetry,
+                },
+                "Missao falhou",
+              );
+            } catch (failError) {
+              if (failError instanceof StaleMissionOwnershipError) {
+                this.options.logger.warn(
+                  {
+                    component: "employee-worker",
+                    employeeId: this.employeeId,
+                    event: "stale_ownership_on_fail",
+                    missionId: claimed.id,
+                    leaseVersion: claimed.leaseVersion,
+                    originalError: message,
+                    error: failError.message,
+                  },
+                  "Fail rejeitado — ownership ja invalido",
+                );
+              } else {
+                throw failError;
+              }
+            }
+          }
         } finally {
+          this.stopExecutionHeartbeat();
           this.currentMissionId = null;
           this.status = this.stopRequested ? "stopping" : "idle";
           await this.persistHeartbeat();
         }
       } catch (error) {
+        this.stopExecutionHeartbeat();
         this.status = "error";
         this.options.logger.error(
           {
@@ -198,6 +245,34 @@ export class EmployeeWorker {
         await sleep(this.options.pollIntervalMs);
         this.status = this.stopRequested ? "stopping" : "idle";
       }
+    }
+  }
+
+  /**
+   * MQ-3 — pulso independente do await execute() (operacao longa / event loop ok).
+   */
+  private startExecutionHeartbeat(): void {
+    this.stopExecutionHeartbeat();
+    this.executionHeartbeatTimer = setInterval(() => {
+      void this.persistHeartbeat().catch((error) => {
+        this.options.logger.warn(
+          {
+            component: "employee-worker",
+            employeeId: this.employeeId,
+            event: "execution_heartbeat_failed",
+            missionId: this.currentMissionId,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Falha ao persistir heartbeat durante execucao",
+        );
+      });
+    }, this.options.heartbeatIntervalMs);
+  }
+
+  private stopExecutionHeartbeat(): void {
+    if (this.executionHeartbeatTimer) {
+      clearInterval(this.executionHeartbeatTimer);
+      this.executionHeartbeatTimer = null;
     }
   }
 

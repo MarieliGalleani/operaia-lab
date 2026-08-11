@@ -51,6 +51,11 @@ const envSchema = z.object({
     .positive()
     .default(5000),
   SCHEDULER_INTERVAL_MS: z.coerce.number().int().positive().default(60000),
+  /**
+   * Legado / harnesses: timeout passado a ContinuousRuntime.staleRunningMs.
+   * Em produto, reclaim usa resolveWorkerLivenessMs(3×WORKER_HEARTBEAT_INTERVAL_MS).
+   * Nao representa mais idade de Mission.updatedAt.
+   */
   MISSION_STALE_RUNNING_MS: z.coerce
     .number()
     .int()

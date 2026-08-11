@@ -157,6 +157,7 @@ describe("WorkspaceScanner — multi-workspace isolation", () => {
         startedAt: null,
         lastError: null,
         missionKind: "COORDINATE",
+        ownerEmployeeId: "operaia-ceo",
       },
     ];
     const queue: MissionQueuePort = {

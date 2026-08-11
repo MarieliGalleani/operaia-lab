@@ -245,7 +245,11 @@ export class QueuedMissionExecutor {
       phase: "coordinated",
       initial: serializeEmployeeResult(initial),
     };
-    await this.queue.markWaiting(mission.id, asJson(partial));
+    await this.queue.markWaiting(
+      mission.id,
+      asJson(partial),
+      mission.leaseVersion,
+    );
   }
 
   private async finishWithoutDelegation(
@@ -279,7 +283,11 @@ export class QueuedMissionExecutor {
       },
     };
 
-    await this.queue.complete(mission.id, asJson(result));
+    await this.queue.complete(
+      mission.id,
+      asJson(result),
+      mission.leaseVersion,
+    );
     await this.safePersistMemorySideEffects({
       missionId: mission.id,
       workspaceId: mission.workspaceId,
@@ -349,7 +357,11 @@ export class QueuedMissionExecutor {
       employeeResult: serializeEmployeeResult(result),
       executionReport,
     };
-    await this.queue.complete(mission.id, asJson(stored));
+    await this.queue.complete(
+      mission.id,
+      asJson(stored),
+      mission.leaseVersion,
+    );
 
     await this.safePersistMemorySideEffects({
       missionId: mission.id,
@@ -457,6 +469,7 @@ export class QueuedMissionExecutor {
       mission.id,
       rootMissionId,
       asJson(result),
+      mission.leaseVersion,
     );
 
     await this.safePersistMemorySideEffects({

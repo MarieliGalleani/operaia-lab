@@ -4,6 +4,7 @@ import type { QueueScanReport, WorkerScanReport } from "./types.js";
 /**
  * QueueMonitor — observa profundidade, congestao e workers.
  * Apenas metricas. Nao decide negocio.
+ * MQ-3: stuck = RUNNING abandonado por liveness de WorkerHeartbeat.
  */
 export class QueueMonitor {
   constructor(
@@ -16,17 +17,14 @@ export class QueueMonitor {
 
   async scan(): Promise<{ queue: QueueScanReport; workers: WorkerScanReport }> {
     const depths = await this.queue.depths();
-    const [failed, running] = await Promise.all([
+    const [failed, abandonedRunning] = await Promise.all([
       this.queue.list({ status: "FAILED", take: 100 }),
-      this.queue.list({ status: "RUNNING", take: 100 }),
+      this.queue.listAbandonedRunningIds?.(this.staleRunningMs) ??
+        Promise.resolve([] as readonly string[]),
     ]);
 
-    const now = this.clock.now().getTime();
     const retry = failed.filter((m) => m.attempt < m.maxAttempts).length;
-    const stuck = running.filter((m) => {
-      const anchor = m.updatedAt ?? m.startedAt;
-      return anchor ? now - anchor.getTime() >= this.staleRunningMs : false;
-    }).length;
+    const stuck = abandonedRunning.length;
 
     const list = this.workers.list();
     const busy = list.filter((w) => w.status === "busy").length;

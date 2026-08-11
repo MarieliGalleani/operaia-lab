@@ -150,6 +150,8 @@ model Mission {
   progress               Int              @default(0)
   attempt                Int              @default(0)
   maxAttempts            Int              @default(3)
+  /// Geracao do lease de execucao (claim/recover). Nao misturar com attempt.
+  leaseVersion           Int              @default(0)
   scheduledAt            DateTime?
   startedAt              DateTime?
   finishedAt             DateTime?

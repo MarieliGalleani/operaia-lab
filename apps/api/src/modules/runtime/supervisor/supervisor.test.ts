@@ -55,6 +55,7 @@ function mission(
     startedAt: null,
     lastError: null,
     missionKind: "COORDINATE",
+    ownerEmployeeId: CEO_EMPLOYEE_ID,
     ...partial,
   };
 }
@@ -62,12 +63,14 @@ function mission(
 function createQueue(
   overrides: Partial<MissionQueuePort> & {
     readonly rows?: readonly MissionView[];
+    readonly abandonedRunningIds?: readonly string[];
   } = {},
 ): MissionQueuePort & {
   enqueued: EnqueuedMission[];
   missionsByHash: Map<string, { id: string; status: string; createdAt: Date; objectiveHash: string; workspaceId: string }>;
 } {
   const rows = overrides.rows ?? [];
+  const abandonedRunningIds = overrides.abandonedRunningIds ?? [];
   const enqueued: EnqueuedMission[] = [];
   const missionsByHash = new Map<
     string,
@@ -99,6 +102,9 @@ function createQueue(
         return rows;
       }
       return rows.filter((r) => r.status === filters.status);
+    },
+    async listAbandonedRunningIds() {
+      return abandonedRunningIds;
     },
     async recoverStaleRunning() {
       return 1;
@@ -152,7 +158,14 @@ function createQueue(
     },
   };
 
-  return { ...base, ...overrides, enqueued, missionsByHash };
+  return {
+    ...base,
+    ...overrides,
+    enqueued,
+    missionsByHash,
+    listAbandonedRunningIds:
+      overrides.listAbandonedRunningIds ?? base.listAbandonedRunningIds,
+  };
 }
 
 function noopLogger(): SupervisorLoggerPort {
@@ -276,6 +289,8 @@ describe("Operational Supervisor v2 — missao permanente", () => {
         }),
         mission({ id: "f1", status: "FAILED", attempt: 1, maxAttempts: 3 }),
       ],
+      // MQ-3: STALE vem de liveness abandonada, nao de Mission.updatedAt.
+      abandonedRunningIds: ["s1"],
     });
     const scanner = new MissionScanner(queue, clock, 30_000);
     const report = await scanner.scan();
@@ -325,6 +340,7 @@ describe("Operational Supervisor v2 — missao permanente", () => {
           updatedAt: new Date(fixedNow.getTime() - 60_000),
         }),
       ],
+      abandonedRunningIds: ["s1"],
     });
     const missions = await new MissionScanner(queue, clock, 30_000).scan();
     const { queue: queueReport } = await new QueueMonitor(
