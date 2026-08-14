@@ -28,6 +28,80 @@ function briefing(
   );
 }
 
+function okToolContext(overrides?: {
+  readonly failRepo?: boolean;
+  readonly failList?: boolean;
+  readonly skipListCapability?: boolean;
+}) {
+  let repoCalls = 0;
+  let listCalls = 0;
+  return {
+    calls: () => ({ repoCalls, listCalls }),
+    toolContext: {
+      canUse(toolId: string) {
+        if (toolId === "readRepository") {
+          return true;
+        }
+        if (toolId === "listDirectory") {
+          return !overrides?.skipListCapability;
+        }
+        return false;
+      },
+      async readRepository() {
+        repoCalls += 1;
+        if (overrides?.failRepo) {
+          return {
+            ok: false as const,
+            error: { code: "GITHUB_ERROR", message: "repo down" },
+          };
+        }
+        return {
+          ok: true as const,
+          data: {
+            repository: "marieligalleani/operaia-lab",
+            owner: "marieligalleani",
+            name: "operaia-lab",
+            defaultBranch: "lab",
+            description: "lab",
+            primaryLanguage: "TypeScript",
+            updatedAt: "2026-08-12T00:00:00.000Z",
+          },
+        };
+      },
+      async listDirectory() {
+        listCalls += 1;
+        if (overrides?.failList) {
+          return {
+            ok: false as const,
+            error: { code: "GITHUB_ERROR", message: "tree down" },
+          };
+        }
+        return {
+          ok: true as const,
+          data: {
+            repository: "marieligalleani/operaia-lab",
+            path: ".",
+            entries: [
+              {
+                name: "package.json",
+                path: "package.json",
+                type: "file",
+                size: 100,
+              },
+              {
+                name: "apps",
+                path: "apps",
+                type: "dir",
+                size: null,
+              },
+            ],
+          },
+        };
+      },
+    },
+  };
+}
+
 describe("CTO Mag (perfil)", () => {
   it("expoe o perfil no contrato comum com specialization SOFTWARE_ENGINEERING", () => {
     expect(magProfile.id).toBe("cto-mag");
@@ -53,9 +127,7 @@ describe("CTO Mag (brain)", () => {
     expect(output.report.plan.length).toBeGreaterThan(0);
     expect(output.report.nextActions.length).toBeGreaterThan(0);
     expect(output.quality.passed).toBe(true);
-    // tarefa sem dependencia vem antes na ordem de implementacao
     expect(output.report.nextActions[0]).toContain("Implementar autenticacao");
-    // usa o LLMProvider com o system prompt da Mag
     expect(llm.lastMessages[0]?.content).toContain("CTO");
   });
 
@@ -80,5 +152,94 @@ describe("CTO Mag (brain)", () => {
       ]),
     });
     expect(output.decision.delegations).toHaveLength(0);
+  });
+
+  it("invoca readRepository + listDirectory e cria delivery DELIVERED", async () => {
+    const stub = okToolContext();
+    const mag = createCto(new StubLLM("Repo inspecionado; plano tecnico ok."));
+    const base = briefing(
+      [{ id: "t1", title: "Implementar autenticacao", status: TaskStatus.TODO }],
+      "Analise o estado atual do repositorio",
+    );
+    const output = await mag.work({
+      briefing: {
+        ...base,
+        additional: {
+          ...base.additional,
+          toolContext: stub.toolContext,
+          toolIds: ["readRepository", "listDirectory"],
+        },
+      },
+    });
+
+    expect(stub.calls()).toEqual({ repoCalls: 1, listCalls: 1 });
+    expect(output.decision.toolExecutions).toHaveLength(2);
+    expect(output.decision.toolExecutions?.map((t) => t.toolId)).toEqual([
+      "readRepository",
+      "listDirectory",
+    ]);
+    expect(output.decision.delivery?.status).toBe("DELIVERED");
+    expect(output.decision.delivery?.type).toBe("technical_analysis");
+    expect(output.decision.delivery?.employeeId).toBe("cto-mag");
+    expect(output.decision.delivery?.evidence).toHaveLength(2);
+    expect(output.decision.delivery?.evidence[0]?.data.repository).toBe(
+      "marieligalleani/operaia-lab",
+    );
+    expect(output.decision.delivery?.evidence[1]?.data.entryCount).toBe(2);
+    expect(output.decision.analyzed).toContain("readRepository=ok");
+    expect(output.decision.analyzed).toContain("listDirectory=ok");
+  });
+
+  it("nao marca DELIVERED quando listDirectory falha", async () => {
+    const stub = okToolContext({ failList: true });
+    const mag = createCto(new StubLLM("Falha parcial."));
+    const base = briefing([
+      { id: "t1", title: "Implementar autenticacao", status: TaskStatus.TODO },
+    ]);
+    const output = await mag.work({
+      briefing: {
+        ...base,
+        additional: {
+          ...base.additional,
+          toolContext: stub.toolContext,
+          toolIds: ["readRepository", "listDirectory"],
+        },
+      },
+    });
+
+    expect(stub.calls().repoCalls).toBe(1);
+    expect(stub.calls().listCalls).toBe(1);
+    expect(output.decision.delivery?.status).toBe("FAILED");
+    expect(
+      output.decision.toolExecutions?.find((t) => t.toolId === "listDirectory")
+        ?.success,
+    ).toBe(false);
+    expect(output.decision.delivery?.evidence[1]?.data.error).toBe(
+      "GITHUB_ERROR",
+    );
+  });
+
+  it("nao marca DELIVERED quando readRepository falha", async () => {
+    const stub = okToolContext({ failRepo: true });
+    const mag = createCto(new StubLLM("Falha no repo."));
+    const base = briefing([
+      { id: "t1", title: "Implementar autenticacao", status: TaskStatus.TODO },
+    ]);
+    const output = await mag.work({
+      briefing: {
+        ...base,
+        additional: {
+          ...base.additional,
+          toolContext: stub.toolContext,
+          toolIds: ["readRepository", "listDirectory"],
+        },
+      },
+    });
+
+    expect(output.decision.delivery?.status).toBe("FAILED");
+    expect(
+      output.decision.toolExecutions?.find((t) => t.toolId === "readRepository")
+        ?.success,
+    ).toBe(false);
   });
 });

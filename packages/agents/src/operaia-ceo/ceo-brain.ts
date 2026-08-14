@@ -3,8 +3,11 @@ import type {
   EmployeeBrain,
   EmployeeBriefing,
   EmployeeDecision,
+  EmployeeDelivery,
+  EmployeeDeliveryEvidence,
   EmployeeReport,
 } from "@operaia/employee-framework";
+import { Specialization } from "@operaia/employee-framework";
 import { TaskStatus } from "@operaia/shared";
 import { parseMissionIntentMarker } from "@operaia/mission-router";
 import { needsSpecialistDelegation } from "./ceo-delegation-gate.js";
@@ -35,6 +38,9 @@ import {
 } from "./ceo-types.js";
 
 const TOP_ACTIONS = 3;
+const CEO_EMPLOYEE_ID = "operaia-ceo";
+/** Marker F6 — habilita 1 delegation apos previousDelivery (F5 permanece sem este marker). */
+const FOLLOW_UP_DELEGATE_MARKER = "[FOLLOW_UP_DELEGATE]";
 
 /** Entrega de especialista anexada ao briefing pela Activation Layer. */
 interface SpecialistOutcomeBrief {
@@ -56,6 +62,12 @@ interface SpecialistOutcomeBrief {
   };
 }
 
+/** Delivery A injetada em briefing.additional.previousDelivery (F5). */
+interface PreviousDeliveryBrief {
+  readonly sourceMissionId: string;
+  readonly delivery: EmployeeDelivery;
+}
+
 export interface CeoBrainDependencies {
   readonly llm: LLMProvider;
   readonly planner?: CeoPlanner;
@@ -71,6 +83,7 @@ export interface CeoBrainDependencies {
  * Decisoes estruturais deterministicas (planner/prioritizer/reviewer/gate).
  * LLM so quando ha narrativa util (delegacao ou consolidacao).
  * Caminho rapido: sem especialista → resposta imediata sem LLM.
+ * F5: previousDelivery → priority_recommendation sem re-delegar.
  */
 export class CeoBrain implements EmployeeBrain {
   private readonly llm: LLMProvider;
@@ -92,7 +105,193 @@ export class CeoBrain implements EmployeeBrain {
     if (specialistOutcomes.length > 0) {
       return this.consolidate(briefing, specialistOutcomes);
     }
+
+    const previous = readPreviousDelivery(briefing);
+    if (previous) {
+      return this.prioritizeFromPreviousDelivery(briefing, previous);
+    }
+
     return this.planAndDelegate(briefing);
+  }
+
+  /**
+   * F5 — consome delivery A estruturada e emite priority_recommendation.
+   * F6.1 — somente com [FOLLOW_UP_DELEGATE] + technical_analysis DELIVERED:
+   * emite no maximo 1 delegation SOFTWARE_ENGINEERING (task operacional).
+   * Sem o marker: delegations permanece [] (contrato F5 intacto).
+   */
+  private async prioritizeFromPreviousDelivery(
+    briefing: EmployeeBriefing,
+    previous: PreviousDeliveryBrief,
+  ): Promise<EmployeeDecision> {
+    const source = previous.delivery;
+    const sourceMissionId = previous.sourceMissionId;
+    const followUpDelegate = briefing.objective.includes(
+      FOLLOW_UP_DELEGATE_MARKER,
+    );
+    const valid =
+      source.status === "DELIVERED" &&
+      Array.isArray(source.findings) &&
+      Array.isArray(source.evidence) &&
+      source.evidence.length > 0;
+
+    const canDelegateFollowUp =
+      followUpDelegate &&
+      valid &&
+      source.type === "technical_analysis";
+
+    console.log("[ceo-gate]", {
+      objective: briefing.objective,
+      shouldDelegate: canDelegateFollowUp,
+      mode: followUpDelegate
+        ? "previous_delivery_follow_up_delegate"
+        : "previous_delivery",
+      sourceMissionId,
+      previousDeliveryValid: valid,
+      followUpDelegate,
+    });
+
+    if (!valid) {
+      return {
+        analyzed: `Delivery fonte ${sourceMissionId} invalida ou incompleta — sem priorizacao.`,
+        decision:
+          "Nao foi possivel priorizar: delivery anterior ausente, FAILED ou sem evidencias.",
+        reasoning:
+          "F5 exige previousDelivery DELIVERED com evidence real; nao inventar conclusao.",
+        recommendations: [],
+        delegations: [],
+        risks: ["previousDelivery invalida — delivery B nao sera DELIVERED."],
+        nextActions: [],
+      };
+    }
+
+    const findingsFromA = source.findings.map(
+      (item) => `[from:${sourceMissionId}] ${item}`,
+    );
+    const recommendationsFromA = source.recommendations.slice(0, TOP_ACTIONS);
+    const priorityFinding =
+      source.findings[0] ??
+      "Priorizar o primeiro achado tecnico da analise anterior.";
+    const topRecommendation =
+      recommendationsFromA[0] ??
+      "Executar a primeira recomendacao tecnica da delivery A.";
+
+    const evidence: EmployeeDeliveryEvidence[] = [
+      {
+        source: "previousDelivery",
+        data: {
+          sourceMissionId,
+          sourceDeliveryType: source.type,
+          sourceEmployeeId: source.employeeId,
+          sourceStatus: source.status,
+          sourceSummary: source.summary,
+          sourceFindings: [...source.findings],
+          sourceRecommendations: [...source.recommendations],
+        },
+      },
+      ...source.evidence.map((item) => ({
+        source: `previousDelivery.${item.source}`,
+        data: { ...item.data, sourceMissionId },
+      })),
+    ];
+
+    const narrative = await this.generatePriorityFromDeliverySummary(
+      briefing,
+      previous,
+      priorityFinding,
+      topRecommendation,
+    );
+
+    const delivery: EmployeeDelivery = {
+      type: "priority_recommendation",
+      status: "DELIVERED",
+      missionId: "",
+      employeeId: CEO_EMPLOYEE_ID,
+      objective: briefing.objective,
+      sourceMissionId,
+      summary: narrative,
+      findings: [
+        `Prioridade derivada da delivery ${sourceMissionId}: ${priorityFinding}`,
+        ...findingsFromA.slice(0, 4),
+      ],
+      evidence,
+      recommendations: [
+        `Proximo trabalho prioritario: ${topRecommendation}`,
+        ...recommendationsFromA.slice(1, TOP_ACTIONS),
+      ],
+      deliveredAt: new Date().toISOString(),
+    };
+
+    const delegations = canDelegateFollowUp
+      ? [
+          {
+            specialization: Specialization.SOFTWARE_ENGINEERING,
+            reason:
+              `Follow-up da delivery ${sourceMissionId} ` +
+              `(employee=${source.employeeId}, type=${source.type}). ` +
+              `Finding: ${priorityFinding}`,
+            task: buildFollowUpInvestigationTask(
+              priorityFinding,
+              topRecommendation,
+            ),
+          },
+        ]
+      : [];
+
+    return {
+      analyzed:
+        `Priorizacao a partir da delivery ${sourceMissionId} ` +
+        `(${source.type}, employee=${source.employeeId}): ` +
+        `${source.findings.length} finding(s), ${source.evidence.length} evidence(s)` +
+        (canDelegateFollowUp
+          ? "; F6 follow-up: 1 delegation SOFTWARE_ENGINEERING."
+          : "."),
+      decision: narrative,
+      reasoning: canDelegateFollowUp
+        ? "F6: Opera consumiu previousDelivery e delegou 1 investigacao tecnica ao especialista."
+        : "F5: Opera consumiu previousDelivery estruturada; nao reexecutou tools do especialista.",
+      recommendations: delivery.recommendations,
+      delegations,
+      risks: [
+        "Contexto limitado a delivery A — validar se o estado do repo mudou desde a analise.",
+      ],
+      nextActions: [
+        canDelegateFollowUp
+          ? `Delegar investigacao: ${topRecommendation}`
+          : `Priorizar: ${topRecommendation}`,
+        ...source.findings.slice(0, 2).map((item) => `Considerar: ${item}`),
+      ].slice(0, TOP_ACTIONS),
+      delivery,
+    };
+  }
+
+  private async generatePriorityFromDeliverySummary(
+    briefing: EmployeeBriefing,
+    previous: PreviousDeliveryBrief,
+    priorityFinding: string,
+    topRecommendation: string,
+  ): Promise<string> {
+    const source = previous.delivery;
+    const messages: LLMMessage[] = [
+      { role: "system", content: buildCeoSystemPrompt() },
+      {
+        role: "user",
+        content: [
+          `Objetivo atual: ${briefing.objective}`,
+          `sourceMissionId: ${previous.sourceMissionId}`,
+          `Delivery A summary: ${source.summary}`,
+          `Delivery A findings: ${source.findings.join(" | ")}`,
+          `Delivery A recommendations: ${source.recommendations.join(" | ")}`,
+          `Prioridade ja derivada dos dados: ${priorityFinding}`,
+          `Acao ja derivada dos dados: ${topRecommendation}`,
+          "Escreva 2-3 frases executivas confirmando a prioridade com base nesses dados.",
+          "Nao invente repositorios, arquivos, branches ou metadados ausentes na delivery A.",
+          "Cite explicitamente que a conclusao vem da analise tecnica anterior (cto-mag).",
+        ].join("\n"),
+      },
+    ];
+    const completion = await this.llm.complete(messages);
+    return completion.content.trim();
   }
 
   /**
@@ -420,6 +619,22 @@ export class CeoBrain implements EmployeeBrain {
   }
 }
 
+/** Task operacional F6 — investigacao tecnica derivada da delivery A (nunca vazia). */
+function buildFollowUpInvestigationTask(
+  priorityFinding: string,
+  topRecommendation: string,
+): string {
+  const finding = priorityFinding.trim() || "achado tecnico da delivery A";
+  const recommendation =
+    topRecommendation.trim() ||
+    "executar a recomendacao prioritaria da delivery A";
+  return (
+    `Investigar no repositorio o achado prioritario da delivery A: ${finding}. ` +
+    `Proximo passo operacional: ${recommendation}. ` +
+    `Produzir technical_analysis com evidence real (tools) e findings acionaveis.`
+  );
+}
+
 function readSpecialistOutcomes(
   briefing: EmployeeBriefing,
 ): readonly SpecialistOutcomeBrief[] {
@@ -428,6 +643,32 @@ function readSpecialistOutcomes(
     return [];
   }
   return raw.filter(isSpecialistOutcomeBrief);
+}
+
+function readPreviousDelivery(
+  briefing: EmployeeBriefing,
+): PreviousDeliveryBrief | null {
+  const raw = briefing.additional["previousDelivery"];
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return null;
+  }
+  const record = raw as Record<string, unknown>;
+  const sourceMissionId = record["sourceMissionId"];
+  const delivery = record["delivery"];
+  if (typeof sourceMissionId !== "string" || !sourceMissionId.trim()) {
+    return null;
+  }
+  if (!delivery || typeof delivery !== "object" || Array.isArray(delivery)) {
+    return null;
+  }
+  const d = delivery as Record<string, unknown>;
+  if (typeof d["status"] !== "string" || typeof d["type"] !== "string") {
+    return null;
+  }
+  return {
+    sourceMissionId,
+    delivery: delivery as EmployeeDelivery,
+  };
 }
 
 function isSpecialistOutcomeBrief(

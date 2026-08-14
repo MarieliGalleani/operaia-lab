@@ -1,6 +1,7 @@
 /**
  * Adapter Prisma — CoordinationSignalLatch (PENDING/CONSUMED + reclaim orfao stale).
  */
+import { randomUUID } from "node:crypto";
 import {
   prisma,
   Prisma,
@@ -21,26 +22,60 @@ type LatchRow = {
   lastMissionId: string | null;
 };
 
+function isWorkspaceReasonUniqueViolation(error: unknown): boolean {
+  if (
+    !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+    error.code !== "P2002"
+  ) {
+    return false;
+  }
+  const target = error.meta?.["target"];
+  if (!Array.isArray(target)) {
+    // Sem meta.target: ainda e P2002 neste create unico (workspaceId, reason).
+    return true;
+  }
+  return target.includes("workspaceId") && target.includes("reason");
+}
+
 export class PrismaCoordinationLatchStore implements CoordinationLatchPort {
   async tryAcquire(
     key: CoordinationLatchKey,
     options?: CoordinationAcquireOptions,
   ): Promise<CoordinationAcquireResult> {
+    const staleAfterMs = options?.staleAfterMs ?? 60_000;
     try {
-      const row = await prisma.coordinationSignalLatch.create({
-        data: {
-          workspaceId: key.workspaceId,
-          reason: key.reason,
-          status: CoordinationLatchStatus.PENDING,
-        },
-      });
-      return { acquired: true, latchedAt: row.latchedAt, mode: "fresh" };
+      // INSERT ... ON CONFLICT DO NOTHING: vencedor recebe RETURNING;
+      // perdedor nao gera P2002 / prisma:error (idempotencia sob corrida).
+      const inserted = await prisma.$queryRaw<LatchRow[]>`
+        INSERT INTO coordination_signal_latches (
+          id, "workspaceId", reason, status, "latchedAt", "createdAt", "updatedAt"
+        )
+        VALUES (
+          ${randomUUID()},
+          ${key.workspaceId},
+          ${key.reason},
+          'PENDING'::"CoordinationLatchStatus",
+          NOW(),
+          NOW(),
+          NOW()
+        )
+        ON CONFLICT ("workspaceId", reason) DO NOTHING
+        RETURNING id, "latchedAt", status::text AS status, "lastMissionId"
+      `;
+
+      if (inserted[0]) {
+        return {
+          acquired: true,
+          latchedAt: inserted[0].latchedAt,
+          mode: "fresh",
+        };
+      }
+
+      return this.onConflict(key, staleAfterMs);
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === "P2002"
-      ) {
-        return this.onConflict(key, options?.staleAfterMs ?? 60_000);
+      // Defesa: se algum caminho ainda levantar P2002 da unique (workspaceId, reason).
+      if (isWorkspaceReasonUniqueViolation(error)) {
+        return this.onConflict(key, staleAfterMs);
       }
       throw error;
     }

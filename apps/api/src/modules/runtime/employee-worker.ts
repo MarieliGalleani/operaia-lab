@@ -1,4 +1,5 @@
 import { prisma, type Prisma } from "@operaia/database";
+import { runWithLLMExecutionContext } from "@operaia/ai-core";
 import type { EmployeeProfile } from "@operaia/employee-framework";
 import {
   StaleMissionOwnershipError,
@@ -153,7 +154,16 @@ export class EmployeeWorker {
         );
 
         try {
-          await this.options.executor.execute(claimed, this.employeeId);
+          await runWithLLMExecutionContext(
+            {
+              missionId: claimed.id,
+              correlationId:
+                extractMissionCorrelationId(claimed.objective) ?? claimed.id,
+            },
+            async () => {
+              await this.options.executor.execute(claimed, this.employeeId);
+            },
+          );
           this.metrics.recordSuccess(Date.now() - started);
           this.options.logger.info(
             {
@@ -307,4 +317,11 @@ export class EmployeeWorker {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Extrai correlation=… embutido no objective de sinais DomainSignal. */
+function extractMissionCorrelationId(objective: string): string | undefined {
+  const match = /correlation=([^\s·]+)/.exec(objective);
+  const value = match?.[1]?.trim();
+  return value && value !== "n/a" ? value : undefined;
 }

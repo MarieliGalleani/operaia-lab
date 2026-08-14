@@ -100,22 +100,36 @@ function classifyMissions(missions: readonly MissionView[]) {
   let openCount = 0;
 
   for (const m of missions) {
+    // COORDINATE/CONSOLIDATE sao a propria resposta operacional — nao
+    // devem apagar backlog/mudanca_importante (evita re-borda artificial).
+    const isCoordinationLayer =
+      m.missionKind === "COORDINATE" || m.missionKind === "CONSOLIDATE";
+
     if (
       m.status === "QUEUED" ||
       m.status === "RUNNING" ||
       m.status === "CREATED" ||
       m.status === "WAITING"
     ) {
-      openCount += 1;
-      hasActiveMission = true;
+      if (!isCoordinationLayer) {
+        openCount += 1;
+        hasActiveMission = true;
+      }
     }
     if (m.readiness === "BLOCKED") {
       hasBlockedMission = true;
     }
-    if (m.status === "WAITING") {
+    if (m.status === "WAITING" && !isCoordinationLayer) {
       hasWaitingMission = true;
     }
-    if (m.status === "QUEUED" || m.status === "CREATED") {
+    // WAITING de COORDINATE (pai aguardando filhos) ainda e sinal operacional.
+    if (m.status === "WAITING" && m.missionKind === "COORDINATE") {
+      hasWaitingMission = true;
+    }
+    if (
+      !isCoordinationLayer &&
+      (m.status === "QUEUED" || m.status === "CREATED")
+    ) {
       hasReadyMission = true;
     }
     if (m.status === "FAILED") {

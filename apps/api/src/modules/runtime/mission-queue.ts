@@ -871,6 +871,14 @@ export class MissionQueue {
       },
     });
   }
+
+  async hasEvent(missionId: string, type: string): Promise<boolean> {
+    const row = await prisma.missionEvent.findFirst({
+      where: { missionId, type },
+      select: { id: true },
+    });
+    return Boolean(row);
+  }
 }
 
 function backoffMs(attempt: number): number {

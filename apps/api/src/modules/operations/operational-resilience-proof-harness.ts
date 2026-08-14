@@ -5,6 +5,7 @@
  * Fora de escopo: memoria, remocao do Path A.
  */
 import "./ensure-database-url.js";
+import { assertProofDatabaseIsSafe } from "./assert-proof-database-safe.js";
 import { DIGITAL_TEAM_EMPLOYEES } from "@operaia/digital-team";
 import { prisma } from "@operaia/database";
 import { RepositoryWorkspaceSource } from "../employees/repository-workspace-source.js";
@@ -188,6 +189,7 @@ async function waitForStatus(
  * Nao e feature nova — so config de ContinuousRuntime ja existente.
  */
 export async function createResilienceQueueBundle(): Promise<ResilienceBundle> {
+  assertProofDatabaseIsSafe("operational-resilience-proof-harness");
   const probe = await probeRealQueueReady();
   if (!probe.ok || !probe.nexoId) {
     throw new Error(probe.reason ?? "Ambiente real indisponivel");

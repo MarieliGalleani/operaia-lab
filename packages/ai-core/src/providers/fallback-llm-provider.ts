@@ -4,6 +4,7 @@ import type {
   LLMMessage,
   LLMProvider,
 } from "../llm-provider.js";
+import { getLLMExecutionContext } from "../observability/llm-execution-context.js";
 import type { LLMObserver } from "../observability/llm-observer.js";
 import { NoopLLMObserver } from "../observability/llm-observer.js";
 
@@ -46,12 +47,19 @@ export class FallbackLLMProvider implements LLMProvider {
         }
         const reason =
           error instanceof Error ? error.message : "erro desconhecido";
+        const executionContext = getLLMExecutionContext();
         this.observer.onEvent({
           type: "fallback_used",
           fromProvider: provider.name,
           toProvider: next.name,
           reason,
           at: new Date().toISOString(),
+          ...(executionContext?.missionId
+            ? { missionId: executionContext.missionId }
+            : {}),
+          ...(executionContext?.correlationId
+            ? { correlationId: executionContext.correlationId }
+            : {}),
         });
       }
     }

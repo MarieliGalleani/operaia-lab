@@ -107,6 +107,40 @@ describe("EmployeeRunner", () => {
     expect(result.briefing.project).toBe("NEXO");
     expect(result.output.report.summary).toContain("Finalizar a NEXO");
   });
+
+  it("F5: injeta previousDelivery em briefing.additional", async () => {
+    const runner = new EmployeeRunner();
+    const employee = fakeEmployee(
+      makeProfile("ceo", Specialization.MANAGEMENT),
+    );
+    const sourceMissionId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const result = await runner.run(employee, {
+      workspace,
+      objective: `[SOURCE_EXECUTE:${sourceMissionId}] Priorize`,
+      previousDelivery: {
+        sourceMissionId,
+        delivery: {
+          type: "technical_analysis",
+          status: "DELIVERED",
+          missionId: sourceMissionId,
+          employeeId: "cto-mag",
+          objective: "Analise",
+          summary: "ok",
+          findings: ["finding-a"],
+          evidence: [{ source: "readRepository", data: { repository: "x/y" } }],
+          recommendations: ["rec-a"],
+          deliveredAt: "2026-08-12T00:00:00.000Z",
+        },
+      },
+    });
+
+    const previous = result.briefing.additional.previousDelivery as {
+      sourceMissionId: string;
+      delivery: { findings: string[] };
+    };
+    expect(previous.sourceMissionId).toBe(sourceMissionId);
+    expect(previous.delivery.findings).toEqual(["finding-a"]);
+  });
 });
 
 describe("EmployeeMatcher", () => {

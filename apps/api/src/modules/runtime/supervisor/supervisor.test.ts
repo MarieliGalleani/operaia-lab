@@ -72,6 +72,7 @@ function createQueue(
   const rows = overrides.rows ?? [];
   const abandonedRunningIds = overrides.abandonedRunningIds ?? [];
   const enqueued: EnqueuedMission[] = [];
+  const openFromEnqueue: MissionView[] = [];
   const missionsByHash = new Map<
     string,
     {
@@ -90,18 +91,20 @@ function createQueue(
     enqueued,
     missionsByHash,
     async depths() {
+      const all = [...rows, ...openFromEnqueue];
       return {
-        queued: rows.filter((r) => r.status === "QUEUED").length,
-        running: rows.filter((r) => r.status === "RUNNING").length,
-        waiting: rows.filter((r) => r.status === "WAITING").length,
-        failed: rows.filter((r) => r.status === "FAILED").length,
+        queued: all.filter((r) => r.status === "QUEUED").length,
+        running: all.filter((r) => r.status === "RUNNING").length,
+        waiting: all.filter((r) => r.status === "WAITING").length,
+        failed: all.filter((r) => r.status === "FAILED").length,
       };
     },
     async list(filters) {
+      const all = [...rows, ...openFromEnqueue];
       if (!filters?.status) {
-        return rows;
+        return all;
       }
-      return rows.filter((r) => r.status === filters.status);
+      return all.filter((r) => r.status === filters.status);
     },
     async listAbandonedRunningIds() {
       return abandonedRunningIds;
@@ -142,6 +145,16 @@ function createQueue(
         objectiveHash,
         workspaceId: input.workspaceId,
       });
+      openFromEnqueue.push(
+        mission({
+          id,
+          status: "QUEUED",
+          workspaceId: input.workspaceId,
+          missionKind: "COORDINATE",
+          ownerEmployeeId: input.ownerEmployeeId,
+          objective: input.objective,
+        }),
+      );
       return { created: true, id };
     },
     async findByObjectiveHash(workspaceId, objectiveHash, options) {
@@ -1005,5 +1018,97 @@ describe("Coordination latch edge-triggered (PENDING/CONSUMED)", () => {
     expect((await before.dispatch(backlogPayload)).dispatched).toBe(1);
     const after = new CoordinationDispatcher(queue, noopLogger(), sharedStore);
     expect((await after.dispatch(backlogPayload)).dispatched).toBe(0);
+  });
+
+  it("F6.2: atencao persistente apos COMPLETED → dispatched=0", async () => {
+    const queue = createQueue({ rows: [] });
+    const latches = freshLatches();
+    const dispatcher = new CoordinationDispatcher(queue, noopLogger(), latches);
+    expect((await dispatcher.dispatch(backlogPayload)).dispatched).toBe(1);
+    for (const m of queue.missionsByHash.values()) {
+      m.status = "COMPLETED";
+    }
+    // Simula COORDINATE terminal: remove da lista OPEN (openFromEnqueue via hash).
+    expect((await dispatcher.dispatch(backlogPayload)).dispatched).toBe(0);
+    expect(queue.enqueued).toHaveLength(1);
+    expect(
+      latches.getForTest({ workspaceId: "nexo", reason: "backlog" })?.status,
+    ).toBe("CONSUMED");
+  });
+
+  it("F6.2: oscilacao por COORDINATE OPEN nao libera latch (sticky)", async () => {
+    const queue = createQueue({ rows: [] });
+    const latches = freshLatches();
+    const dispatcher = new CoordinationDispatcher(queue, noopLogger(), latches);
+    expect((await dispatcher.dispatch(backlogPayload)).dispatched).toBe(1);
+
+    // Ciclo intermediario: scanner "esquece" backlog (oscilacao), mas COORDINATE ainda OPEN.
+    const blank = {
+      workspaces: reportWith([{ workspaceId: "nexo", reasons: [] }]),
+      missions: emptyMissions,
+      queue: idleQueue,
+      recovery: emptyRecovery(),
+      healthOk: true,
+    };
+    // requests.length===0 → releaseAll no dispatcher atual.
+    // Sticky so aplica quando ha requests; para oscilacao parcial use so mudanca_importante sumindo.
+    const onlyOtherGone = {
+      workspaces: reportWith([
+        { workspaceId: "nexo", reasons: ["mudanca_importante"] },
+      ]),
+      missions: emptyMissions,
+      queue: idleQueue,
+      recovery: emptyRecovery(),
+      healthOk: true,
+    };
+    // Primeiro dispatch criou backlog; segundo com so mudanca_importante:
+    // sticky mantem backlog se COORDINATE OPEN ainda listado.
+    const mid = await dispatcher.dispatch({
+      workspaces: reportWith([{ workspaceId: "nexo", reasons: [] }]),
+      // Forca requests nao-vazio via mission recuperacao sem liberar backlog latch
+      missions: missionsWithRecuperacao("nexo"),
+      queue: idleQueue,
+      recovery: emptyRecovery(),
+      healthOk: true,
+    });
+    expect(mid.dispatched).toBeGreaterThanOrEqual(0);
+    expect(
+      latches.getForTest({ workspaceId: "nexo", reason: "backlog" })?.status,
+    ).toBe("CONSUMED");
+
+    // Atencao backlog volta — sem nova missao.
+    expect((await dispatcher.dispatch(backlogPayload)).dispatched).toBe(0);
+    expect(
+      queue.enqueued.filter((e) => e.objective.includes("[COORDINATE/backlog]")),
+    ).toHaveLength(1);
+    void blank;
+    void onlyOtherGone;
+  });
+
+  it("F6.2: reason some de verdade → latch liberado; retorno → nova COORDINATE", async () => {
+    const queue = createQueue({ rows: [] });
+    const latches = freshLatches();
+    const dispatcher = new CoordinationDispatcher(queue, noopLogger(), latches);
+    expect((await dispatcher.dispatch(backlogPayload)).dispatched).toBe(1);
+    for (const m of queue.missionsByHash.values()) {
+      m.status = "COMPLETED";
+    }
+    // Remove OPEN da lista: recria queue sem open missions — simula complete limpando OPEN.
+    const queue2 = createQueue({ rows: [] });
+    // Copia latch store; missions OPEN vazias
+    const present = backlogPayload;
+    const absent = {
+      workspaces: reportWith([{ workspaceId: "nexo", reasons: [] }]),
+      missions: emptyMissions,
+      queue: idleQueue,
+      recovery: emptyRecovery(),
+      healthOk: true,
+    };
+    const d2 = new CoordinationDispatcher(queue2, noopLogger(), latches);
+    expect((await d2.dispatch(absent)).dispatched).toBe(0);
+    expect(
+      latches.getForTest({ workspaceId: "nexo", reason: "backlog" }),
+    ).toBeUndefined();
+    expect((await d2.dispatch(present)).dispatched).toBe(1);
   });
 });

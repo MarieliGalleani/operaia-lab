@@ -1,6 +1,9 @@
 import {
+  composeLLMObservers,
+  ConsoleLLMObserver,
   createLLMStack,
   RecordingLLMObserver,
+  type LLMObserver,
   type LLMStackConfig,
 } from "@operaia/ai-core";
 import type { ActionPolicy } from "@operaia/execution-engine";
@@ -12,6 +15,7 @@ import { InMemoryWorkspaceSource } from "../employees/in-memory-workspace-source
 import { buildTestWorkspaceCatalog } from "../employees/test-workspace-catalog.js";
 import type { WorkspaceSource } from "../employees/workspace-source.js";
 import type { TaskRepository } from "../tasks/domain/task.repository.js";
+import { MissionFallbackLLMObserver } from "../runtime/mission-llm-fallback-observer.js";
 import { createMissionExecutionStack } from "./mission-execution.js";
 import {
   OperationalMissionService,
@@ -24,6 +28,7 @@ import { OperationalRunStore } from "./operational-run-store.js";
 export interface OperationalRuntime {
   readonly service: OperationalMissionService;
   readonly observer: RecordingLLMObserver;
+  readonly fallbackObserver: MissionFallbackLLMObserver;
   readonly store: OperationalRunStore;
 }
 
@@ -63,14 +68,23 @@ export interface LabRuntimeOptions {
 export function createLabRuntime(
   options: LabRuntimeOptions = {},
 ): LabRuntime {
-  const observer = new RecordingLLMObserver();
+  const recordingObserver = new RecordingLLMObserver();
+  const fallbackObserver = new MissionFallbackLLMObserver();
+  const observers: LLMObserver[] = [
+    recordingObserver,
+    fallbackObserver,
+  ];
+  if (options.enableConsoleObservability) {
+    observers.push(new ConsoleLLMObserver());
+  }
+  const observer = composeLLMObservers(...observers);
 
   const llm = createLLMStack({
     ...(options.deterministic || !options.stack
       ? { provider: "deterministic" as const }
       : options.stack),
     observer,
-    enableConsoleObservability: options.enableConsoleObservability ?? false,
+    enableConsoleObservability: false,
   });
 
   const workspaces =
@@ -89,7 +103,7 @@ export function createLabRuntime(
   const service = new OperationalMissionService(
     office,
     workspaces,
-    observer,
+    recordingObserver,
     store,
     memory,
     execution,
@@ -109,7 +123,12 @@ export function createLabRuntime(
   return {
     office,
     team,
-    operations: { service, observer, store },
+    operations: {
+      service,
+      observer: recordingObserver,
+      fallbackObserver,
+      store,
+    },
     memory,
     execution,
   };

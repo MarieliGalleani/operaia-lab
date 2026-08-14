@@ -1,7 +1,10 @@
 import type { Mission } from "@operaia/database";
-import type {
-  DelegationOutcome,
-  EmployeeResult,
+import {
+  buildToolsForEmployee,
+  type DelegationOutcome,
+  type EmployeeActionsFactory,
+  type EmployeeResult,
+  type EmployeeToolsFactory,
 } from "@operaia/employee-runtime";
 import { BriefingBuilder, Specialization } from "@operaia/employee-framework";
 import { inferDefaultEdges } from "@operaia/agents";
@@ -32,6 +35,7 @@ import type {
 import type { EmployeeWorkerLogger } from "./employee-worker.js";
 import { buildExecutionReport } from "./execution-report.js";
 import type { MissionQueue } from "./mission-queue.js";
+import { hashObjective } from "./mission-queue.js";
 import {
   asJson,
   type CoordinatePhaseResult,
@@ -42,11 +46,161 @@ import {
   toEmployeeResult,
 } from "./mission-result-store.js";
 import { CEO_EMPLOYEE_ID, MissionKind } from "./mission-states.js";
-import {
-  buildToolsForEmployee,
-  type EmployeeActionsFactory,
-  type EmployeeToolsFactory,
-} from "@operaia/employee-runtime";
+
+/** MissionEvent type para invocacao real de tool (F4 vertical slice). */
+export const TOOL_USED_MISSION_EVENT_TYPE = "tool_used";
+/** MissionEvent type para entrega estruturada verificavel (F4 job→delivery). */
+export const DELIVERY_CREATED_MISSION_EVENT_TYPE = "delivery_created";
+/** MissionEvent: follow-up COORDINATE ja enfileirado a partir desta EXECUTE (idempotencia). */
+export const FOLLOW_UP_ENQUEUED_MISSION_EVENT_TYPE = "follow_up_enqueued";
+/** Marker F6 — CEO so delega follow-up com este token + SOURCE_EXECUTE. */
+export const FOLLOW_UP_DELEGATE_MARKER = "[FOLLOW_UP_DELEGATE]";
+
+type FollowUpDelivery = NonNullable<ExecutePhaseResult["delivery"]>;
+
+/**
+ * Objective estavel (hash/dedupe) — contexto rico vem via resolvePreviousDelivery.
+ */
+export function buildTechnicalFollowUpObjective(
+  sourceExecuteMissionId: string,
+): string {
+  return (
+    `[SOURCE_EXECUTE:${sourceExecuteMissionId}] ${FOLLOW_UP_DELEGATE_MARKER} ` +
+    "Continuar trabalho a partir da technical_analysis DELIVERED."
+  );
+}
+
+/**
+ * Gate puro do producer P0 — max 1 follow-up por fonte; sem cadeia B→C.
+ */
+export function shouldEnqueueTechnicalFollowUp(input: {
+  readonly delivery: FollowUpDelivery | undefined;
+  readonly parentCoordinateObjective?: string | null;
+  readonly sourceAlreadyEmittedFollowUp: boolean;
+  readonly followUpMissionAlreadyExists: boolean;
+}): boolean {
+  const delivery = input.delivery;
+  if (!delivery) {
+    return false;
+  }
+  if (delivery.status !== "DELIVERED") {
+    return false;
+  }
+  if (delivery.type !== "technical_analysis") {
+    return false;
+  }
+  if (!Array.isArray(delivery.evidence) || delivery.evidence.length === 0) {
+    return false;
+  }
+  if (!Array.isArray(delivery.findings) || delivery.findings.length === 0) {
+    return false;
+  }
+  const parentObjective = input.parentCoordinateObjective ?? "";
+  if (parentObjective.includes(FOLLOW_UP_DELEGATE_MARKER)) {
+    return false;
+  }
+  if (parentObjective.includes("GENERAL_CONVERSATION")) {
+    return false;
+  }
+  if (input.sourceAlreadyEmittedFollowUp) {
+    return false;
+  }
+  if (input.followUpMissionAlreadyExists) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * P0 — apos technical_analysis DELIVERED, enfileira 1 COORDINATE F5+F6.
+ * Usado pelo QueuedMissionExecutor (runtime real) e testes de integracao.
+ */
+export async function enqueueTechnicalFollowUpIfEligible(input: {
+  readonly queue: MissionQueue;
+  readonly logger: EmployeeWorkerLogger;
+  readonly source: Mission;
+  readonly delivery: ExecutePhaseResult["delivery"] | undefined;
+}): Promise<{ readonly followUpMissionId: string; readonly created: boolean } | null> {
+  const { queue, logger, source, delivery } = input;
+  const objective = buildTechnicalFollowUpObjective(source.id);
+  const objectiveHash = hashObjective(source.workspaceId, objective);
+
+  let parentCoordinateObjective: string | null = null;
+  if (source.parentMissionId) {
+    const parent = await queue.get(source.parentMissionId);
+    parentCoordinateObjective = parent?.objective ?? null;
+  }
+
+  const sourceAlreadyEmittedFollowUp = await queue.hasEvent(
+    source.id,
+    FOLLOW_UP_ENQUEUED_MISSION_EVENT_TYPE,
+  );
+  const existing = await queue.findByObjectiveHash(
+    source.workspaceId,
+    objectiveHash,
+  );
+
+  if (
+    !shouldEnqueueTechnicalFollowUp({
+      delivery,
+      parentCoordinateObjective,
+      sourceAlreadyEmittedFollowUp,
+      followUpMissionAlreadyExists: Boolean(existing),
+    })
+  ) {
+    return null;
+  }
+
+  try {
+    const { mission: followUp, created } = await queue.enqueue({
+      workspaceId: source.workspaceId,
+      projectId: source.projectId ?? undefined,
+      objective,
+      missionKind: MissionKind.COORDINATE,
+      ownerEmployeeId: CEO_EMPLOYEE_ID,
+      dedupe: true,
+    });
+
+    await queue.appendEvent(
+      source.id,
+      FOLLOW_UP_ENQUEUED_MISSION_EVENT_TYPE,
+      "Follow-up COORDINATE enfileirado a partir de technical_analysis",
+      asJson({
+        sourceMissionId: source.id,
+        followUpMissionId: followUp.id,
+        created,
+        objectiveHash,
+      }),
+    );
+
+    logger.info(
+      {
+        component: "queued-mission-executor",
+        event: "follow_up_enqueued",
+        sourceMissionId: source.id,
+        followUpMissionId: followUp.id,
+        workspaceId: source.workspaceId,
+        created,
+      },
+      "Follow-up tecnico COORDINATE enfileirado",
+    );
+
+    return { followUpMissionId: followUp.id, created };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(
+      {
+        component: "queued-mission-executor",
+        event: "follow_up_enqueue_failed",
+        sourceMissionId: source.id,
+        workspaceId: source.workspaceId,
+        error: message,
+      },
+      "Falha ao enfileirar follow-up (EXECUTE permanece COMPLETED)",
+    );
+    return null;
+  }
+}
 
 type WorkspaceSnapshot = NonNullable<
   Awaited<ReturnType<WorkspaceSource["toSnapshot"]>>
@@ -56,6 +210,10 @@ interface MissionContext {
   readonly workspace: WorkspaceSnapshot;
   readonly objective: string;
   readonly memoryNotes: readonly string[];
+  readonly previousDelivery?: {
+    readonly sourceMissionId: string;
+    readonly delivery: NonNullable<ExecutePhaseResult["delivery"]>;
+  };
 }
 
 export type PortfolioProvider = () => Promise<WorkspacePortfolioSnapshot | null>;
@@ -141,10 +299,15 @@ export class QueuedMissionExecutor {
       ...(portfolio?.memoryNotes ?? []),
     ];
 
+    const previousDelivery = await this.resolvePreviousDelivery(
+      mission.objective,
+    );
+
     const context: MissionContext = {
       workspace: snapshot,
       objective: mission.objective,
       memoryNotes: contextNotes,
+      ...(previousDelivery ? { previousDelivery } : {}),
     };
 
     switch (mission.missionKind) {
@@ -173,6 +336,9 @@ export class QueuedMissionExecutor {
       workspace: context.workspace,
       objective: context.objective,
       memoryNotes: context.memoryNotes,
+      ...(context.previousDelivery
+        ? { previousDelivery: context.previousDelivery }
+        : {}),
     });
 
     const delegations = initial.output.decision.delegations;
@@ -188,7 +354,12 @@ export class QueuedMissionExecutor {
     );
 
     if (delegations.length === 0) {
-      await this.finishWithoutDelegation(mission, initial, context);
+      await this.finishWithoutDelegation(
+        mission,
+        initial,
+        context,
+        workerEmployeeId,
+      );
       return;
     }
 
@@ -256,6 +427,7 @@ export class QueuedMissionExecutor {
     mission: Mission,
     initial: EmployeeResult,
     context: MissionContext,
+    workerEmployeeId: string,
   ): Promise<void> {
     const started = mission.startedAt?.getTime() ?? Date.now();
     const extraActions = buildDomainSyncActions({
@@ -270,6 +442,34 @@ export class QueuedMissionExecutor {
     await executeMissionPlan(this.execution, executionPlan);
 
     const storedInitial = serializeEmployeeResult(initial);
+    const rawDelivery = initial.output.decision.delivery;
+    const delivery = rawDelivery
+      ? {
+          ...rawDelivery,
+          missionId: mission.id,
+          employeeId: workerEmployeeId,
+        }
+      : undefined;
+
+    if (delivery?.status === "DELIVERED") {
+      await this.queue.appendEvent(
+        mission.id,
+        DELIVERY_CREATED_MISSION_EVENT_TYPE,
+        `Delivery ${delivery.type} DELIVERED`,
+        asJson({
+          missionId: mission.id,
+          employeeId: workerEmployeeId,
+          deliveryType: delivery.type,
+          summary: delivery.summary,
+          evidence: summarizeDeliveryEvidence(delivery.evidence),
+          success: true,
+          ...(delivery.sourceMissionId
+            ? { sourceMissionId: delivery.sourceMissionId }
+            : {}),
+        }),
+      );
+    }
+
     const result: ConsolidatePhaseResult = {
       phase: "consolidated",
       initial: storedInitial,
@@ -281,6 +481,7 @@ export class QueuedMissionExecutor {
         consolidationMs: 0,
         totalMs: Date.now() - started,
       },
+      ...(delivery ? { delivery } : {}),
     };
 
     await this.queue.complete(
@@ -352,10 +553,57 @@ export class QueuedMissionExecutor {
       executionTime,
     });
 
+    const toolExecutions = result.output.decision.toolExecutions ?? [];
+    for (const execution of toolExecutions) {
+      await this.queue.appendEvent(
+        mission.id,
+        TOOL_USED_MISSION_EVENT_TYPE,
+        `Tool ${execution.toolId} ${execution.success ? "ok" : "failed"}`,
+        asJson({
+          missionId: mission.id,
+          employeeId: workerEmployeeId,
+          toolId: execution.toolId,
+          success: execution.success,
+          outcome: execution.outcome,
+          at: execution.at,
+        }),
+      );
+    }
+
+    const rawDelivery = result.output.decision.delivery;
+    const delivery = rawDelivery
+      ? {
+          ...rawDelivery,
+          missionId: mission.id,
+          employeeId: workerEmployeeId,
+        }
+      : undefined;
+
+    if (delivery?.status === "DELIVERED") {
+      await this.queue.appendEvent(
+        mission.id,
+        DELIVERY_CREATED_MISSION_EVENT_TYPE,
+        `Delivery ${delivery.type} DELIVERED`,
+        asJson({
+          missionId: mission.id,
+          employeeId: workerEmployeeId,
+          deliveryType: delivery.type,
+          summary: delivery.summary,
+          evidence: summarizeDeliveryEvidence(delivery.evidence),
+          success: true,
+          ...(delivery.sourceMissionId
+            ? { sourceMissionId: delivery.sourceMissionId }
+            : {}),
+        }),
+      );
+    }
+
     const stored: ExecutePhaseResult = {
       phase: "executed",
       employeeResult: serializeEmployeeResult(result),
       executionReport,
+      ...(toolExecutions.length > 0 ? { toolExecutions } : {}),
+      ...(delivery ? { delivery } : {}),
     };
     await this.queue.complete(
       mission.id,
@@ -400,6 +648,13 @@ export class QueuedMissionExecutor {
     if (mission.parentMissionId) {
       await this.queue.maybeEnqueueConsolidation(mission.parentMissionId);
     }
+
+    await enqueueTechnicalFollowUpIfEligible({
+      queue: this.queue,
+      logger: this.logger,
+      source: mission,
+      delivery,
+    });
   }
 
   private async runConsolidate(
@@ -556,6 +811,51 @@ export class QueuedMissionExecutor {
     });
   }
 
+  /**
+   * F5 — marker minimo [SOURCE_EXECUTE:<id>] no objective.
+   * Carrega delivery DELIVERED da Mission EXECUTE fonte.
+   */
+  private async resolvePreviousDelivery(
+    objective: string,
+  ): Promise<MissionContext["previousDelivery"] | undefined> {
+    const match = /\[SOURCE_EXECUTE:([^\]]+)\]/.exec(objective);
+    const sourceMissionId = match?.[1]?.trim();
+    if (!sourceMissionId) {
+      return undefined;
+    }
+
+    const source = await this.queue.get(sourceMissionId);
+    if (!source) {
+      this.logger.warn(
+        {
+          component: "queued-mission-executor",
+          event: "source_execute_missing",
+          sourceMissionId,
+        },
+        "SOURCE_EXECUTE nao encontrado",
+      );
+      return undefined;
+    }
+
+    const resultJson = source.resultJson as ExecutePhaseResult | null;
+    const delivery = resultJson?.delivery;
+    if (!delivery || delivery.status !== "DELIVERED") {
+      this.logger.warn(
+        {
+          component: "queued-mission-executor",
+          event: "source_execute_delivery_invalid",
+          sourceMissionId,
+          hasDelivery: Boolean(delivery),
+          status: delivery?.status ?? null,
+        },
+        "SOURCE_EXECUTE sem delivery DELIVERED",
+      );
+      return undefined;
+    }
+
+    return { sourceMissionId, delivery };
+  }
+
   private buildOutcomesFromChildren(
     children: readonly Mission[],
   ): DelegationOutcome[] {
@@ -598,6 +898,36 @@ export class QueuedMissionExecutor {
         ];
       });
   }
+}
+
+/** Resumo curto de evidencias para MissionEvent (sem payload gigante). */
+function summarizeDeliveryEvidence(
+  evidence: readonly {
+    readonly source: string;
+    readonly data: Readonly<Record<string, unknown>>;
+  }[],
+): readonly {
+  readonly source: string;
+  readonly data: Readonly<Record<string, unknown>>;
+}[] {
+  return evidence.map((item) => {
+    if (item.source === "listDirectory" && Array.isArray(item.data.entries)) {
+      const entries = item.data.entries as readonly { name?: string }[];
+      return {
+        source: item.source,
+        data: {
+          repository: item.data.repository,
+          path: item.data.path,
+          entryCount: item.data.entryCount ?? entries.length,
+          names: entries.slice(0, 30).map((entry) => entry.name ?? ""),
+        },
+      };
+    }
+    return {
+      source: item.source,
+      data: { ...item.data },
+    };
+  });
 }
 
 const SPECIALIZATION_VALUES: ReadonlySet<string> = new Set(

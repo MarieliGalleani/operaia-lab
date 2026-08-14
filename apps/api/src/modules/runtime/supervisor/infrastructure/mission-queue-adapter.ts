@@ -83,5 +83,6 @@ function toMissionView(mission: Mission): MissionView {
     lastError: mission.lastError,
     missionKind: mission.missionKind,
     ownerEmployeeId: mission.ownerEmployeeId,
+    objective: mission.objective,
   };
 }

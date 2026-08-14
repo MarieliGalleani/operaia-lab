@@ -1,15 +1,17 @@
 // Ativacao: colocar um funcionario para trabalhar dentro de um Workspace
+export type {
+  EmployeeContext,
+  ExecutionSummaryNote,
+  PreviousDeliveryContext,
+} from "./activation/employee-context.js";
 export {
   EmployeeRunner,
   getToolContextFromBriefing,
   getActionCapabilityFromBriefing,
   BRIEFING_TOOL_CONTEXT_KEY,
   BRIEFING_ACTION_CAPABILITY_KEY,
+  BRIEFING_PREVIOUS_DELIVERY_KEY,
 } from "./activation/employee-runner.js";
-export type {
-  EmployeeContext,
-  ExecutionSummaryNote,
-} from "./activation/employee-context.js";
 export type { EmployeeResult } from "./activation/employee-result.js";
 
 // Briefing: adaptacao Workspace -> EmployeeBriefing

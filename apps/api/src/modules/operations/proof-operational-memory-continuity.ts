@@ -8,6 +8,7 @@
  * LLM = deterministic. Sem M2. Sem mudanca de TTL/quota.
  */
 import "./ensure-database-url.js";
+import { assertProofDatabaseIsSafe } from "./assert-proof-database-safe.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
@@ -16,6 +17,7 @@ import {
 } from "./operational-memory-continuity-proof-harness.js";
 
 async function main(): Promise<void> {
+  assertProofDatabaseIsSafe("ops:operational-memory-continuity-proof");
   console.log("=== OperaIA.lab — Operational Memory Continuity Proof ===\n");
   console.log(
     "Fluxo: Missao Queue → OperationalMemoryNote → restart → nova missao → briefing\n",

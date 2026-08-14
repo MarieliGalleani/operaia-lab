@@ -62,6 +62,8 @@ export interface MissionView {
   readonly lastError: string | null;
   readonly missionKind: string;
   readonly ownerEmployeeId: string;
+  /** Objective completo — usado para sticky latch [COORDINATE/reason]. */
+  readonly objective?: string;
 }
 
 /** Porta da fila operacional — abstrai MissionQueue. */

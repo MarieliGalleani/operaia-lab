@@ -3,6 +3,7 @@
  * Usado pelo proof CLI e pelo teste de integracao Fase 2.2c.
  */
 import "./ensure-database-url.js";
+import { assertProofDatabaseIsSafe } from "./assert-proof-database-safe.js";
 import { DIGITAL_TEAM_EMPLOYEES } from "@operaia/digital-team";
 import { prisma } from "@operaia/database";
 import { MissionOrchestrator } from "../employees/mission-orchestrator.js";
@@ -81,6 +82,7 @@ export async function probeRealQueueReady(): Promise<{
 }
 
 export async function createRealAssistedQueueBundle(): Promise<RealAssistedQueueBundle> {
+  assertProofDatabaseIsSafe("assisted-queue-real-harness");
   const probe = await probeRealQueueReady();
   if (!probe.ok || !probe.nexoId) {
     throw new Error(probe.reason ?? "Ambiente real indisponivel");

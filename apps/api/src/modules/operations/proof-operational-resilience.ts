@@ -9,6 +9,7 @@
  * Fora de escopo: memoria, remocao do Path A.
  */
 import "./ensure-database-url.js";
+import { assertProofDatabaseIsSafe } from "./assert-proof-database-safe.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
@@ -19,6 +20,7 @@ import {
 } from "./operational-resilience-proof-harness.js";
 
 async function main(): Promise<void> {
+  assertProofDatabaseIsSafe("ops:operational-resilience-proof");
   console.log("=== OperaIA.lab — Operational Resilience Proof ===\n");
   console.log("Cenarios: Restart Recovery | Supervisor Dedupe | Worker Failure\n");
 

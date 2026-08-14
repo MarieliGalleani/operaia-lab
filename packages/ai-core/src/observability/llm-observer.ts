@@ -31,10 +31,27 @@ export type LLMExecutionEvent =
       readonly toProvider: string;
       readonly reason: string;
       readonly at: string;
+      /** Preenchido quando a chamada ocorre dentro de uma Mission. */
+      readonly missionId?: string;
+      /** Trace opcional (ex.: DomainSignal.correlationId ou missionId). */
+      readonly correlationId?: string;
     };
 
 export interface LLMObserver {
   onEvent(event: LLMExecutionEvent): void;
+}
+
+/** Fan-out para varios observers (console + recording + persistencia). */
+export function composeLLMObservers(
+  ...observers: readonly LLMObserver[]
+): LLMObserver {
+  return {
+    onEvent(event: LLMExecutionEvent): void {
+      for (const observer of observers) {
+        observer.onEvent(event);
+      }
+    },
+  };
 }
 
 /** Observer no-op — util em testes quando a observabilidade nao importa. */
@@ -84,11 +101,18 @@ export class ConsoleLLMObserver implements LLMObserver {
           `[llm] fail provider=${event.provider} ms=${event.durationMs} error=${event.error}`,
         );
         break;
-      case "fallback_used":
+      case "fallback_used": {
+        const missionPart = event.missionId
+          ? ` missionId=${event.missionId}`
+          : "";
+        const corrPart = event.correlationId
+          ? ` correlationId=${event.correlationId}`
+          : "";
         console.warn(
-          `[llm] fallback ${event.fromProvider} -> ${event.toProvider}: ${event.reason}`,
+          `[llm] fallback ${event.fromProvider} -> ${event.toProvider}: ${event.reason}${missionPart}${corrPart}`,
         );
         break;
+      }
     }
   }
 }

@@ -33,7 +33,13 @@ export {
   ConsoleLLMObserver,
   NoopLLMObserver,
   RecordingLLMObserver,
+  composeLLMObservers,
 } from "./observability/llm-observer.js";
+export type { LLMExecutionContext } from "./observability/llm-execution-context.js";
+export {
+  getLLMExecutionContext,
+  runWithLLMExecutionContext,
+} from "./observability/llm-execution-context.js";
 export { ObservableLLMProvider } from "./observability/observable-llm-provider.js";
 
 export type { LLMPolicy } from "./policy/llm-policy.js";

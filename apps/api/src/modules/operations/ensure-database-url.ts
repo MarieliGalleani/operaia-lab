@@ -36,3 +36,12 @@ function loadDatabaseUrl(): void {
 }
 
 loadDatabaseUrl();
+
+/**
+ * F6.2 — Vitest pode usar o lab DB sob opt-in explicito do runner.
+ * CLIs/proofs (tsx) NAO definem VITEST → assertProofDatabaseIsSafe aborta
+ * contra operaia_lab sem OPERAIA_PROOF_ALLOW_OPERATIONAL_DB=1.
+ */
+if (process.env.VITEST === "true") {
+  process.env.OPERAIA_PROOF_ALLOW_OPERATIONAL_DB ??= "1";
+}

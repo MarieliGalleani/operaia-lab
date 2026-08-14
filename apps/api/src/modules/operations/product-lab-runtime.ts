@@ -115,6 +115,7 @@ export function createProductLabRuntime(): ProductRuntime {
 
   // Fila disponivel para Assisted; default ASSISTED_QUEUE_MODE=true (kill-switch=false).
   lab.operations.service.bindQueue(continuous.queue);
+  lab.operations.fallbackObserver.bindSink(continuous.queue);
 
   return { lab, continuous };
 }

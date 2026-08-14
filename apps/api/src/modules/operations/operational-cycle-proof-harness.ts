@@ -5,6 +5,7 @@
  * Fora de escopo: memoria M1/M2/M3.
  */
 import "./ensure-database-url.js";
+import { assertProofDatabaseIsSafe } from "./assert-proof-database-safe.js";
 import Fastify from "fastify";
 import {
   serializerCompiler,
@@ -360,6 +361,7 @@ export async function runOperationsCycleViaHttp(input: {
 export async function runOperationalCycleProof(
   bundle: RealAssistedQueueBundle,
 ): Promise<OperationalCycleProofEvidence> {
+  assertProofDatabaseIsSafe("operational-cycle-proof-harness");
   const boot = await captureRuntimeBoot(bundle);
   const app = await buildOperationalCycleHttpApp(bundle);
 

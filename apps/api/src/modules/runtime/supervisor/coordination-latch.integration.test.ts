@@ -1,6 +1,7 @@
 /**
  * Integration — CoordinationSignalLatch Prisma (PENDING/CONSUMED + concorrencia).
  */
+import "../../operations/ensure-database-url.js";
 import { prisma, CoordinationLatchStatus } from "@operaia/database";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { CoordinationDispatcher } from "./coordination-dispatcher.js";
@@ -113,6 +114,45 @@ describe("PrismaCoordinationLatchStore — PENDING/CONSUMED", () => {
       where: { workspaceId: { startsWith: PREFIX } },
     });
     await prisma.$disconnect();
+  });
+
+  it("idempotencia: duas aquisições simultâneas — exatamente uma adquire, sem prisma:error", async () => {
+    const workspaceId = `${PREFIX}-pair`;
+    const store = new PrismaCoordinationLatchStore();
+    const key = { workspaceId, reason: "backlog" };
+
+    const prismaNoise: string[] = [];
+    const originalError = console.error;
+    console.error = (...args: unknown[]) => {
+      prismaNoise.push(args.map(String).join(" "));
+      originalError(...args);
+    };
+
+    let results: Awaited<ReturnType<typeof store.tryAcquire>>[];
+    try {
+      results = await Promise.all([
+        store.tryAcquire(key, { staleAfterMs: 60_000 }),
+        store.tryAcquire(key, { staleAfterMs: 60_000 }),
+      ]);
+    } finally {
+      console.error = originalError;
+    }
+
+    expect(results.filter((a) => a.acquired)).toHaveLength(1);
+    expect(results.filter((a) => !a.acquired)).toHaveLength(1);
+    expect(results.find((a) => a.acquired)?.mode).toBe("fresh");
+    expect(
+      prismaNoise.some(
+        (line) =>
+          line.includes("prisma:error") ||
+          line.includes("Unique constraint failed"),
+      ),
+    ).toBe(false);
+
+    const rows = await prisma.coordinationSignalLatch.findMany({
+      where: { workspaceId, reason: "backlog" },
+    });
+    expect(rows).toHaveLength(1);
   });
 
   it("concorrencia: apenas um acquired; CONSUMED bloqueia restart", async () => {

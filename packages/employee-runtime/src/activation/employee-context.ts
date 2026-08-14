@@ -1,5 +1,8 @@
 import type { ActionCapabilityProvider } from "@operaia/action-runtime";
-import type { WorkspaceSnapshot } from "@operaia/employee-framework";
+import type {
+  EmployeeDelivery,
+  WorkspaceSnapshot,
+} from "@operaia/employee-framework";
 import type { ToolContext } from "@operaia/tool-runtime";
 import type { DelegationOutcome } from "../delegation/delegation-service.js";
 
@@ -19,6 +22,14 @@ export interface ExecutionSummaryNote {
 }
 
 /**
+ * Delivery de uma Mission anterior injetada no contexto (F5).
+ */
+export interface PreviousDeliveryContext {
+  readonly sourceMissionId: string;
+  readonly delivery: EmployeeDelivery;
+}
+
+/**
  * Contexto de negocio para uma execucao de funcionario.
  *
  * `tools` (ToolContext) — ToolPermissionPolicy; sem adapters concretos.
@@ -32,4 +43,6 @@ export interface EmployeeContext {
   readonly executionSummaries?: readonly ExecutionSummaryNote[];
   readonly tools?: ToolContext;
   readonly actions?: ActionCapabilityProvider | null;
+  /** Delivery DELIVERED de Mission EXECUTE anterior (F5). */
+  readonly previousDelivery?: PreviousDeliveryContext;
 }

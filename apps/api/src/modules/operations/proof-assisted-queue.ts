@@ -8,6 +8,7 @@
  * LLM = deterministic (sem chave).
  */
 import "./ensure-database-url.js";
+import { assertProofDatabaseIsSafe } from "./assert-proof-database-safe.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
@@ -18,6 +19,7 @@ import {
 } from "./assisted-queue-real-harness.js";
 
 async function main(): Promise<void> {
+  assertProofDatabaseIsSafe("ops:assisted-queue-proof");
   console.log("=== OperaIA.lab — Prova Assisted → MissionQueue real ===\n");
 
   const probe = await probeRealQueueReady();

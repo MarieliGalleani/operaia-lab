@@ -12,6 +12,9 @@ export const BRIEFING_TOOL_CONTEXT_KEY = "toolContext" as const;
 /** Chave em briefing.additional para ActionCapabilityProvider (A.5). */
 export const BRIEFING_ACTION_CAPABILITY_KEY = "actionCapability" as const;
 
+/** Chave em briefing.additional para delivery de Mission anterior (F5). */
+export const BRIEFING_PREVIOUS_DELIVERY_KEY = "previousDelivery" as const;
+
 /**
  * Coloca um funcionario para trabalhar dentro de um Workspace.
  *
@@ -39,7 +42,11 @@ export class EmployeeRunner {
       context.executionSummaries,
     );
     const withTools = attachToolContext(withExecution, context.tools);
-    const briefing = attachActionCapability(withTools, context.actions);
+    const withActions = attachActionCapability(withTools, context.actions);
+    const briefing = attachPreviousDelivery(
+      withActions,
+      context.previousDelivery,
+    );
     const output = await employee.work({ briefing });
 
     return {
@@ -174,6 +181,26 @@ function attachActionCapability(
       [BRIEFING_ACTION_CAPABILITY_KEY]: actions,
       actionWorkspaceId: actions.workspaceId,
       actionEmployeeId: actions.employeeId,
+    },
+  };
+}
+
+function attachPreviousDelivery(
+  briefing: EmployeeBriefing,
+  previous: EmployeeContext["previousDelivery"],
+): EmployeeBriefing {
+  if (!previous) {
+    return briefing;
+  }
+
+  return {
+    ...briefing,
+    additional: {
+      ...briefing.additional,
+      [BRIEFING_PREVIOUS_DELIVERY_KEY]: {
+        sourceMissionId: previous.sourceMissionId,
+        delivery: previous.delivery,
+      },
     },
   };
 }

@@ -5,6 +5,7 @@
  * Fora de escopo: M2, alteracao de TTL/quota.
  */
 import "./ensure-database-url.js";
+import { assertProofDatabaseIsSafe } from "./assert-proof-database-safe.js";
 import { randomUUID } from "node:crypto";
 import { DIGITAL_TEAM_EMPLOYEES } from "@operaia/digital-team";
 import { prisma } from "@operaia/database";
@@ -84,6 +85,7 @@ function createLogger() {
  * Bundle real com MemoryStore Prisma (indice M1) — necessario para continuidade.
  */
 export async function createMemoryContinuityBundle(): Promise<MemoryContinuityBundle> {
+  assertProofDatabaseIsSafe("operational-memory-continuity-proof-harness");
   const probe = await probeRealQueueReady();
   if (!probe.ok || !probe.nexoId) {
     throw new Error(probe.reason ?? "Ambiente real indisponivel");

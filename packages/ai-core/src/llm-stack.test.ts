@@ -9,6 +9,7 @@ import {
   PolicyLLMProvider,
   RecordingLLMObserver,
   resolveLLMFallbackChain,
+  runWithLLMExecutionContext,
   type LLMCompletion,
   type LLMCompletionOptions,
   type LLMMessage,
@@ -83,6 +84,53 @@ describe("Etapa 6 — fallback", () => {
       type: "fallback_used",
       fromProvider: "failing",
       toProvider: "deterministic",
+    });
+    expect(fallback && "missionId" in fallback ? fallback.missionId : undefined).toBeUndefined();
+  });
+
+  it("fallback sem Mission: emite fallback_used sem missionId", async () => {
+    const observer = new RecordingLLMObserver();
+    const llm = new FallbackLLMProvider(
+      [new FailingLLM(), new DeterministicLLMProvider()],
+      observer,
+    );
+    await llm.complete([{ role: "user", content: "ok" }]);
+    const fallback = observer
+      .snapshot()
+      .find((event) => event.type === "fallback_used");
+    expect(fallback).toMatchObject({
+      type: "fallback_used",
+      fromProvider: "failing",
+      toProvider: "deterministic",
+    });
+    expect(
+      fallback && "missionId" in fallback ? fallback.missionId : undefined,
+    ).toBeUndefined();
+  });
+
+  it("fallback com Mission: missionId e correlationId acompanham o evento", async () => {
+    const observer = new RecordingLLMObserver();
+    const llm = new FallbackLLMProvider(
+      [new FailingLLM(), new DeterministicLLMProvider()],
+      observer,
+    );
+
+    await runWithLLMExecutionContext(
+      { missionId: "mission-abc", correlationId: "corr-xyz" },
+      async () => {
+        await llm.complete([{ role: "user", content: "ok" }]);
+      },
+    );
+
+    const fallback = observer
+      .snapshot()
+      .find((event) => event.type === "fallback_used");
+    expect(fallback).toMatchObject({
+      type: "fallback_used",
+      fromProvider: "failing",
+      toProvider: "deterministic",
+      missionId: "mission-abc",
+      correlationId: "corr-xyz",
     });
   });
 });

@@ -68,10 +68,7 @@ export class CoordinationDispatcher {
       };
     }
 
-    const activeKeys: CoordinationLatchKey[] = requests.map((req) => ({
-      workspaceId: req.workspaceId,
-      reason: req.reason,
-    }));
+    const activeKeys = await this.buildActiveLatchKeys(requests);
     await this.latches.releaseAbsent(activeKeys);
 
     const details: string[] = [];
@@ -150,6 +147,53 @@ export class CoordinationDispatcher {
       details,
       coordinations: created,
     };
+  }
+
+  /**
+   * Mantem latches ativos enquanto houver COORDINATE OPEN do mesmo reason —
+   * impede releaseAbsent por oscilacao causada pela propria missao.
+   */
+  private async buildActiveLatchKeys(
+    requests: readonly CoordinationRequest[],
+  ): Promise<CoordinationLatchKey[]> {
+    const keys = new Map<string, CoordinationLatchKey>();
+    const put = (key: CoordinationLatchKey) => {
+      keys.set(`${key.workspaceId}\0${key.reason}`, key);
+    };
+    for (const req of requests) {
+      put({ workspaceId: req.workspaceId, reason: req.reason });
+    }
+
+    try {
+      const open = await this.queue.list({ take: 200 });
+      for (const mission of open) {
+        if (mission.missionKind !== "COORDINATE") {
+          continue;
+        }
+        if (
+          mission.status !== "QUEUED" &&
+          mission.status !== "RUNNING" &&
+          mission.status !== "CREATED" &&
+          mission.status !== "WAITING"
+        ) {
+          continue;
+        }
+        const objective = mission.objective ?? "";
+        const match = /^\[COORDINATE\/([^\]]+)\]/.exec(objective);
+        const reason = match?.[1];
+        if (!reason) {
+          continue;
+        }
+        put({
+          workspaceId: mission.workspaceId,
+          reason: reason as CoordinationReason,
+        });
+      }
+    } catch {
+      // Mocks sem list completa: segue so com requests.
+    }
+
+    return [...keys.values()];
   }
 }
 

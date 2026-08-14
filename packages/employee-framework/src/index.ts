@@ -29,6 +29,9 @@ export type { EmployeeReport } from "./contracts/employee-report.js";
 // Decisao e politicas
 export type {
   EmployeeDecision,
+  EmployeeToolExecution,
+  EmployeeDelivery,
+  EmployeeDeliveryEvidence,
   DelegationRequest,
 } from "./decision/decision-model.js";
 export type { DelegationPolicy } from "./decision/delegation-policy.js";

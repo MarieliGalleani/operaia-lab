@@ -27,6 +27,30 @@ export interface ExecutePhaseResult {
     readonly confidence: number;
     readonly executionTime: number;
   };
+  /** Evidencias de tools realmente invocadas nesta EXECUTE. */
+  readonly toolExecutions?: readonly {
+    readonly toolId: string;
+    readonly success: boolean;
+    readonly outcome: string;
+    readonly at: string;
+  }[];
+  /** Entrega estruturada (DELIVERED somente com evidencias reais ok). */
+  readonly delivery?: {
+    readonly type: "technical_analysis" | "priority_recommendation";
+    readonly status: "DELIVERED" | "FAILED";
+    readonly missionId: string;
+    readonly employeeId: string;
+    readonly objective: string;
+    readonly summary: string;
+    readonly findings: readonly string[];
+    readonly evidence: readonly {
+      readonly source: string;
+      readonly data: Readonly<Record<string, unknown>>;
+    }[];
+    readonly recommendations: readonly string[];
+    readonly deliveredAt: string;
+    readonly sourceMissionId?: string;
+  };
 }
 
 export interface ConsolidatePhaseResult {
@@ -44,6 +68,8 @@ export interface ConsolidatePhaseResult {
     readonly consolidationMs: number;
     readonly totalMs: number;
   };
+  /** Entrega estruturada da Opera (F5 — priority_recommendation). */
+  readonly delivery?: ExecutePhaseResult["delivery"];
 }
 
 /**

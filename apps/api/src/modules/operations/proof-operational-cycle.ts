@@ -9,6 +9,7 @@
  * Fora de escopo: memoria.
  */
 import "./ensure-database-url.js";
+import { assertProofDatabaseIsSafe } from "./assert-proof-database-safe.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
@@ -19,6 +20,7 @@ import {
 } from "./operational-cycle-proof-harness.js";
 
 async function main(): Promise<void> {
+  assertProofDatabaseIsSafe("ops:operational-cycle-proof");
   console.log("=== OperaIA.lab — Operational Cycle Proof ===\n");
   console.log(
     "Fluxo: Request → OperationalMissionService → Mission Queue →",
