@@ -423,3 +423,213 @@ function buildReplyFromStored(
     },
   };
 }
+
+/** Evento persistido (MissionEvent) para leitura HTTP F7.1. */
+export interface PersistedMissionEventView {
+  readonly id: string;
+  readonly missionId: string;
+  readonly type: string;
+  readonly message: string;
+  readonly createdAt: string;
+  readonly payload?: unknown;
+}
+
+/** Filho da arvore para leitura HTTP F7.1. */
+export interface PersistedMissionChildView {
+  readonly id: string;
+  readonly status: string;
+  readonly missionKind: string;
+  readonly objective: string;
+  readonly ownerEmployeeId: string;
+  readonly requiredSpecialization: string | null;
+  readonly parentMissionId: string | null;
+  readonly finishedAt: string | null;
+}
+
+export interface PersistedMissionSpecialistView {
+  readonly matched: boolean;
+  readonly employeeId?: string;
+  readonly specialization: string;
+  readonly summary?: string;
+}
+
+/**
+ * Entrega consultavel a partir de PostgreSQL (resultJson + events).
+ * Fonte de verdade persistente — nao usa OperationalRunStore.
+ */
+export interface PersistedMissionDeliveryView {
+  readonly id: string;
+  readonly status: string;
+  readonly objective: string;
+  readonly workspaceId: string;
+  readonly missionKind: string;
+  readonly usableResult: string | null;
+  readonly reply: EmployeeReplyPayload | null;
+  readonly specialists: readonly PersistedMissionSpecialistView[];
+  readonly children: readonly PersistedMissionChildView[];
+  readonly events: readonly PersistedMissionEventView[];
+}
+
+/** Snapshot minimo com events (compativel com MissionQueue.get/listChildren). */
+export interface PersistedMissionRecord {
+  readonly id: string;
+  readonly status: string;
+  readonly workspaceId: string;
+  readonly objective: string;
+  readonly missionKind: string;
+  readonly ownerEmployeeId: string;
+  readonly requiredSpecialization: string | null;
+  readonly parentMissionId: string | null;
+  readonly resultJson: unknown;
+  readonly startedAt: Date | string | null;
+  readonly finishedAt: Date | string | null;
+  readonly events?: readonly {
+    readonly id: string;
+    readonly missionId: string;
+    readonly type: string;
+    readonly message: string;
+    readonly payload?: unknown;
+    readonly createdAt: Date | string;
+  }[];
+}
+
+function toQueueNode(mission: PersistedMissionRecord): QueueMissionNode {
+  return {
+    id: mission.id,
+    status: mission.status,
+    workspaceId: mission.workspaceId,
+    objective: mission.objective,
+    missionKind: mission.missionKind,
+    ownerEmployeeId: mission.ownerEmployeeId,
+    requiredSpecialization: mission.requiredSpecialization,
+    parentMissionId: mission.parentMissionId,
+    resultJson: mission.resultJson,
+    startedAt: mission.startedAt,
+    finishedAt: mission.finishedAt,
+  };
+}
+
+function mapEvents(
+  missions: readonly PersistedMissionRecord[],
+): PersistedMissionEventView[] {
+  const events: PersistedMissionEventView[] = [];
+  for (const mission of missions) {
+    for (const event of mission.events ?? []) {
+      events.push({
+        id: event.id,
+        missionId: event.missionId,
+        type: event.type,
+        message: event.message,
+        createdAt: toIso(event.createdAt) ?? new Date(0).toISOString(),
+        ...(event.payload !== undefined ? { payload: event.payload } : {}),
+      });
+    }
+  }
+  return events.sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+}
+
+function mapChildren(
+  children: readonly PersistedMissionRecord[],
+): PersistedMissionChildView[] {
+  return children.map((child) => ({
+    id: child.id,
+    status: child.status,
+    missionKind: child.missionKind,
+    objective: child.objective,
+    ownerEmployeeId: child.ownerEmployeeId,
+    requiredSpecialization: child.requiredSpecialization,
+    parentMissionId: child.parentMissionId,
+    finishedAt: toIso(child.finishedAt),
+  }));
+}
+
+function specialistsFromRun(
+  run: OperationalRun,
+): PersistedMissionSpecialistView[] {
+  return run.mission.outcomes.map((outcome) => ({
+    matched: outcome.matched,
+    ...(outcome.employeeId ? { employeeId: outcome.employeeId } : {}),
+    specialization: outcome.request.specialization,
+    ...(outcome.result?.output.report.summary
+      ? { summary: outcome.result.output.report.summary }
+      : {}),
+  }));
+}
+
+/**
+ * F7.1 — projeta entrega a partir do estado persistido (fila + resultJson + events).
+ * COMPLETED com consolidate → usableResult/reply/specialists via projector Assisted.
+ * Demais status → campos basicos + children/events; usableResult se ja houver consolidate.
+ */
+export function buildPersistedMissionDeliveryView(input: {
+  readonly mission: PersistedMissionRecord;
+  readonly children?: readonly PersistedMissionRecord[];
+  readonly workspaceName?: string;
+}): PersistedMissionDeliveryView {
+  const children = input.children ?? [];
+  const workspaceName = input.workspaceName ?? input.mission.workspaceId;
+  const rootNode = toQueueNode(input.mission);
+  const childNodes = children.map(toQueueNode);
+  const events = mapEvents([input.mission, ...children]);
+  const childViews = mapChildren(children);
+
+  const consolidated = readConsolidateResult(input.mission.resultJson);
+  if (input.mission.status === "COMPLETED" && consolidated?.initial) {
+    try {
+      const run = projectMissionTreeToOperationalRun({
+        root: rootNode,
+        children: childNodes,
+        workspaceName,
+      });
+      return {
+        id: run.id,
+        status: input.mission.status,
+        objective: run.objective,
+        workspaceId: run.workspaceId,
+        missionKind: input.mission.missionKind,
+        usableResult: run.usableResult,
+        reply: run.reply,
+        specialists: specialistsFromRun(run),
+        children: childViews,
+        events,
+      };
+    } catch {
+      // Fallback abaixo se projector exigir campos ausentes.
+    }
+  }
+
+  const partial = projectMissionToOperationalRun({
+    mission: {
+      id: input.mission.id,
+      status: input.mission.status,
+      workspaceId: input.mission.workspaceId,
+      objective: input.mission.objective,
+      resultJson: input.mission.resultJson,
+      startedAt: input.mission.startedAt,
+      finishedAt: input.mission.finishedAt,
+    },
+    workspaceName,
+  });
+
+  return {
+    id: input.mission.id,
+    status: input.mission.status,
+    objective: input.mission.objective,
+    workspaceId: input.mission.workspaceId,
+    missionKind: input.mission.missionKind,
+    usableResult: partial.usableResult,
+    reply: partial.reply,
+    specialists: buildOutcomesFromExecuteChildren(childNodes).map(
+      (outcome) => ({
+        matched: outcome.matched,
+        ...(outcome.employeeId ? { employeeId: outcome.employeeId } : {}),
+        specialization: outcome.request.specialization,
+        ...(outcome.result?.output.report.summary
+          ? { summary: outcome.result.output.report.summary }
+          : {}),
+      }),
+    ),
+    children: childViews,
+    events,
+  };
+}

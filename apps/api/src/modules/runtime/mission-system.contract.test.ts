@@ -36,6 +36,7 @@ import {
 import { CoordinationDispatcher } from "./supervisor/coordination-dispatcher.js";
 import { InMemoryCoordinationLatchStore } from "./supervisor/infrastructure/in-memory-coordination-latch-store.js";
 import type { SupervisorLoggerPort } from "./supervisor/ports.js";
+import { errorHandler } from "../../shared/error-handler.js";
 
 /** Contrato público HTTP Runtime POST /missions (espelho da rota — Fase 0). */
 const runtimePostMissionBodySchema = z.object({
@@ -845,5 +846,364 @@ describe("ADR-007 Fase 0 — contrato Mission System (MissionQueue)", () => {
       expect(resolved.missionKind).toBe(MissionKind.CONSOLIDATE);
       expect(resolved.ownerEmployeeId).toBe(CEO_EMPLOYEE_ID);
     });
+  });
+});
+
+describe("F7.1 — GET /api/v1/missions/:id (entrega persistida)", () => {
+  function storedCeo(): {
+    employeeId: string;
+    output: {
+      decision: {
+        analyzed: string;
+        decision: string;
+        reasoning: string;
+        recommendations: string[];
+        risks: string[];
+        nextActions: string[];
+        delegations: unknown[];
+      };
+      report: {
+        summary: string;
+        analysis: string;
+        plan: string[];
+        recommendations: string[];
+        risks: string[];
+        nextActions: string[];
+      };
+      quality: { passed: boolean; issues: unknown[] };
+    };
+  } {
+    return {
+      employeeId: CEO_EMPLOYEE_ID,
+      output: {
+        decision: {
+          analyzed: "analise",
+          decision: "delegar",
+          reasoning: "motivo",
+          recommendations: [],
+          risks: [],
+          nextActions: ["seguir"],
+          delegations: [],
+        },
+        report: {
+          summary: "Resumo consolidado F7.1",
+          analysis: "a",
+          plan: [],
+          recommendations: [],
+          risks: [],
+          nextActions: ["seguir"],
+        },
+        quality: { passed: true, issues: [] },
+      },
+    };
+  }
+
+  function storedSpecialist(): ReturnType<typeof storedCeo> {
+    return {
+      employeeId: "cto-mag",
+      output: {
+        decision: {
+          analyzed: "auth",
+          decision: "implementar",
+          reasoning: "ok",
+          recommendations: [],
+          risks: [],
+          nextActions: [],
+          delegations: [],
+        },
+        report: {
+          summary: "Auth analisada",
+          analysis: "",
+          plan: [],
+          recommendations: [],
+          risks: [],
+          nextActions: [],
+        },
+        quality: { passed: true, issues: [] },
+      },
+    };
+  }
+
+  async function buildApp(queue: {
+    get: (id: string) => Promise<unknown>;
+    listChildren: (id: string) => Promise<unknown[]>;
+    list?: () => Promise<unknown[]>;
+    listTree?: () => Promise<unknown[]>;
+    enqueue?: (input: unknown) => Promise<unknown>;
+  }) {
+    const runtime = {
+      queue: {
+        async list() {
+          return [];
+        },
+        async listTree() {
+          return [];
+        },
+        async enqueue() {
+          throw new Error("F7.1 GET nao deve enfileirar");
+        },
+        ...queue,
+      },
+      workers: {
+        list: () => [],
+        aliveCount: () => 0,
+      },
+      async snapshot() {
+        return {
+          started: false,
+          queue: { queued: 0, running: 0, waiting: 0, failed: 0 },
+          scheduler: { lastTickAt: null },
+          supervisor: { running: false, lastSnapshotAt: null },
+        };
+      },
+      supervisor: { isRunning: false },
+    } as unknown as ContinuousRuntime;
+
+    const app = Fastify();
+    app.setValidatorCompiler(validatorCompiler);
+    app.setSerializerCompiler(serializerCompiler);
+    app.setErrorHandler(errorHandler);
+    await app.register(createRuntimeRoutes(runtime), { prefix: "/api/v1" });
+    return app;
+  }
+
+  it("A) missao inexistente → 404", async () => {
+    const app = await buildApp({
+      async get() {
+        return null;
+      },
+      async listChildren() {
+        return [];
+      },
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/missions/missing-id",
+    });
+
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toMatchObject({
+      code: "NOT_FOUND",
+    });
+    await app.close();
+  });
+
+  it("B) COMPLETED com resultJson → 200 e usableResult", async () => {
+    const ceo = storedCeo();
+    const rootId = "root-completed-f71";
+    const app = await buildApp({
+      async get(id: string) {
+        if (id !== rootId) {
+          return null;
+        }
+        return {
+          id: rootId,
+          status: "COMPLETED",
+          workspaceId: "operaia-lab",
+          objective: "Fechar autenticacao",
+          missionKind: MissionKind.COORDINATE,
+          ownerEmployeeId: CEO_EMPLOYEE_ID,
+          requiredSpecialization: null,
+          parentMissionId: null,
+          resultJson: {
+            phase: "consolidated",
+            initial: ceo,
+            usableResult: "Entrega consolidada F7.1",
+            final: ceo,
+          },
+          startedAt: new Date("2026-08-14T16:00:00.000Z"),
+          finishedAt: new Date("2026-08-14T16:05:00.000Z"),
+          events: [],
+        };
+      },
+      async listChildren() {
+        return [];
+      },
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/missions/${rootId}`,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      id: string;
+      status: string;
+      usableResult: string | null;
+      reply: { content: string } | null;
+    };
+    expect(body.id).toBe(rootId);
+    expect(body.status).toBe("COMPLETED");
+    expect(body.usableResult).toBe("Entrega consolidada F7.1");
+    expect(body.reply).not.toBeNull();
+    await app.close();
+  });
+
+  it("C) filho EXECUTE + delivery_created observavel", async () => {
+    const ceo = storedCeo();
+    const specialist = storedSpecialist();
+    const rootId = "root-with-child";
+    const childId = "exec-child-1";
+    const app = await buildApp({
+      async get(id: string) {
+        if (id !== rootId) {
+          return null;
+        }
+        return {
+          id: rootId,
+          status: "COMPLETED",
+          workspaceId: "operaia-lab",
+          objective: "Analisar repositorio",
+          missionKind: MissionKind.COORDINATE,
+          ownerEmployeeId: CEO_EMPLOYEE_ID,
+          requiredSpecialization: null,
+          parentMissionId: null,
+          resultJson: {
+            phase: "consolidated",
+            initial: ceo,
+            usableResult: "Analise consolidada",
+            final: ceo,
+          },
+          startedAt: new Date("2026-08-14T16:00:00.000Z"),
+          finishedAt: new Date("2026-08-14T16:05:00.000Z"),
+          events: [
+            {
+              id: "evt-root-1",
+              missionId: rootId,
+              type: "claimed",
+              message: "Claim por operaia-ceo",
+              createdAt: new Date("2026-08-14T16:00:01.000Z"),
+            },
+          ],
+        };
+      },
+      async listChildren(parentId: string) {
+        expect(parentId).toBe(rootId);
+        return [
+          {
+            id: childId,
+            status: "COMPLETED",
+            workspaceId: "operaia-lab",
+            objective: "Analisar estrutura",
+            missionKind: MissionKind.EXECUTE,
+            ownerEmployeeId: "cto-mag",
+            requiredSpecialization: Specialization.SOFTWARE_ENGINEERING,
+            parentMissionId: rootId,
+            resultJson: {
+              phase: "executed",
+              employeeResult: specialist,
+              delivery: {
+                type: "technical_analysis",
+                status: "DELIVERED",
+                summary: "Analise ok",
+                findings: ["repo ok"],
+                evidence: [{ source: "readRepository", data: {} }],
+                recommendations: [],
+                missionId: childId,
+                employeeId: "cto-mag",
+                objective: "Analisar estrutura",
+                deliveredAt: "2026-08-14T16:04:00.000Z",
+              },
+            },
+            startedAt: new Date("2026-08-14T16:01:00.000Z"),
+            finishedAt: new Date("2026-08-14T16:04:00.000Z"),
+            events: [
+              {
+                id: "evt-delivery-1",
+                missionId: childId,
+                type: "delivery_created",
+                message: "Delivery technical_analysis DELIVERED",
+                createdAt: new Date("2026-08-14T16:03:59.000Z"),
+                payload: { deliveryType: "technical_analysis", success: true },
+              },
+            ],
+          },
+        ];
+      },
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/missions/${rootId}`,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      children: { id: string; missionKind: string }[];
+      events: { type: string; missionId: string }[];
+      specialists: { matched: boolean; employeeId?: string }[];
+      usableResult: string | null;
+    };
+    expect(body.children).toHaveLength(1);
+    expect(body.children[0]?.id).toBe(childId);
+    expect(body.children[0]?.missionKind).toBe(MissionKind.EXECUTE);
+    expect(body.events.some((e) => e.type === "delivery_created")).toBe(true);
+    expect(
+      body.events.find((e) => e.type === "delivery_created")?.missionId,
+    ).toBe(childId);
+    expect(body.specialists.some((s) => s.matched && s.employeeId === "cto-mag")).toBe(
+      true,
+    );
+    expect(body.usableResult).toBe("Analise consolidada");
+    await app.close();
+  });
+
+  it("D) resposta nao depende de OperationalRunStore", async () => {
+    const ceo = storedCeo();
+    const rootId = "root-no-ram-store";
+    let getCalls = 0;
+    const app = await buildApp({
+      async get(id: string) {
+        getCalls += 1;
+        if (id !== rootId) {
+          return null;
+        }
+        return {
+          id: rootId,
+          status: "COMPLETED",
+          workspaceId: "operaia-lab",
+          objective: "Persistencia e a fonte",
+          missionKind: MissionKind.COORDINATE,
+          ownerEmployeeId: CEO_EMPLOYEE_ID,
+          requiredSpecialization: null,
+          parentMissionId: null,
+          resultJson: {
+            phase: "consolidated",
+            initial: ceo,
+            usableResult: "So do PostgreSQL/resultJson",
+            final: ceo,
+          },
+          startedAt: new Date("2026-08-14T16:00:00.000Z"),
+          finishedAt: new Date("2026-08-14T16:05:00.000Z"),
+          events: [],
+        };
+      },
+      async listChildren() {
+        return [];
+      },
+    });
+
+    const first = await app.inject({
+      method: "GET",
+      url: `/api/v1/missions/${rootId}`,
+    });
+    const second = await app.inject({
+      method: "GET",
+      url: `/api/v1/missions/${rootId}`,
+    });
+
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+    expect(first.json()).toMatchObject({
+      usableResult: "So do PostgreSQL/resultJson",
+    });
+    expect(second.json()).toMatchObject({
+      usableResult: "So do PostgreSQL/resultJson",
+    });
+    // Cada GET consulta a fila persistente (mock = get), sem cache/store RAM.
+    expect(getCalls).toBe(2);
+    await app.close();
   });
 });

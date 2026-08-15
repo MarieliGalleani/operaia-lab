@@ -1,6 +1,8 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { MissionStatus } from "@operaia/database";
+import { NotFoundError } from "@operaia/shared";
 import { z } from "zod";
+import { buildPersistedMissionDeliveryView } from "../operations/operational-run-from-queue.js";
 import type { ContinuousRuntime } from "./continuous-runtime.js";
 import { CEO_EMPLOYEE_ID } from "./mission-states.js";
 import { workersListResponseSchema } from "./runtime.schema.js";
@@ -55,6 +57,41 @@ export function createRuntimeRoutes(
           take: request.query.take,
         });
         return { tree };
+      },
+    );
+
+    /**
+     * F7.1 — entrega persistida (PostgreSQL resultJson + events).
+     * Nao usa OperationalRunStore / RAM como fonte de verdade.
+     */
+    app.get(
+      "/missions/:id",
+      {
+        schema: {
+          tags: ["runtime"],
+          params: z.object({
+            id: z.string().min(1),
+          }),
+          response: {
+            200: z.unknown(),
+            404: z.object({
+              code: z.string(),
+              message: z.string(),
+            }),
+          },
+        },
+      },
+      async (request) => {
+        const mission = await runtime.queue.get(request.params.id);
+        if (!mission) {
+          throw new NotFoundError("Mission", request.params.id);
+        }
+        const children = await runtime.queue.listChildren(mission.id);
+        return buildPersistedMissionDeliveryView({
+          mission,
+          children,
+          workspaceName: mission.workspaceId,
+        });
       },
     );
 
