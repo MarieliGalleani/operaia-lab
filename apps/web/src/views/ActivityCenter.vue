@@ -40,8 +40,8 @@ const maxKind = computed(() => Math.max(1, ...byKind.value.map((r) => r.count)))
       </div>
 
       <div class="topbar__right">
-        <router-link to="/office/sala-ceo" class="btn btn--ghost">Sala da Opera</router-link>
-        <router-link to="/office/projetos" class="btn btn--primary">Ver projetos</router-link>
+        <router-link to="/app/office/sala-ceo" class="btn btn--ghost">Sala da Opera</router-link>
+        <router-link to="/app/office/projetos" class="btn btn--primary">Ver projetos</router-link>
       </div>
     </header>
 
@@ -105,8 +105,8 @@ const maxKind = computed(() => Math.max(1, ...byKind.value.map((r) => r.count)))
             <p class="side-card__body">
               A Opera consolida decisões. Os projetos mostram o progresso. O Campus espera você.
             </p>
-            <router-link to="/campus" class="btn btn--ghost">Abrir Campus</router-link>
-            <router-link to="/office/vps" class="btn btn--primary side-card__btn">Painel VPS</router-link>
+            <router-link to="/app/campus" class="btn btn--ghost">Abrir Campus</router-link>
+            <router-link to="/app/office/vps" class="btn btn--primary side-card__btn">Painel VPS</router-link>
           </article>
         </aside>
       </div>

@@ -37,7 +37,7 @@ const byStatus = computed(() => ({
 
       <div class="topbar__right">
         <span class="hint">{{ summary?.pendingTasks ?? 0 }} tarefas abertas</span>
-        <router-link to="/office/sala-ceo" class="btn btn--primary">Priorizar com Opera</router-link>
+        <router-link to="/app/office/sala-ceo" class="btn btn--primary">Priorizar com Opera</router-link>
       </div>
     </header>
 
@@ -55,7 +55,7 @@ const byStatus = computed(() => ({
         <p class="empty-state__body">
           Quando a API listar workspaces, eles aparecem aqui com progresso e equipe.
         </p>
-        <router-link to="/office/sala-ceo" class="btn btn--primary">Pedir missão à Opera</router-link>
+        <router-link to="/app/office/sala-ceo" class="btn btn--primary">Pedir missão à Opera</router-link>
       </div>
     </div>
   </div>

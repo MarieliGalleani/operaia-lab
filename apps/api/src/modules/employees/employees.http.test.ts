@@ -104,13 +104,13 @@ describe("Etapa 4 — HTTP com snapshot de Workspace", () => {
     ).toBe(true);
   });
 
-  it("GET /workspaces lista projetos do source", async () => {
+  it("GET /workspaces lista somente o catalogo oficial", async () => {
     const response = await app.inject({
       method: "GET",
       url: "/api/v1/workspaces",
     });
     expect(response.statusCode).toBe(200);
     const body = response.json() as { name: string }[];
-    expect(body.map((w) => w.name)).toEqual(["NEXO", "MenuFlow", "Plataforma"]);
+    expect(body.map((w) => w.name)).toEqual(["NEXO"]);
   });
 });

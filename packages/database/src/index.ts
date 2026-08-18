@@ -6,6 +6,8 @@ export {
   type Project,
   type Task,
   type Agent,
+  type User,
+  type Session,
   type Mission,
   type MissionEvent,
   type WorkerHeartbeat,
@@ -28,5 +30,6 @@ export {
   DomainSignalEvaluationDecision,
   ActionExecutionStatus,
   CoordinationLatchStatus,
+  UserRole,
   Prisma,
 } from "@prisma/client";

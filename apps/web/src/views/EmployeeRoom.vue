@@ -36,8 +36,8 @@ function involvedProjects(employeeId: string): readonly string[] {
       </div>
 
       <div class="topbar__right">
-        <router-link to="/campus" class="btn btn--ghost">Campus</router-link>
-        <router-link to="/office/sala-ceo" class="btn btn--primary">Falar com Opera</router-link>
+        <router-link to="/app/campus" class="btn btn--ghost">Campus</router-link>
+        <router-link to="/app/office/sala-ceo" class="btn btn--primary">Falar com Opera</router-link>
       </div>
     </header>
 
@@ -48,7 +48,7 @@ function involvedProjects(employeeId: string): readonly string[] {
             <h2 class="block__title">Contratados</h2>
             <p class="block__sub">Especialistas ativos — clique mentalmente no próximo passo com a Opera</p>
           </div>
-          <router-link to="/office/projetos" class="section__link">Ver projetos</router-link>
+          <router-link to="/app/office/projetos" class="section__link">Ver projetos</router-link>
         </div>
         <div class="grid grid--cards">
           <EmployeeProfileCard
@@ -84,7 +84,7 @@ function involvedProjects(employeeId: string): readonly string[] {
         <div v-if="upcoming.length === 0" class="empty-state">
           <p class="empty-state__title">Fila vazia</p>
           <p class="empty-state__body">Ninguém aguardando contratação no momento — o lab está enxuto.</p>
-          <router-link to="/office/sala-ceo" class="btn btn--primary">Pedir indicação à Opera</router-link>
+          <router-link to="/app/office/sala-ceo" class="btn btn--primary">Pedir indicação à Opera</router-link>
         </div>
       </section>
     </div>

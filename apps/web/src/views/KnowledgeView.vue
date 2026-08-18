@@ -4,28 +4,28 @@ const docs = [
     title: "Visão do produto",
     desc: "Diretrizes, objetivos e o papel do Opera Campus na OperaIA.",
     tag: "Produto",
-    to: "/campus",
+    to: "/app/campus",
     cta: "Ver o Campus",
   },
   {
     title: "Arquitetura",
     desc: "Como engine, Residentes, missões e o lab se conectam sem se misturar.",
     tag: "Sistema",
-    to: "/office/vps",
+    to: "/app/office/vps",
     cta: "Saúde da infra",
   },
   {
     title: "Operação com a Opera",
     desc: "Peça planos, riscos e próximas ações direto na Sala da CEO.",
     tag: "Executivo",
-    to: "/office/sala-ceo",
+    to: "/app/office/sala-ceo",
     cta: "Falar com Opera",
   },
   {
     title: "Workspaces",
     desc: "Projetos vivos, progresso e equipe envolvida em cada missão.",
     tag: "Entrega",
-    to: "/office/projetos",
+    to: "/app/office/projetos",
     cta: "Abrir projetos",
   },
 ];
@@ -39,8 +39,8 @@ const docs = [
         <h1 class="page__title">Conhecimento</h1>
       </div>
       <div class="topbar__right">
-        <router-link to="/office/atividades" class="btn btn--ghost">Atividades</router-link>
-        <router-link to="/office/sala-ceo" class="btn btn--primary">Perguntar à Opera</router-link>
+        <router-link to="/app/office/atividades" class="btn btn--ghost">Atividades</router-link>
+        <router-link to="/app/office/sala-ceo" class="btn btn--primary">Perguntar à Opera</router-link>
       </div>
     </header>
 
@@ -55,8 +55,8 @@ const docs = [
           </p>
         </div>
         <div class="hero__actions">
-          <router-link to="/campus" class="btn btn--primary">Entrar no Campus</router-link>
-          <router-link to="/office" class="btn btn--ghost">Andar no Lab</router-link>
+          <router-link to="/app/campus" class="btn btn--primary">Entrar no Campus</router-link>
+          <router-link to="/app/office" class="btn btn--ghost">Andar no Lab</router-link>
         </div>
       </section>
 

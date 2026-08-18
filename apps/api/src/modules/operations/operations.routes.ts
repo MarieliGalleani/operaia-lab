@@ -2,6 +2,10 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { NotFoundError } from "@operaia/shared";
 import {
+  isOfficialWorkspaceId,
+  requireOfficialWorkspaceId,
+} from "../auth/official-workspace-access.js";
+import {
   NEXO_OPERATIONAL_MISSION,
   type OperationalRuntime,
 } from "./operational-composition.js";
@@ -115,7 +119,11 @@ export function createOperationsRoutes(
           response: { 200: z.array(operationalRunResponseSchema) },
         },
       },
-      async () => runtime.service.list().map(toResponse),
+      async () =>
+        runtime.service
+          .list()
+          .filter((run) => isOfficialWorkspaceId(run.workspaceId))
+          .map(toResponse),
     );
 
     app.get(
@@ -132,6 +140,7 @@ export function createOperationsRoutes(
         if (!run) {
           throw new NotFoundError("OperationalRun", request.params.id);
         }
+        requireOfficialWorkspaceId(run.workspaceId);
         return toResponse(run);
       },
     );

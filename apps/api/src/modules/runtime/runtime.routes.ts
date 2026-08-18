@@ -2,6 +2,12 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { MissionStatus } from "@operaia/database";
 import { NotFoundError } from "@operaia/shared";
 import { z } from "zod";
+import {
+  ADMIN_OFFICIAL_WORKSPACE_IDS,
+  isOfficialWorkspaceId,
+  isOfficialWorkspaceName,
+  requireOfficialWorkspaceId,
+} from "../auth/official-workspace-access.js";
 import { buildPersistedMissionDeliveryView } from "../operations/operational-run-from-queue.js";
 import type { ContinuousRuntime } from "./continuous-runtime.js";
 import { CEO_EMPLOYEE_ID } from "./mission-states.js";
@@ -50,13 +56,21 @@ export function createRuntimeRoutes(
             workspaceId: request.query.workspaceId,
             take: request.query.take,
           });
-          return { missions };
+          return {
+            missions: missions.filter((mission) =>
+              isOfficialWorkspaceId(mission.workspaceId),
+            ),
+          };
         }
         const tree = await runtime.queue.listTree({
           workspaceId: request.query.workspaceId,
           take: request.query.take,
         });
-        return { tree };
+        return {
+          tree: tree.filter((mission) =>
+            isOfficialWorkspaceId(mission.workspaceId),
+          ),
+        };
       },
     );
 
@@ -86,6 +100,7 @@ export function createRuntimeRoutes(
         if (!mission) {
           throw new NotFoundError("Mission", request.params.id);
         }
+        requireOfficialWorkspaceId(mission.workspaceId);
         const children = await runtime.queue.listChildren(mission.id);
         return buildPersistedMissionDeliveryView({
           mission,
@@ -131,7 +146,9 @@ export function createRuntimeRoutes(
           health: portfolio.health,
           capacity: portfolio.capacity,
           goals: portfolio.goals,
-          activeProjects: portfolio.activeProjects,
+          activeProjects: portfolio.activeProjects.filter((project) =>
+            isOfficialWorkspaceName(project.name),
+          ),
         };
       },
     );
@@ -150,9 +167,11 @@ export function createRuntimeRoutes(
       async (request) => {
         const { prisma } = await import("@operaia/database");
         const learnings = await prisma.missionLearning.findMany({
-          where: request.query.workspaceId
-            ? { workspaceId: request.query.workspaceId }
-            : undefined,
+          where: {
+            workspaceId: request.query.workspaceId
+              ? request.query.workspaceId
+              : { in: [...ADMIN_OFFICIAL_WORKSPACE_IDS] },
+          },
           orderBy: { createdAt: "desc" },
           take: request.query.take,
         });
@@ -278,13 +297,13 @@ export function createRuntimeRoutes(
         schema: {
           tags: ["runtime"],
           params: z.object({ id: z.string().min(1) }),
-          body: z.object({ approvedBy: z.string().min(1) }),
+          body: z.object({}),
         },
       },
       async (request) => {
         const proposal = await runtime.governance.approve(
           request.params.id,
-          request.body.approvedBy,
+          request.authenticatedAdmin!.login,
         );
         return { proposal };
       },
@@ -297,7 +316,6 @@ export function createRuntimeRoutes(
           tags: ["runtime"],
           params: z.object({ id: z.string().min(1) }),
           body: z.object({
-            rejectedBy: z.string().min(1),
             reason: z.string().min(1),
           }),
         },
@@ -305,7 +323,7 @@ export function createRuntimeRoutes(
       async (request) => {
         const proposal = await runtime.governance.reject(
           request.params.id,
-          request.body.rejectedBy,
+          request.authenticatedAdmin!.login,
           request.body.reason,
         );
         return { proposal };

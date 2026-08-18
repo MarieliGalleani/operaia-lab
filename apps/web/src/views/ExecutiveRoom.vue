@@ -80,8 +80,8 @@ onMounted(async () => {
             {{ person.emoji }}
           </span>
         </div>
-        <router-link to="/campus" class="btn btn--ghost topbar__walk">Campus</router-link>
-        <router-link to="/office" class="btn btn--ghost topbar__walk">Andar</router-link>
+        <router-link to="/app/campus" class="btn btn--ghost topbar__walk">Campus</router-link>
+        <router-link to="/app/office" class="btn btn--ghost topbar__walk">Andar</router-link>
       </div>
     </header>
 
@@ -108,9 +108,11 @@ onMounted(async () => {
           <section class="rail-block panel card-motion" style="--d: 3">
             <div class="rail-block__head">
               <h3>Hoje no lab</h3>
-              <router-link to="/office/atividades" class="section__link">Tudo</router-link>
+              <router-link to="/app/office/atividades" class="section__link">Tudo</router-link>
             </div>
-            <ActivityStream :activities="activities" :limit="4" />
+            <div class="rail-block__body">
+              <ActivityStream :activities="activities" :limit="10" />
+            </div>
           </section>
         </div>
       </aside>
@@ -365,8 +367,13 @@ onMounted(async () => {
 }
 
 .rail-block {
+  flex: 1;
+  min-height: 0;
   padding: 16px;
   margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .rail-block__head {
@@ -374,6 +381,14 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.rail-block__body {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .rail-block__head h3 {

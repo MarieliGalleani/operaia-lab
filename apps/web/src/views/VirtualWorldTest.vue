@@ -21,7 +21,7 @@ function onMapLoaded(mapId: string): void {
   <div class="vw-test">
     <header class="vw-test__bar">
       <span class="vw-test__title">Virtual World — Teste (sandbox)</span>
-      <RouterLink class="vw-test__link" to="/office">← Voltar ao escritório</RouterLink>
+      <RouterLink class="vw-test__link" to="/app/office">← Voltar ao escritório</RouterLink>
     </header>
     <div class="vw-test__stage">
       <VirtualWorld

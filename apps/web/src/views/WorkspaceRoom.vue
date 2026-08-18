@@ -58,7 +58,7 @@ watch(
   <div class="ws-page" :class="{ 'ws-page--ready': Boolean(project) }">
     <header class="topbar">
       <div class="topbar__left">
-        <router-link to="/office/projetos" class="topbar__back">← Projetos</router-link>
+        <router-link to="/app/office/projetos" class="topbar__back">← Projetos</router-link>
         <h1 v-if="project" class="topbar__title">{{ project.name }}</h1>
         <h1 v-else class="topbar__title">Workspace</h1>
       </div>
@@ -86,7 +86,7 @@ watch(
             {{ member.emoji }}
           </span>
         </div>
-        <router-link to="/office/sala-ceo" class="btn btn--primary">Com Opera</router-link>
+        <router-link to="/app/office/sala-ceo" class="btn btn--primary">Com Opera</router-link>
       </div>
     </header>
 
@@ -137,7 +137,7 @@ watch(
             <article v-else class="panel rail-empty">
               <p class="eyebrow">Workflow</p>
               <p class="rail-empty__body">Sem fluxo registrado ainda — peça um plano à Opera.</p>
-              <router-link to="/office/sala-ceo" class="btn btn--ghost">Abrir Sala da CEO</router-link>
+              <router-link to="/app/office/sala-ceo" class="btn btn--ghost">Abrir Sala da CEO</router-link>
             </article>
           </div>
 
@@ -156,7 +156,7 @@ watch(
                 <p class="rail-empty-state__body">
                   Quando a equipe agir neste workspace, o feed aparece aqui.
                 </p>
-                <router-link to="/office/atividades" class="btn btn--ghost">Ver atividades do lab</router-link>
+                <router-link to="/app/office/atividades" class="btn btn--ghost">Ver atividades do lab</router-link>
               </div>
             </div>
           </section>

@@ -100,6 +100,18 @@ export interface OrchestrationEventDTO {
   readonly workspaceId?: string;
 }
 
+/** Runtime — item de GET /api/v1/missions?format=flat (contrato existente). */
+export interface MissionListItemDTO {
+  readonly id: string;
+  readonly workspaceId: string;
+  readonly objective: string;
+  readonly missionKind: string;
+  readonly status: string;
+  readonly ownerEmployeeId: string;
+  readonly createdAt: string;
+  readonly finishedAt?: string | null;
+}
+
 /** Employee Runtime — fluxo de trabalho/delegacao de um Workspace. */
 export interface WorkflowStepDTO {
   readonly stage: WorkflowStage;

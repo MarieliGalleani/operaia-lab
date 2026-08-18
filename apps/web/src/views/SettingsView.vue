@@ -13,10 +13,10 @@ const rows = computed(() => [
 ]);
 
 const shortcuts = [
-  { label: "Campus", to: "/campus", desc: "Entrar no mundo" },
-  { label: "Sala da Opera", to: "/office/sala-ceo", desc: "Decidir com a CEO" },
-  { label: "Painel VPS", to: "/office/vps", desc: "Ver saúde da infra" },
-  { label: "Projetos", to: "/office/projetos", desc: "Workspaces vivos" },
+  { label: "Campus", to: "/app/campus", desc: "Entrar no mundo" },
+  { label: "Sala da Opera", to: "/app/office/sala-ceo", desc: "Decidir com a CEO" },
+  { label: "Painel VPS", to: "/app/office/vps", desc: "Ver saúde da infra" },
+  { label: "Projetos", to: "/app/office/projetos", desc: "Workspaces vivos" },
 ];
 </script>
 
@@ -28,7 +28,7 @@ const shortcuts = [
         <h1 class="page__title">Configurações</h1>
       </div>
       <div class="topbar__right">
-        <router-link to="/office/vps" class="btn btn--primary">Abrir Painel VPS</router-link>
+        <router-link to="/app/office/vps" class="btn btn--primary">Abrir Painel VPS</router-link>
       </div>
     </header>
 

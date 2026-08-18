@@ -579,8 +579,8 @@ onUnmounted(() => {
           </article>
 
           <div class="ready__actions">
-            <button type="button" class="btn btn--ghost" @click="go('/campus')">Ir ao Campus</button>
-            <button type="button" class="btn btn--primary" @click="go('/office/sala-ceo')">Falar com a Opera</button>
+            <button type="button" class="btn btn--ghost" @click="go('/app/campus')">Ir ao Campus</button>
+            <button type="button" class="btn btn--primary" @click="go('/app/office/sala-ceo')">Falar com a Opera</button>
           </div>
         </div>
       </section>

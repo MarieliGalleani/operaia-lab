@@ -160,4 +160,48 @@ describe("Adapters HTTP — mapeiam os endpoints reais", () => {
       question: "oi",
     });
   });
+
+  it("Events.listEvents usa GET /missions flat quando o workspace nao tem eventos", async () => {
+    const get = vi.fn(async (path: string) => {
+      if (path.startsWith("/missions?")) {
+        return {
+          missions: [
+            {
+              id: "m-1",
+              workspaceId: "operaia-lab",
+              objective:
+                "[MISSION_INTENT] TECH_IMPLEMENTATION\n\nAnalisar producao.",
+              missionKind: "COORDINATE",
+              status: "COMPLETED",
+              ownerEmployeeId: "operaia-ceo",
+              createdAt: "2026-08-15T17:54:54.172Z",
+              finishedAt: "2026-08-15T17:54:58.000Z",
+            },
+            {
+              id: "m-2",
+              workspaceId: "operaia-lab",
+              objective: "Implementar autenticacao",
+              missionKind: "CONSOLIDATE",
+              status: "COMPLETED",
+              ownerEmployeeId: "operaia-ceo",
+              createdAt: "2026-08-15T17:54:58.513Z",
+            },
+          ],
+        };
+      }
+      return [];
+    });
+    const client: HttpClient = { get, post: vi.fn() } as unknown as HttpClient;
+    const gateways = createHttpGateways(client);
+
+    const events = await gateways.events.listEvents();
+
+    expect(get).toHaveBeenCalledWith("/missions?format=flat&take=20");
+    expect(events).toHaveLength(1);
+    expect(events[0]?.id).toBe("m-1");
+    expect(events[0]?.kind).toBe("PLAN");
+    expect(events[0]?.actorId).toBe("operaia-ceo");
+    expect(events[0]?.message).toContain("concluída");
+    expect(events[0]?.message).toContain("Analisar producao.");
+  });
 });

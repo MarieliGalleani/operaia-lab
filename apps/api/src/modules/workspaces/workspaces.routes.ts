@@ -3,6 +3,7 @@ import {
 } from "@operaia/workspace-runtime";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
+import { isOfficialWorkspaceId } from "../auth/official-workspace-access.js";
 import type { EmployeesApplication } from "../employees/employees.application.js";
 import {
   httpErrorSchema,
@@ -27,8 +28,11 @@ export function createWorkspaceRoutes(
 ): FastifyPluginAsyncZod {
   return async (app) => {
     const catalog = await application.listWorkspaces();
+    const officialCatalog = catalog.filter((workspace) =>
+      isOfficialWorkspaceId(workspace.id),
+    );
     const { manager, workspaceStore } = createWorkspaceRuntime({
-      initialWorkspaces: catalog.map((workspace) => ({
+      initialWorkspaces: officialCatalog.map((workspace) => ({
         id: workspace.id,
         name: workspace.name,
         createdAt: new Date(),
@@ -44,11 +48,15 @@ export function createWorkspaceRoutes(
         },
       },
       async () =>
-        (await application.listWorkspaces()).map((workspace) => ({
-          ...workspace,
-          teamIds: [...workspace.teamIds],
-          decisions: workspace.decisions.map((decision) => ({ ...decision })),
-        })),
+        (await application.listWorkspaces())
+          .filter((workspace) => isOfficialWorkspaceId(workspace.id))
+          .map((workspace) => ({
+            ...workspace,
+            teamIds: [...workspace.teamIds],
+            decisions: workspace.decisions.map((decision) => ({
+              ...decision,
+            })),
+          })),
     );
 
     app.get(

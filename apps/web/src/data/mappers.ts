@@ -2,6 +2,7 @@ import type {
   EmployeeProfileDTO,
   EmployeeReplyDTO,
   EmployeeStatusDTO,
+  MissionListItemDTO,
   OrchestrationEventDTO,
   WorkflowDTO,
   WorkspaceDTO,
@@ -74,6 +75,57 @@ export function toActivity(dto: OrchestrationEventDTO): Activity {
     message: dto.message,
     timestamp: dto.timestamp,
     projectId: dto.workspaceId,
+  };
+}
+
+const MISSION_KIND_TO_ACTIVITY: Record<string, Activity["kind"]> = {
+  COORDINATE: "PLAN",
+  EXECUTE: "TASK",
+  CONSOLIDATE: "REVIEW",
+};
+
+const MISSION_STATUS_LABEL: Record<string, string> = {
+  COMPLETED: "concluída",
+  RUNNING: "em andamento",
+  QUEUED: "na fila",
+  WAITING: "aguardando",
+  FAILED: "falhou",
+  CREATED: "criada",
+  CANCELLED: "cancelada",
+};
+
+/** Resume o objetivo operacional para o feed (sem stamps internos). */
+export function cleanMissionObjective(raw: string): string {
+  const cleaned = raw
+    .replace(/\[MISSION_INTENT\][^\n]*/g, "")
+    .replace(/\[CONSOLIDATE\]/g, "")
+    .replace(/\[SOURCE_EXECUTE:[^\]]+\]/g, "")
+    .replace(/\[FOLLOW_UP_DELEGATE\]/g, "")
+    .replace(/\[COORDINATE\/[^\]]+\]/g, "")
+    .trim();
+  const first =
+    cleaned.split("\n").find((line) => line.trim().length > 0)?.trim() ??
+    raw.trim();
+  if (first.length <= 140) {
+    return first;
+  }
+  return `${first.slice(0, 137)}...`;
+}
+
+/** Missão persistida → evento do feed "Hoje no lab" / atividades. */
+export function toEventFromMission(
+  mission: MissionListItemDTO,
+): OrchestrationEventDTO {
+  const statusLabel =
+    MISSION_STATUS_LABEL[mission.status] ?? mission.status.toLowerCase();
+  const objective = cleanMissionObjective(mission.objective);
+  return {
+    id: mission.id,
+    kind: MISSION_KIND_TO_ACTIVITY[mission.missionKind] ?? "DELEGATION",
+    actorId: mission.ownerEmployeeId,
+    message: `${statusLabel} — ${objective}`,
+    timestamp: mission.finishedAt ?? mission.createdAt,
+    workspaceId: mission.workspaceId,
   };
 }
 

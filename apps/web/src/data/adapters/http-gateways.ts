@@ -2,6 +2,7 @@ import type {
   EmployeeProfileDTO,
   EmployeeReplyDTO,
   EmployeeStatusDTO,
+  MissionListItemDTO,
   OrchestrationEventDTO,
   SessionDTO,
   SessionStateDTO,
@@ -9,8 +10,38 @@ import type {
   WorkspaceDTO,
   WorkspaceTaskDTO,
 } from "@/data/dto";
+import { toEventFromMission } from "@/data/mappers";
 import type { OfficeGateways } from "@/data/gateways/office-gateways";
 import { createHttpClient, type HttpClient } from "./http-client";
+
+function missionsQuery(workspaceId?: string): string {
+  const params = new URLSearchParams({
+    format: "flat",
+    take: "20",
+  });
+  if (workspaceId) {
+    params.set("workspaceId", workspaceId);
+  }
+  return `/missions?${params.toString()}`;
+}
+
+async function listMissionsAsEvents(
+  client: HttpClient,
+  workspaceId?: string,
+): Promise<readonly OrchestrationEventDTO[]> {
+  try {
+    const payload = await client.get<{ missions: MissionListItemDTO[] }>(
+      missionsQuery(workspaceId),
+    );
+    const missions = payload.missions ?? [];
+    return missions
+      .filter((mission) => mission.missionKind !== "CONSOLIDATE")
+      .map(toEventFromMission);
+  } catch (error) {
+    console.log("[office-http] falha ao listar missoes para o feed", error);
+    return [];
+  }
+}
 
 /**
  * Adapters HTTP contra a API real da Equipe Digital.
@@ -91,16 +122,24 @@ export function createHttpGateways(
 
     events: {
       listEvents: async (workspaceId) => {
-        if (!workspaceId) {
-          return [] as OrchestrationEventDTO[];
+        if (workspaceId) {
+          try {
+            const events = await client.get<OrchestrationEventDTO[]>(
+              `/workspaces/${workspaceId}/events`,
+            );
+            if (events.length > 0) {
+              return events;
+            }
+          } catch (error) {
+            console.log(
+              "[office-http] events do workspace vazios, usando missoes",
+              workspaceId,
+              error,
+            );
+          }
+          return listMissionsAsEvents(client, workspaceId);
         }
-        try {
-          return await client.get<OrchestrationEventDTO[]>(
-            `/workspaces/${workspaceId}/events`,
-          );
-        } catch {
-          return [];
-        }
+        return listMissionsAsEvents(client);
       },
     },
   };

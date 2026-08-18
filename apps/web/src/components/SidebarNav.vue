@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
+import { useAuth } from "@/composables/useAuth";
 
 interface NavItem {
   readonly label: string;
@@ -9,27 +10,37 @@ interface NavItem {
 }
 
 const items: readonly NavItem[] = [
-  { label: "Campus", icon: "grid", to: "/campus" },
-  { label: "OperaIA.lab", icon: "building", to: "/office" },
-  { label: "Sala da CEO", icon: "user", to: "/office/sala-ceo" },
-  { label: "Equipe", icon: "users", to: "/office/equipe" },
-  { label: "Projetos", icon: "folder", to: "/office/projetos" },
-  { label: "Central de atividades", icon: "activity", to: "/office/atividades" },
-  { label: "Conhecimento", icon: "book", to: "/office/conhecimento" },
-  { label: "Painel VPS", icon: "server", to: "/office/vps" },
-  { label: "Configurações", icon: "settings", to: "/office/configuracoes" },
+  { label: "Campus", icon: "grid", to: "/app/campus" },
+  { label: "OperaIA.lab", icon: "building", to: "/app/office" },
+  { label: "Sala da CEO", icon: "user", to: "/app/office/sala-ceo" },
+  { label: "Equipe", icon: "users", to: "/app/office/equipe" },
+  { label: "Projetos", icon: "folder", to: "/app/office/projetos" },
+  { label: "Missões", icon: "missions", to: "/app/office/missions" },
+  { label: "Central de atividades", icon: "activity", to: "/app/office/atividades" },
+  { label: "Conhecimento", icon: "book", to: "/app/office/conhecimento" },
+  { label: "Painel VPS", icon: "server", to: "/app/office/vps" },
+  { label: "Configurações", icon: "settings", to: "/app/office/configuracoes" },
 ];
 
 const route = useRoute();
+const router = useRouter();
+const auth = useAuth();
 
 function isActive(to: string): boolean {
-  if (to === "/campus" || to === "/office") {
+  if (to === "/app/campus" || to === "/app/office") {
     return route.path === to;
   }
   return route.path.startsWith(to);
 }
 
 const activeTo = computed(() => items.find((item) => isActive(item.to))?.to);
+const adminLogin = computed(() => auth.user.value?.login ?? "Administradora");
+const adminInitial = computed(() => adminLogin.value.charAt(0).toUpperCase());
+
+async function signOut(): Promise<void> {
+  await auth.logout();
+  await router.replace("/login");
+}
 </script>
 
 <template>
@@ -76,6 +87,11 @@ const activeTo = computed(() => items.find((item) => isActive(item.to))?.to);
           <svg v-else-if="item.icon === 'folder'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
             <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H9l2 2h7.5A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5v-9Z" />
           </svg>
+          <svg v-else-if="item.icon === 'missions'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+            <path d="M8 4h9.5A2.5 2.5 0 0 1 20 6.5v13l-4-2-4 2-4-2-4 2V8" />
+            <path d="M8 4H6.5A2.5 2.5 0 0 0 4 6.5V20" />
+            <path d="M10 9h6M10 13h4" />
+          </svg>
           <svg v-else-if="item.icon === 'activity'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
             <path d="M3 12h4l2.5-6 3 12L15 9h6" />
           </svg>
@@ -98,12 +114,22 @@ const activeTo = computed(() => items.find((item) => isActive(item.to))?.to);
       </router-link>
     </nav>
 
-    <div class="sidebar__user" title="Marieli — Fundadora">
-      <span class="sidebar__avatar">M</span>
-      <div class="sidebar__user-copy">
-        <span class="sidebar__user-name">Marieli</span>
-        <span class="sidebar__user-role">Fundadora</span>
+    <div class="sidebar__account">
+      <div class="sidebar__user" :title="adminLogin">
+        <span class="sidebar__avatar">{{ adminInitial }}</span>
+        <div class="sidebar__user-copy">
+          <span class="sidebar__user-name">{{ adminLogin }}</span>
+          <span class="sidebar__user-role">Administradora</span>
+        </div>
       </div>
+      <button
+        class="sidebar__logout"
+        type="button"
+        :disabled="auth.busy.value"
+        @click="signOut"
+      >
+        Sair
+      </button>
     </div>
   </aside>
 </template>
@@ -219,10 +245,13 @@ const activeTo = computed(() => items.find((item) => isActive(item.to))?.to);
   color: var(--brand);
 }
 
-.sidebar__user {
+.sidebar__account {
   margin-top: auto;
   padding: 14px 8px 4px;
   border-top: 1px solid var(--border);
+}
+
+.sidebar__user {
   display: flex;
   align-items: center;
 }
@@ -259,5 +288,28 @@ const activeTo = computed(() => items.find((item) => isActive(item.to))?.to);
   margin-top: 2px;
   font-size: 11px;
   color: var(--text-soft);
+}
+
+.sidebar__logout {
+  width: 100%;
+  margin-top: 10px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  background: transparent;
+  font-size: var(--text-xs);
+  text-align: left;
+}
+
+.sidebar__logout:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+
+.sidebar__logout:disabled {
+  cursor: wait;
+  opacity: 0.6;
 }
 </style>

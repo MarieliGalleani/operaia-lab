@@ -142,6 +142,7 @@ describe("Chat executivo e navegação por salas", () => {
       "Sala da CEO",
       "Equipe",
       "Projetos",
+      "Missões",
       "Central de atividades",
       "Conhecimento",
       "Painel VPS",

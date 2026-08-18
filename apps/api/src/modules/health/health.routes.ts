@@ -1,6 +1,7 @@
 import { prisma } from "@operaia/database";
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
+import { HEALTH_RATE_LIMIT } from "../../shared/http-security.js";
 
 /**
  * Endpoints de saude. Servem para orquestracao (Docker, n8n, uptime checks).
@@ -9,6 +10,7 @@ export const healthRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get(
     "/health",
     {
+      config: { rateLimit: HEALTH_RATE_LIMIT },
       schema: {
         tags: ["health"],
         response: {
@@ -22,6 +24,7 @@ export const healthRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get(
     "/health/ready",
     {
+      config: { rateLimit: HEALTH_RATE_LIMIT },
       schema: {
         tags: ["health"],
         response: {

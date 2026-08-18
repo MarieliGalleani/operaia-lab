@@ -91,6 +91,49 @@ describe("POST /api/v1/webhooks/github — pipeline operacional", () => {
     await app.close();
   });
 
+  it("secret ausente nao cria bypass de autenticacao", async () => {
+    const store = new InMemoryDomainSignalStore();
+    const signals = new DomainSignalService(store);
+    await signals.upsertBinding({
+      workspaceId: "nexo",
+      sourceType: "github",
+      externalRef: "acme/operaia-lab",
+      secretRef: "env:GITHUB_WEBHOOK_SECRET",
+    });
+    const bridge = new GitHubSourceBridge();
+    const ingest = new DomainSignalIngestService({
+      registry: createPlatformBridgeRegistry({
+        internal: new InternalSourceBridge(),
+        github: bridge,
+      }),
+      signals,
+    });
+    const app = Fastify();
+    await app.register(
+      createGithubWebhookRoutes({
+        signals,
+        bridge,
+        ingest,
+        resolveSecret: () => null,
+      }),
+      { prefix: "/api/v1/webhooks" },
+    );
+    const rawBody = JSON.stringify(prOpenedBody());
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/v1/webhooks/github",
+      headers: {
+        "content-type": "application/json",
+        "x-hub-signature-256": signGitHubWebhookBody(rawBody, SECRET),
+        "x-github-delivery": randomUUID(),
+        "x-github-event": "pull_request",
+      },
+      payload: rawBody,
+    });
+    expect(response.statusCode).toBe(401);
+    await app.close();
+  });
+
   it("evento CONVERT → DomainSignal CONVERTED + missionId (callback Opera)", async () => {
     const store = new InMemoryDomainSignalStore();
     const signals = new DomainSignalService(store);

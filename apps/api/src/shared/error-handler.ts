@@ -29,6 +29,14 @@ export function errorHandler(
     return;
   }
 
+  if (error.statusCode === 429) {
+    reply.status(429).send({
+      code: "RATE_LIMITED",
+      message: "Muitas requisicoes. Tente novamente mais tarde.",
+    });
+    return;
+  }
+
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2025") {
       reply

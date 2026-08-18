@@ -3,7 +3,7 @@
 #   operaia.com.br       → site institucional (estático mínimo)
 #   lab.operaia.com.br   → OperaIA.lab (apps/web build)
 #   api.operaia.com.br   → API + Continuous Runtime
-#   status.operaia.com.br → observabilidade (JSON production-readiness)
+#   status.operaia.com.br → JSON publico sanitizado (GET /api/status)
 #
 # Requisitos:
 #   - DNS A/AAAA apontando para o IP público da VM
@@ -42,7 +42,7 @@ api.operaia.com.br {
 	}
 }
 
-# --- Status / observabilidade (sem tela nova — JSON da API) -------------------
+# --- Status publico sanitizado (sem tela nova — JSON minimo da API) ----------
 status.operaia.com.br {
 	encode gzip zstd
 
@@ -54,8 +54,8 @@ status.operaia.com.br {
 		-Server
 	}
 
-	# Painel operacional consolidado
-	rewrite * /api/v1/production-readiness
+	# Nao usar /api/v1/production-readiness: essa rota e autenticada.
+	rewrite * /api/status
 	reverse_proxy 127.0.0.1:3333
 
 	log {
