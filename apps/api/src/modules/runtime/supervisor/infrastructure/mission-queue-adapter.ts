@@ -42,6 +42,10 @@ export class MissionQueueAdapter implements MissionQueuePort {
     return this.queue.recoverBlockedDag();
   }
 
+  recoverFailedRetryable() {
+    return this.queue.recoverFailedRetryable();
+  }
+
   async enqueue(input: {
     readonly workspaceId: string;
     readonly projectId?: string | null;

@@ -179,6 +179,9 @@ describe("WorkspaceScanner — multi-workspace isolation", () => {
       async recoverBlockedDag() {
         return 0;
       },
+      async recoverFailedRetryable() {
+        return 0;
+      },
     };
     const scanner = new WorkspaceScanner(workspaces, queue, {
       now: () => new Date("2026-01-01T00:00:00.000Z"),

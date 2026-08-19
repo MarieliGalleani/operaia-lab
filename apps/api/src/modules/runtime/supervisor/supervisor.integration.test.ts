@@ -49,6 +49,9 @@ function emptyQueue(): MissionQueuePort & {
     async recoverBlockedDag() {
       return 0;
     },
+    async recoverFailedRetryable() {
+      return 0;
+    },
     async enqueue(input) {
       enqueued.push({ objective: input.objective });
       return { created: true, id: "coord-1" };

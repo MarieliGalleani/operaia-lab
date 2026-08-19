@@ -32,6 +32,9 @@ function createQueue(): MissionQueuePort & {
     async recoverBlockedDag() {
       return 0;
     },
+    async recoverFailedRetryable() {
+      return 0;
+    },
     async enqueue(input) {
       enqueued.push({
         workspaceId: input.workspaceId,

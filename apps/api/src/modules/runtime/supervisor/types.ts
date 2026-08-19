@@ -143,7 +143,7 @@ export interface WorkerScanReport {
 }
 
 export interface RecoveryAction {
-  readonly kind: "stale" | "waiting" | "blocked" | "timeout";
+  readonly kind: "stale" | "waiting" | "blocked" | "timeout" | "failed_retry";
   readonly count: number;
   readonly reason: string;
   readonly createCoordination: boolean;

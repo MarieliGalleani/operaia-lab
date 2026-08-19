@@ -78,6 +78,10 @@ export interface MissionQueuePort {
   recoverWaitingParents(): Promise<number>;
   recoverBlockedDag(): Promise<number>;
   /**
+   * Reenfileira FAILED elegiveis (attempt < maxAttempts) — mesma missao, sem COORDINATE.
+   */
+  recoverFailedRetryable(): Promise<number>;
+  /**
    * MQ-3 — ids RUNNING cujo WorkerHeartbeat nao prova liveness.
    * Opcional em mocks legados; adapter Prisma implementa.
    */

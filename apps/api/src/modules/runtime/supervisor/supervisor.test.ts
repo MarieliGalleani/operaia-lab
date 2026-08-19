@@ -118,6 +118,9 @@ function createQueue(
     async recoverBlockedDag() {
       return 1;
     },
+    async recoverFailedRetryable() {
+      return 0;
+    },
     async enqueue(input) {
       const objectiveHash = hashObjective(input.workspaceId, input.objective);
       const existingOpen = [...missionsByHash.values()].find(

@@ -66,6 +66,22 @@ export class RecoveryCoordinator {
       });
     }
 
+    const retryableFailed = input.missions.items.filter(
+      (m) => m.category === "RETRY" && m.canResume,
+    );
+    if (retryableFailed.length > 0) {
+      const n = await this.queue.recoverFailedRetryable();
+      if (n > 0) {
+        infraRecovered += n;
+        actions.push({
+          kind: "failed_retry",
+          count: n,
+          reason: "FAILED elegivel a retry operacional",
+          createCoordination: false,
+        });
+      }
+    }
+
     const coordinationsRequested = actions.filter((a) => a.createCoordination).length;
     if (actions.length > 0) {
       this.logger.emit(SupervisorEvent.RECOVERY_CREATED, {

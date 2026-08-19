@@ -747,6 +747,59 @@ export class MissionQueue {
   }
 
   /**
+   * F6.1 — FAILED persistidas elegiveis (attempt < maxAttempts) voltam a QUEUED.
+   * Mesma missao (id/parent/kind); idempotente; nao cria COORDINATE nem latch.
+   */
+  async recoverFailedRetryable(): Promise<number> {
+    const now = new Date();
+    const failed = await prisma.mission.findMany({
+      where: { status: MissionStatus.FAILED },
+    });
+
+    let recovered = 0;
+    for (const mission of failed) {
+      if (mission.attempt >= mission.maxAttempts) {
+        continue;
+      }
+      if (mission.scheduledAt && mission.scheduledAt > now) {
+        continue;
+      }
+
+      const updated = await prisma.mission.updateMany({
+        where: {
+          id: mission.id,
+          status: MissionStatus.FAILED,
+          attempt: mission.attempt,
+        },
+        data: {
+          status: MissionStatus.QUEUED,
+          startedAt: null,
+          finishedAt: null,
+          progress: 0,
+          scheduledAt: now,
+        },
+      });
+      if (updated.count !== 1) {
+        continue;
+      }
+
+      await this.appendEvent(
+        mission.id,
+        "requeued",
+        "FAILED elegivel reenfileirado pelo Supervisor",
+        {
+          attempt: mission.attempt,
+          maxAttempts: mission.maxAttempts,
+          source: "recoverFailedRetryable",
+        },
+      );
+      recovered += 1;
+    }
+
+    return recovered;
+  }
+
+  /**
    * RUNNING cujo owner nao prova liveness via WorkerHeartbeat.
    */
   private async findAbandonedRunning(

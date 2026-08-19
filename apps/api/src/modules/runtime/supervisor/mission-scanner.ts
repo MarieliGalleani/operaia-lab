@@ -56,7 +56,7 @@ export class MissionScanner {
               mission,
               canRetry ? "RETRY" : "FAILED",
               canRetry,
-              true,
+              false,
               canRetry
                 ? `FAILED elegivel a retry (${mission.attempt}/${mission.maxAttempts})`
                 : "FAILED sem tentativas",
