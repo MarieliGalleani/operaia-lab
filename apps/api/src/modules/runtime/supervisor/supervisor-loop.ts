@@ -3,6 +3,7 @@ import type { HealthMonitor } from "./health-monitor.js";
 import type { GitHubRepositoryScanner } from "./github-repository-scanner.js";
 import type { MissionScanner } from "./mission-scanner.js";
 import type {
+  ScheduleRuleTickPort,
   SnapshotStorePort,
   SupervisorLoggerPort,
 } from "./ports.js";
@@ -24,6 +25,8 @@ export interface SupervisorLoopDeps {
   readonly missionScanner: MissionScanner;
   readonly queueMonitor: QueueMonitor;
   readonly recoveryCoordinator: RecoveryCoordinator;
+  /** F6.2 — tick recorrente de ScheduleRule (sem portfolio/latch). */
+  readonly scheduleRuleTick?: ScheduleRuleTickPort;
   readonly coordinationDispatcher: CoordinationDispatcher;
   readonly snapshots: SnapshotGenerator;
   readonly snapshotStore: SnapshotStorePort;
@@ -47,7 +50,7 @@ export interface SupervisorLoopDeps {
  * SupervisorLoop — servico operacional permanente.
  *
  * health → workspace scan → github repo scan → mission scan → queue scan →
- * recover stale → dispatch coordination → sleep
+ * recover stale → schedule rules tick → dispatch coordination → sleep
  *
  * NUNCA toma decisoes de negocio.
  */
@@ -211,6 +214,16 @@ export class SupervisorLoop {
         missions,
         queue,
         workspaces,
+      });
+
+      const scheduleRules = this.deps.scheduleRuleTick
+        ? await this.deps.scheduleRuleTick.runScheduleRulesCycle()
+        : { inspected: 0, due: 0, enqueued: 0, deduped: 0 };
+      this.deps.logger.emit(SupervisorEvent.SCHEDULE_RULES_TICK, {
+        inspected: scheduleRules.inspected,
+        due: scheduleRules.due,
+        enqueued: scheduleRules.enqueued,
+        deduped: scheduleRules.deduped,
       });
 
       const dispatch = await this.deps.coordinationDispatcher.dispatch({

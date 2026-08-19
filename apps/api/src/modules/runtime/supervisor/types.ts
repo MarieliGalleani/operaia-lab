@@ -23,6 +23,8 @@ export const SupervisorEvent = {
   /** A.5.3 — alerta operacional interno (nao cria missao). */
   OPERATIONAL_ALERT: "OPERATIONAL_ALERT",
   MAINTENANCE_RAN: "MAINTENANCE_RAN",
+  /** F6.2 — tick de ScheduleRule recorrente (sem portfolio/latch). */
+  SCHEDULE_RULES_TICK: "SCHEDULE_RULES_TICK",
 } as const;
 
 export type SupervisorEvent =

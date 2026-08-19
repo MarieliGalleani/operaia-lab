@@ -16,6 +16,7 @@
     "ops:operational-cycle-proof": "tsx --env-file-if-exists=../../.env src/modules/operations/proof-operational-cycle.ts",
     "ops:operational-resilience-proof": "tsx --env-file-if-exists=../../.env src/modules/operations/proof-operational-resilience.ts",
     "ops:failed-retry-proof": "tsx --env-file-if-exists=../../.env src/modules/operations/proof-failed-retry.ts",
+    "ops:schedule-rule-proof": "tsx --env-file-if-exists=../../.env src/modules/operations/proof-schedule-rule.ts",
     "ops:operational-memory-continuity-proof": "tsx --env-file-if-exists=../../.env src/modules/operations/proof-operational-memory-continuity.ts",
     "ops:autonomy-proof": "tsx --env-file-if-exists=../../.env src/modules/runtime/proof-autonomy.ts"
   },

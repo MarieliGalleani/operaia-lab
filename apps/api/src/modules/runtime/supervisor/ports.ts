@@ -43,6 +43,18 @@ export interface ScheduleRulePort {
   markEnqueued(id: string, at: Date): Promise<void>;
 }
 
+export interface ScheduleRulesCycleResult {
+  readonly inspected: number;
+  readonly due: number;
+  readonly enqueued: number;
+  readonly deduped: number;
+}
+
+/** Tick de ScheduleRule — somente regras recorrentes, sem portfolio/planning. */
+export interface ScheduleRuleTickPort {
+  runScheduleRulesCycle(now?: Date): Promise<ScheduleRulesCycleResult>;
+}
+
 export interface QueueDepthsView {
   readonly queued: number;
   readonly running: number;

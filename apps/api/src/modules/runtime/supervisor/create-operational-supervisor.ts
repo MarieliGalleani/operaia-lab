@@ -224,6 +224,7 @@ export function createOperationalSupervisor(
       clock,
       input.staleRunningMs,
     ),
+    scheduleRuleTick: input.scheduler,
     coordinationDispatcher: new CoordinationDispatcher(
       queuePort,
       supervisorLogger,

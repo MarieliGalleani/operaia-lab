@@ -14,7 +14,12 @@ import type { TaskRepository } from "../tasks/domain/task.repository.js";
 import type { EmployeeWorkerLogger } from "./employee-worker.js";
 import type { MissionQueue } from "./mission-queue.js";
 import { CEO_EMPLOYEE_ID } from "./mission-states.js";
-import type { LearningStatsPort, ScheduleRulePort } from "./supervisor/ports.js";
+import type {
+  LearningStatsPort,
+  ScheduleRulePort,
+  ScheduleRulesCycleResult,
+  ScheduleRuleTickPort,
+} from "./supervisor/ports.js";
 
 export interface MissionSchedulerOptions {
   readonly queue: MissionQueue;
@@ -40,7 +45,7 @@ export interface CoordinationCycleResult {
  * Nao e invocado pelo Operational Supervisor.
  * Sem timer proprio no ContinuousRuntime v2.
  */
-export class MissionScheduler {
+export class MissionScheduler implements ScheduleRuleTickPort {
   private timer: ReturnType<typeof setInterval> | null = null;
   private ticking = false;
   private lastTickAt: string | null = null;
@@ -230,29 +235,10 @@ export class MissionScheduler {
         }
       }
 
-      const rules = await this.options.scheduleRules.listEnabled();
-      const now = Date.now();
-      for (const rule of rules) {
-        const due =
-          !rule.lastEnqueuedAt ||
-          now - rule.lastEnqueuedAt.getTime() >= rule.intervalSec * 1000;
-        if (!due || !rule.workspaceId) {
-          continue;
-        }
-        const objective =
-          rule.objective ??
-          `Verificacao recorrente do workspace ${rule.workspaceId}`;
-        const { created } = await this.options.queue.enqueue({
-          workspaceId: rule.workspaceId,
-          objective,
-          ownerEmployeeId: CEO_EMPLOYEE_ID,
-          dedupe: true,
-        });
-        await this.options.scheduleRules.markEnqueued(rule.id, new Date());
-        if (created) {
-          enqueued += 1;
-          details.push(`schedule-rule:${rule.id}`);
-        }
+      const scheduleResult = await this.runScheduleRulesCycle();
+      enqueued += scheduleResult.enqueued;
+      if (scheduleResult.enqueued > 0) {
+        details.push(`schedule-rules:${scheduleResult.enqueued}`);
       }
 
       this.lastEnqueued = enqueued;
@@ -289,6 +275,68 @@ export class MissionScheduler {
     } finally {
       this.ticking = false;
     }
+  }
+
+  /** Bloco B — somente ScheduleRule recorrente (sem portfolio/planning). */
+  async runScheduleRulesCycle(
+    now: Date = new Date(),
+  ): Promise<ScheduleRulesCycleResult> {
+    const rules = await this.options.scheduleRules.listEnabled();
+    let due = 0;
+    let enqueued = 0;
+    let deduped = 0;
+    const nowMs = now.getTime();
+
+    for (const rule of rules) {
+      try {
+        const isDue =
+          !rule.lastEnqueuedAt ||
+          nowMs - rule.lastEnqueuedAt.getTime() >= rule.intervalSec * 1000;
+        if (!isDue || !rule.workspaceId) {
+          continue;
+        }
+        due += 1;
+        const objective =
+          rule.objective ??
+          `Verificacao recorrente do workspace ${rule.workspaceId}`;
+        const { created } = await this.options.queue.enqueue({
+          workspaceId: rule.workspaceId,
+          objective,
+          ownerEmployeeId: CEO_EMPLOYEE_ID,
+          dedupe: true,
+        });
+        await this.options.scheduleRules.markEnqueued(rule.id, now);
+        if (created) {
+          enqueued += 1;
+        } else {
+          deduped += 1;
+        }
+      } catch (error) {
+        this.options.logger.error(
+          {
+            component: "schedule-rules",
+            event: "rule_error",
+            ruleId: rule.id,
+            error: error instanceof Error ? error.message : String(error),
+          },
+          "Falha ao processar ScheduleRule",
+        );
+      }
+    }
+
+    this.options.logger.info(
+      {
+        component: "schedule-rules",
+        event: "tick",
+        inspected: rules.length,
+        due,
+        enqueued,
+        deduped,
+      },
+      "Tick de ScheduleRule",
+    );
+
+    return { inspected: rules.length, due, enqueued, deduped };
   }
 }
 
