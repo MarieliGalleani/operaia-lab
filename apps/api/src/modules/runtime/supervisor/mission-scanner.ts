@@ -56,10 +56,11 @@ export class MissionScanner {
               mission,
               canRetry ? "RETRY" : "FAILED",
               canRetry,
-              false,
+              // Retryable: F6.1 sem COORDINATE. Esgotado: escalacao operacional.
+              !canRetry,
               canRetry
                 ? `FAILED elegivel a retry (${mission.attempt}/${mission.maxAttempts})`
-                : "FAILED sem tentativas",
+                : `FAILED esgotado (${mission.attempt}/${mission.maxAttempts})`,
             ),
           );
           continue;

@@ -21,7 +21,10 @@ export class StructuredSupervisorLogger implements SupervisorLoggerPort {
     data: Readonly<Record<string, unknown>> = {},
   ): void {
     const level =
-      event === SupervisorEvent.HEALTH_FAIL ? "error" : ("info" as const);
+      event === SupervisorEvent.HEALTH_FAIL ||
+      event === SupervisorEvent.SUPERVISOR_CYCLE_FAILED
+        ? "error"
+        : ("info" as const);
     this.sink(level, {
       component: this.component,
       event,

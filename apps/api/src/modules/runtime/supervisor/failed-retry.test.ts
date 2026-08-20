@@ -1,5 +1,5 @@
 /**
- * F6.1 — retry automatico de FAILED (unitario, sem Prisma).
+ * F6.1 — retry automatico de FAILED + politica FAILED esgotado (unitario).
  */
 import { describe, expect, it } from "vitest";
 import { CoordinationDispatcher } from "./coordination-dispatcher.js";
@@ -14,13 +14,14 @@ import type {
   WorkspaceScanReport,
 } from "./types.js";
 import { InMemoryCoordinationLatchStore } from "./infrastructure/in-memory-coordination-latch-store.js";
+import { hashObjective } from "../mission-queue.js";
 
 const fixedNow = new Date("2026-08-19T12:00:00.000Z");
 const clock = { now: () => fixedNow };
 
 function mission(
   partial: Partial<MissionView> & { id: string },
-): MissionView & { status: string } {
+): MissionView & { status: string; objective?: string } {
   return {
     workspaceId: "nexo",
     status: "FAILED",
@@ -37,11 +38,12 @@ function mission(
 }
 
 function createStatefulQueue(initial: Array<MissionView & { status: string }>): MissionQueuePort & {
-  rows: Array<MissionView & { status: string }>;
-  enqueued: Array<{ objective: string }>;
+  rows: Array<MissionView & { status: string; objective?: string }>;
+  enqueued: Array<{ objective: string; id: string }>;
 } {
   const rows = initial.map((row) => ({ ...row }));
-  const enqueued: Array<{ objective: string }> = [];
+  const enqueued: Array<{ objective: string; id: string }> = [];
+  let seq = 0;
   return {
     rows,
     enqueued,
@@ -79,9 +81,50 @@ function createStatefulQueue(initial: Array<MissionView & { status: string }>): 
       }
       return n;
     },
+    async findByObjectiveHash(workspaceId, objectiveHash) {
+      const open = rows.find(
+        (r) =>
+          r.workspaceId === workspaceId &&
+          r.objective !== undefined &&
+          hashObjective(workspaceId, r.objective) === objectiveHash &&
+          (r.status === "QUEUED" ||
+            r.status === "RUNNING" ||
+            r.status === "CREATED" ||
+            r.status === "WAITING"),
+      );
+      return open ? { id: open.id, status: open.status } : null;
+    },
     async enqueue(input) {
-      enqueued.push({ objective: input.objective });
-      return { created: true, id: "new-coord" };
+      const existing = rows.find(
+        (r) =>
+          r.workspaceId === input.workspaceId &&
+          r.objective === input.objective &&
+          (r.status === "QUEUED" ||
+            r.status === "RUNNING" ||
+            r.status === "CREATED" ||
+            r.status === "WAITING"),
+      );
+      if (input.dedupe && existing) {
+        return { created: false, id: existing.id };
+      }
+      seq += 1;
+      const id = `coord-${seq}`;
+      enqueued.push({ objective: input.objective, id });
+      rows.push({
+        id,
+        workspaceId: input.workspaceId,
+        status: "QUEUED",
+        readiness: "READY",
+        attempt: 0,
+        maxAttempts: 3,
+        updatedAt: fixedNow,
+        startedAt: null,
+        lastError: null,
+        missionKind: "COORDINATE",
+        ownerEmployeeId: input.ownerEmployeeId,
+        objective: input.objective,
+      });
+      return { created: true, id };
     },
   };
 }
@@ -109,8 +152,15 @@ const emptyQueueReport: QueueScanReport = {
   depths: { queued: 0, running: 0, waiting: 0, failed: 0 },
 };
 
+const emptyRecovery = {
+  recoveredAt: fixedNow.toISOString(),
+  actions: [],
+  infraRecovered: 0,
+  coordinationsRequested: 0,
+};
+
 describe("F6.1 — FAILED retry automatico", () => {
-  it("TESTE A — FAILED retryable → QUEUED, mesmo id, sem COORDINATE", async () => {
+  it("A — FAILED retryable → QUEUED, mesmo id, sem COORDINATE", async () => {
     const queue = createStatefulQueue([
       mission({ id: "m-retry", attempt: 1, maxAttempts: 3 }),
     ]);
@@ -137,14 +187,15 @@ describe("F6.1 — FAILED retry automatico", () => {
     expect(queue.enqueued).toHaveLength(0);
   });
 
-  it("TESTE B — FAILED exhausted permanece FAILED", async () => {
+  it("B — FAILED exhausted permanece FAILED e nao e reenfileirado", async () => {
     const queue = createStatefulQueue([
       mission({ id: "m-dead", attempt: 3, maxAttempts: 3 }),
     ]);
     const report = await new MissionScanner(queue, clock, 30_000).scan();
-    expect(report.items.find((i) => i.missionId === "m-dead")?.category).toBe(
-      "FAILED",
-    );
+    const item = report.items.find((i) => i.missionId === "m-dead");
+    expect(item?.category).toBe("FAILED");
+    expect(item?.needsCoordination).toBe(true);
+    expect(item?.canResume).toBe(false);
 
     const recovery = await new RecoveryCoordinator(
       queue,
@@ -158,10 +209,144 @@ describe("F6.1 — FAILED retry automatico", () => {
     });
 
     expect(recovery.actions.some((a) => a.kind === "failed_retry")).toBe(false);
-    expect(queue.rows[0]?.status).toBe("FAILED");
+    expect(recovery.actions.some((a) => a.kind === "failed_exhausted")).toBe(
+      true,
+    );
+    expect(queue.rows.find((r) => r.id === "m-dead")?.status).toBe("FAILED");
+    expect(queue.enqueued).toHaveLength(0);
   });
 
-  it("TESTE C — segundo ciclo de recovery nao duplica missao", async () => {
+  it("C — FAILED exhausted produz exatamente uma escalacao operacional", async () => {
+    const queue = createStatefulQueue([
+      mission({ id: "m-dead", attempt: 3, maxAttempts: 3 }),
+    ]);
+    const missions = await new MissionScanner(queue, clock, 30_000).scan();
+    const events: Array<{ event: SupervisorEvent; data: Record<string, unknown> }> =
+      [];
+    const logger: SupervisorLoggerPort = {
+      emit(event, data = {}) {
+        events.push({ event, data: { ...data } });
+      },
+    };
+    const latches = new InMemoryCoordinationLatchStore();
+    const dispatcher = new CoordinationDispatcher(queue, logger, latches);
+
+    const result = await dispatcher.dispatch({
+      workspaces: emptyWorkspaces,
+      missions,
+      queue: emptyQueueReport,
+      recovery: emptyRecovery,
+      healthOk: true,
+    });
+
+    expect(result.dispatched).toBe(1);
+    expect(queue.enqueued).toHaveLength(1);
+    expect(queue.enqueued[0]?.objective).toContain("missao_esgotada:m-dead");
+    expect(queue.enqueued[0]?.objective).toContain("m-dead");
+    expect(queue.rows.find((r) => r.id === "m-dead")?.status).toBe("FAILED");
+    expect(
+      events.some((e) => e.event === SupervisorEvent.COORDINATION_CREATED),
+    ).toBe(true);
+    const created = events.find(
+      (e) => e.event === SupervisorEvent.COORDINATION_CREATED,
+    );
+    expect(created?.data.sourceMissionId).toBe("m-dead");
+    expect(created?.data.attempt).toBe(3);
+    expect(created?.data.maxAttempts).toBe(3);
+  });
+
+  it("D — segundo ciclo nao cria segunda escalacao", async () => {
+    const queue = createStatefulQueue([
+      mission({ id: "m-dead", attempt: 3, maxAttempts: 3 }),
+    ]);
+    const logger: SupervisorLoggerPort = { emit: () => {} };
+    const latches = new InMemoryCoordinationLatchStore();
+    const dispatcher = new CoordinationDispatcher(queue, logger, latches);
+
+    const first = await dispatcher.dispatch({
+      workspaces: emptyWorkspaces,
+      missions: await new MissionScanner(queue, clock, 30_000).scan(),
+      queue: emptyQueueReport,
+      recovery: emptyRecovery,
+      healthOk: true,
+    });
+    const second = await dispatcher.dispatch({
+      workspaces: emptyWorkspaces,
+      missions: await new MissionScanner(queue, clock, 30_000).scan(),
+      queue: emptyQueueReport,
+      recovery: emptyRecovery,
+      healthOk: true,
+    });
+
+    expect(first.dispatched).toBe(1);
+    expect(second.dispatched).toBe(0);
+    expect(queue.enqueued).toHaveLength(1);
+  });
+
+  it("E — deduplicacao persiste apos reiniciar dispatcher/latch (fila OPEN)", async () => {
+    const queue = createStatefulQueue([
+      mission({ id: "m-dead", attempt: 3, maxAttempts: 3 }),
+    ]);
+    const logger: SupervisorLoggerPort = { emit: () => {} };
+
+    const first = await new CoordinationDispatcher(
+      queue,
+      logger,
+      new InMemoryCoordinationLatchStore(),
+    ).dispatch({
+      workspaces: emptyWorkspaces,
+      missions: await new MissionScanner(queue, clock, 30_000).scan(),
+      queue: emptyQueueReport,
+      recovery: emptyRecovery,
+      healthOk: true,
+    });
+
+    // Simula restart: novo latch store (memoria limpa), fila Postgres ainda OPEN.
+    const second = await new CoordinationDispatcher(
+      queue,
+      logger,
+      new InMemoryCoordinationLatchStore(),
+    ).dispatch({
+      workspaces: emptyWorkspaces,
+      missions: await new MissionScanner(queue, clock, 30_000).scan(),
+      queue: emptyQueueReport,
+      recovery: emptyRecovery,
+      healthOk: true,
+    });
+
+    expect(first.dispatched).toBe(1);
+    expect(second.dispatched).toBe(0);
+    expect(queue.enqueued).toHaveLength(1);
+    expect(
+      queue.rows.filter((r) => r.missionKind === "COORDINATE"),
+    ).toHaveLength(1);
+  });
+
+  it("F — duas FAILED exhausted distintas geram escalacoes independentes", async () => {
+    const queue = createStatefulQueue([
+      mission({ id: "m-a", attempt: 3, maxAttempts: 3 }),
+      mission({ id: "m-b", attempt: 5, maxAttempts: 5, workspaceId: "nexo" }),
+    ]);
+    const logger: SupervisorLoggerPort = { emit: () => {} };
+    const result = await new CoordinationDispatcher(
+      queue,
+      logger,
+      new InMemoryCoordinationLatchStore(),
+    ).dispatch({
+      workspaces: emptyWorkspaces,
+      missions: await new MissionScanner(queue, clock, 30_000).scan(),
+      queue: emptyQueueReport,
+      recovery: emptyRecovery,
+      healthOk: true,
+    });
+
+    expect(result.dispatched).toBe(2);
+    expect(queue.enqueued).toHaveLength(2);
+    expect(queue.enqueued.some((e) => e.objective.includes("m-a"))).toBe(true);
+    expect(queue.enqueued.some((e) => e.objective.includes("m-b"))).toBe(true);
+  });
+
+  it("segundo ciclo de recovery retryable nao duplica missao", async () => {
     const queue = createStatefulQueue([
       mission({ id: "m-once", attempt: 1, maxAttempts: 3 }),
     ]);
@@ -189,7 +374,7 @@ describe("F6.1 — FAILED retry automatico", () => {
     expect(queue.rows.filter((r) => r.id === "m-once")).toHaveLength(1);
   });
 
-  it("TESTE D — Supervisor dispatch nao cria COORDINATE para RETRY", async () => {
+  it("Supervisor dispatch nao cria COORDINATE para RETRY", async () => {
     const queue = createStatefulQueue([
       mission({ id: "m-retry", attempt: 1, maxAttempts: 3 }),
     ]);
@@ -209,12 +394,7 @@ describe("F6.1 — FAILED retry automatico", () => {
       workspaces: emptyWorkspaces,
       missions,
       queue: emptyQueueReport,
-      recovery: {
-        recoveredAt: fixedNow.toISOString(),
-        actions: [],
-        infraRecovered: 0,
-        coordinationsRequested: 0,
-      },
+      recovery: emptyRecovery,
       healthOk: true,
     });
 

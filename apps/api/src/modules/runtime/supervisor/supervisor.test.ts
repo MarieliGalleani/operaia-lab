@@ -508,6 +508,90 @@ describe("Operational Supervisor v2 — missao permanente", () => {
     expect(emitted).toContain(SupervisorEvent.QUEUE_SCANNED);
     expect(emitted).toContain(SupervisorEvent.SUPERVISOR_SLEEP);
   });
+
+  it("runCycle captura excecao, emite SUPERVISOR_CYCLE_FAILED e libera ticking", async () => {
+    const emitted: Array<{ event: string; data: Record<string, unknown> }> =
+      [];
+    const logger: SupervisorLoggerPort = {
+      emit(event, data = {}) {
+        emitted.push({ event, data: { ...data } });
+      },
+    };
+    const queue = createQueue({ rows: [] });
+    const workspaces = new InMemoryWorkspaceSource(buildTestWorkspaceCatalog());
+
+    let scanShouldFail = true;
+    const missionScanner = new MissionScanner(queue, clock, 30_000);
+    const originalScan = missionScanner.scan.bind(missionScanner);
+    missionScanner.scan = async () => {
+      if (scanShouldFail) {
+        throw new Error("mission scan boom");
+      }
+      return originalScan();
+    };
+
+    const loop = new SupervisorLoop({
+      healthMonitor: new HealthMonitor(
+        [
+          {
+            name: "registry",
+            check: async () => ({ status: "ok" as const, detail: "ok" }),
+          },
+        ],
+        clock,
+      ),
+      workspaceScanner: new WorkspaceScanner(workspaces, queue, clock),
+      missionScanner,
+      queueMonitor: new QueueMonitor(
+        queue,
+        {
+          list: () => [{ employeeId: "operaia-ceo", status: "idle" }],
+          aliveCount: () => 1,
+        },
+        clock,
+        30_000,
+      ),
+      recoveryCoordinator: new RecoveryCoordinator(
+        queue,
+        logger,
+        clock,
+        30_000,
+      ),
+      coordinationDispatcher: new CoordinationDispatcher(
+        queue,
+        logger,
+        freshLatches(),
+      ),
+      snapshots: new SnapshotGenerator(clock),
+      snapshotStore: new InMemorySnapshotStore(),
+      logger,
+      intervalMs: 60_000,
+      staleRunningMs: 30_000,
+    });
+
+    await expect(loop.runCycle()).resolves.toBeNull();
+
+    const failed = emitted.find(
+      (e) => e.event === SupervisorEvent.SUPERVISOR_CYCLE_FAILED,
+    );
+    expect(failed).toBeDefined();
+    expect(failed!.data.cycle).toBe(1);
+    expect(failed!.data.error).toBe("mission scan boom");
+    expect(failed!.data.errorName).toBe("Error");
+    expect(typeof failed!.data.at).toBe("string");
+    expect(emitted.map((e) => e.event)).not.toContain(
+      SupervisorEvent.SUPERVISOR_SLEEP,
+    );
+
+    // ticking liberado — proximo ciclo ainda pode executar.
+    scanShouldFail = false;
+    const recovered = await loop.runCycle();
+    expect(recovered).not.toBeNull();
+    expect(recovered!.cycle).toBe(2);
+    expect(emitted.map((e) => e.event)).toContain(
+      SupervisorEvent.SUPERVISOR_SLEEP,
+    );
+  });
 });
 
 describe("Operational Supervisor — invariantes arquiteturais", () => {

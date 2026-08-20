@@ -82,12 +82,37 @@ export class RecoveryCoordinator {
       }
     }
 
+    // FAILED esgotado: nao reenfileira; sinaliza escalacao (dispatcher + latch).
+    const exhaustedFailed = input.missions.items.filter(
+      (m) =>
+        m.category === "FAILED" &&
+        !m.canResume &&
+        m.attempt >= m.maxAttempts &&
+        m.needsCoordination,
+    );
+    if (exhaustedFailed.length > 0) {
+      actions.push({
+        kind: "failed_exhausted",
+        count: exhaustedFailed.length,
+        reason: "FAILED esgotado — escalacao operacional ao CEO",
+        createCoordination: true,
+      });
+    }
+
     const coordinationsRequested = actions.filter((a) => a.createCoordination).length;
     if (actions.length > 0) {
       this.logger.emit(SupervisorEvent.RECOVERY_CREATED, {
         infraRecovered,
         coordinationsRequested,
         actions: actions.map((a) => a.kind),
+        ...(exhaustedFailed.length > 0
+          ? {
+              exhaustedMissionIds: exhaustedFailed.map((m) => m.missionId),
+              exhaustedWorkspaceIds: [
+                ...new Set(exhaustedFailed.map((m) => m.workspaceId)),
+              ],
+            }
+          : {}),
       });
     }
 

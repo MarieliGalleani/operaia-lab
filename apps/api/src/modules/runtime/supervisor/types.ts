@@ -15,6 +15,8 @@ export const SupervisorEvent = {
   SUPERVISOR_STOPPED: "SUPERVISOR_STOPPED",
   /** Compat / diagnostico */
   SUPERVISOR_CYCLE: "SUPERVISOR_CYCLE",
+  /** Ciclo abortado por excecao — loop permanece ativo. */
+  SUPERVISOR_CYCLE_FAILED: "SUPERVISOR_CYCLE_FAILED",
   HEALTH_OK: "HEALTH_OK",
   HEALTH_FAIL: "HEALTH_FAIL",
   SNAPSHOT_PERSISTED: "SNAPSHOT_PERSISTED",
@@ -49,6 +51,7 @@ export type CoordinationReason =
   | "missao_parada"
   | "missao_bloqueada"
   | "missao_aguardando"
+  | "missao_esgotada"
   | "retry"
   | "recuperacao"
   | "backlog"
@@ -145,7 +148,13 @@ export interface WorkerScanReport {
 }
 
 export interface RecoveryAction {
-  readonly kind: "stale" | "waiting" | "blocked" | "timeout" | "failed_retry";
+  readonly kind:
+    | "stale"
+    | "waiting"
+    | "blocked"
+    | "timeout"
+    | "failed_retry"
+    | "failed_exhausted";
   readonly count: number;
   readonly reason: string;
   readonly createCoordination: boolean;
@@ -163,6 +172,10 @@ export interface CoordinationRequest {
   readonly projectId?: string;
   readonly reason: CoordinationReason;
   readonly detail: string;
+  /** Missao origem (ex.: FAILED esgotado) — dedupe por missao, nao por workspace. */
+  readonly sourceMissionId?: string;
+  readonly attempt?: number;
+  readonly maxAttempts?: number;
 }
 
 export interface DispatchResult {

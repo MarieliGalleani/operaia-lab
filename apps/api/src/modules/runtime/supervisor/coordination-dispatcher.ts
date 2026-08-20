@@ -78,7 +78,7 @@ export class CoordinationDispatcher {
     for (const req of requests) {
       const latchKey: CoordinationLatchKey = {
         workspaceId: req.workspaceId,
-        reason: req.reason,
+        reason: latchReasonFor(req),
       };
 
       const gate = await this.latches.tryAcquire(latchKey, {
@@ -131,8 +131,11 @@ export class CoordinationDispatcher {
             workspaceId: req.workspaceId,
             reason: req.reason,
             missionId: result.id,
+            sourceMissionId: req.sourceMissionId ?? null,
+            attempt: req.attempt ?? null,
+            maxAttempts: req.maxAttempts ?? null,
           });
-          details.push(`${req.reason}:${req.workspaceId}`);
+          details.push(`${latchReasonFor(req)}:${req.workspaceId}`);
         }
       } catch (error) {
         await this.latches.release(latchKey);
@@ -161,7 +164,7 @@ export class CoordinationDispatcher {
       keys.set(`${key.workspaceId}\0${key.reason}`, key);
     };
     for (const req of requests) {
-      put({ workspaceId: req.workspaceId, reason: req.reason });
+      put({ workspaceId: req.workspaceId, reason: latchReasonFor(req) });
     }
 
     try {
@@ -206,7 +209,9 @@ function collectCoordinationRequests(input: {
   const seen = new Set<string>();
 
   const push = (req: CoordinationRequest) => {
-    const key = `${req.workspaceId}:${req.reason}`;
+    const key = req.sourceMissionId
+      ? `${req.workspaceId}:${req.reason}:${req.sourceMissionId}`
+      : `${req.workspaceId}:${req.reason}`;
     if (seen.has(key)) {
       return;
     }
@@ -235,17 +240,26 @@ function collectCoordinationRequests(input: {
     const reason: CoordinationReason =
       m.category === "RETRY"
         ? "retry"
-        : m.category === "BLOCKED"
-          ? "missao_bloqueada"
-          : m.category === "STALE" || m.category === "TIMEOUT"
-            ? "missao_parada"
-            : m.category === "WAITING"
-              ? "missao_aguardando"
-              : "recuperacao";
+        : m.category === "FAILED"
+          ? "missao_esgotada"
+          : m.category === "BLOCKED"
+            ? "missao_bloqueada"
+            : m.category === "STALE" || m.category === "TIMEOUT"
+              ? "missao_parada"
+              : m.category === "WAITING"
+                ? "missao_aguardando"
+                : "recuperacao";
     push({
       workspaceId: m.workspaceId,
       reason,
       detail: m.reason,
+      ...(reason === "missao_esgotada"
+        ? {
+            sourceMissionId: m.missionId,
+            attempt: m.attempt,
+            maxAttempts: m.maxAttempts,
+          }
+        : {}),
     });
   }
 
@@ -266,7 +280,23 @@ function collectCoordinationRequests(input: {
   return requests;
 }
 
+/** Latch/reason persistido — por missao quando escalacao de FAILED esgotado. */
+function latchReasonFor(req: CoordinationRequest): string {
+  if (req.reason === "missao_esgotada" && req.sourceMissionId) {
+    return `missao_esgotada:${req.sourceMissionId}`;
+  }
+  return req.reason;
+}
+
 function buildCoordinationObjective(req: CoordinationRequest): string {
+  const tag = latchReasonFor(req);
+  if (req.reason === "missao_esgotada" && req.sourceMissionId) {
+    return (
+      `[COORDINATE/${tag}] Missao ${req.sourceMissionId} esgotada ` +
+      `(${req.attempt ?? "?"}/${req.maxAttempts ?? "?"}) no workspace ` +
+      `${req.workspaceId}. ${req.detail}`
+    );
+  }
   return `[COORDINATE/${req.reason}] Atencao operacional no workspace ${req.workspaceId}. ${req.detail}`;
 }
 

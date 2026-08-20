@@ -272,6 +272,16 @@ export class SupervisorLoop {
         dispatch,
         snapshot,
       };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "erro desconhecido";
+      this.deps.logger.emit(SupervisorEvent.SUPERVISOR_CYCLE_FAILED, {
+        cycle: this.cycle,
+        at: new Date().toISOString(),
+        error: message,
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      });
+      return null;
     } finally {
       this.ticking = false;
     }
