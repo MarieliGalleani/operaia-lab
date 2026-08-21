@@ -48,15 +48,16 @@ const docs = [
       <section class="hero panel card-motion" style="--d: 1">
         <div>
           <p class="eyebrow">Sugestão do lab</p>
-          <h2 class="hero__title">Comece pelo Campus, decida com a Opera</h2>
+          <h2 class="hero__title">Comece pelo Status do Escritório</h2>
           <p class="hero__body">
-            O conhecimento certo não é um PDF — é o próximo clique com contexto.
-            Explore a sede, acompanhe a infra e feche a conversa na Sala da CEO.
+            Em cerca de 30 segundos você entende se está tudo bem, o que está
+            acontecendo e se a OperaIA precisa de você. O Campus continua aqui
+            para explorar — a Sala da CEO, para decidir.
           </p>
         </div>
         <div class="hero__actions">
-          <router-link to="/app/campus" class="btn btn--primary">Entrar no Campus</router-link>
-          <router-link to="/app/office" class="btn btn--ghost">Andar no Lab</router-link>
+          <router-link to="/app/office/status" class="btn btn--primary">Abrir Status</router-link>
+          <router-link to="/app/campus" class="btn btn--ghost">Entrar no Campus</router-link>
         </div>
       </section>
 

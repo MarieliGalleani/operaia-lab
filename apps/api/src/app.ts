@@ -16,6 +16,7 @@ import { createEmployeeRoutes } from "./modules/employees/employees.routes.js";
 import { healthRoutes } from "./modules/health/health.routes.js";
 import { publicStatusRoutes } from "./modules/health/public-status.routes.js";
 import { infraRoutes } from "./modules/infra/vps.routes.js";
+import { createOfficeStatusRoutes } from "./modules/office/office-status.routes.js";
 import { createProductLabRuntime } from "./modules/operations/product-lab-runtime.js";
 import { createOperationsRoutes } from "./modules/operations/operations.routes.js";
 import { projectRoutes } from "./modules/projects/projects.routes.js";
@@ -91,6 +92,9 @@ export function buildApp(): AppBundle {
       prefix: "/api/v1/operations",
     });
     protectedApi.register(createRuntimeRoutes(continuous), {
+      prefix: "/api/v1",
+    });
+    protectedApi.register(createOfficeStatusRoutes(continuous), {
       prefix: "/api/v1",
     });
   });

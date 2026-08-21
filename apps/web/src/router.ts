@@ -25,6 +25,7 @@ import SettingsView from "@/views/SettingsView.vue";
 import VpsPanelView from "@/views/VpsPanelView.vue";
 import MissionsView from "@/views/MissionsView.vue";
 import MissionDetailView from "@/views/MissionDetailView.vue";
+import OfficeStatusView from "@/views/OfficeStatusView.vue";
 import VirtualWorldTest from "@/views/VirtualWorldTest.vue";
 
 const routes: RouteRecordRaw[] = [
@@ -49,7 +50,7 @@ const routes: RouteRecordRaw[] = [
     children: [
       {
         path: "",
-        redirect: "/app/campus",
+        redirect: "/app/office/status",
       },
       {
         path: "campus",
@@ -63,6 +64,11 @@ const routes: RouteRecordRaw[] = [
         component: OfficeLayout,
         children: [
           { path: "", name: "office", component: OfficeWorldPage },
+          {
+            path: "status",
+            name: "office-status",
+            component: OfficeStatusView,
+          },
           { path: "sala-ceo", name: "ceo-room", component: ExecutiveRoom },
           { path: "equipe", name: "team", component: EmployeeRoom },
           { path: "projetos", name: "projects", component: ProjectsView },
