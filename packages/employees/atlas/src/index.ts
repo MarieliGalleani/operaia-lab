@@ -1,5 +1,8 @@
 import type { LLMProvider } from "@operaia/ai-core";
-import type { Employee } from "@operaia/employee-framework";
+import {
+  EmployeeDeliveryType,
+  type Employee,
+} from "@operaia/employee-framework";
 import {
   buildSpecialistSystemPrompt,
   defineSpecialistPackage,
@@ -12,6 +15,14 @@ const specialist = defineSpecialistPackage({
   profile: atlasProfile,
   domain: {
     domainLabel: "automacao e integracoes",
+    employeeId: "atlas",
+    deliveryType: EmployeeDeliveryType.automation_result,
+    readOnlyInspectionTools: [
+      "listInfrastructure",
+      "readDockerCompose",
+      "readCaddy",
+      "readLogs",
+    ],
     proposedActions: [
       "Mapear processos manuais repetitivos.",
       "Identificar integracoes e gatilhos.",
@@ -25,9 +36,9 @@ const specialist = defineSpecialistPackage({
       mission:
         "Conectar sistemas e automatizar fluxos operacionais com confiabilidade.",
       thinking:
-        "Parta do briefing real, proponha acoes de automacao, liste riscos e proximos passos objetivos.",
+        "Parta da evidence READ-ONLY (infra/compose/caddy/logs), proponha acoes, liste riscos e proximos passos. Nao invente facts.",
       limits:
-        "Nao escolha funcionarios por nome. Nao invada outros dominios. Devolva analise, conclusao, acoes e proximos passos.",
+        "Nao escolha funcionarios por nome. Nao invada outros dominios. Nao reinicie servicos nem altere Caddy/Docker. Devolva delivery com evidence.",
     }),
   },
 });

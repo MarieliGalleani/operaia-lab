@@ -34,6 +34,7 @@ export type {
   EmployeeDeliveryEvidence,
   DelegationRequest,
 } from "./decision/decision-model.js";
+export { EmployeeDeliveryType } from "./decision/decision-model.js";
 export type { DelegationPolicy } from "./decision/delegation-policy.js";
 export type { ResponsePolicy } from "./decision/response-policy.js";
 export type {

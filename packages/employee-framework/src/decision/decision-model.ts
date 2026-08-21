@@ -47,11 +47,32 @@ export interface EmployeeDeliveryEvidence {
 }
 
 /**
+ * Tipos de delivery multi-dominio.
+ * technical_analysis / priority_recommendation preservam Mag + Opera F5/F6.
+ * Novos tipos ativam especialistas sem disparar follow-up tecnico do Mag.
+ */
+export const EmployeeDeliveryType = {
+  technical_analysis: "technical_analysis",
+  priority_recommendation: "priority_recommendation",
+  product_analysis: "product_analysis",
+  ux_analysis: "ux_analysis",
+  automation_result: "automation_result",
+  financial_analysis: "financial_analysis",
+  legal_analysis: "legal_analysis",
+  marketing_analysis: "marketing_analysis",
+  operations_analysis: "operations_analysis",
+} as const;
+
+export type EmployeeDeliveryType =
+  (typeof EmployeeDeliveryType)[keyof typeof EmployeeDeliveryType];
+
+/**
  * Entrega verificavel (F4/F5 — sem framework).
- * status DELIVERED somente com evidencias validas.
+ * status DELIVERED somente com evidencias validas de tools/actions reais.
+ * Contrato comum dos especialistas — nao duplicar com outro ExecutionResult.
  */
 export interface EmployeeDelivery {
-  readonly type: "technical_analysis" | "priority_recommendation";
+  readonly type: EmployeeDeliveryType;
   readonly status: "DELIVERED" | "FAILED";
   readonly missionId: string;
   readonly employeeId: string;

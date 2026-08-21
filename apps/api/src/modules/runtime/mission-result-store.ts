@@ -36,7 +36,7 @@ export interface ExecutePhaseResult {
   }[];
   /** Entrega estruturada (DELIVERED somente com evidencias reais ok). */
   readonly delivery?: {
-    readonly type: "technical_analysis" | "priority_recommendation";
+    readonly type: import("@operaia/employee-framework").EmployeeDelivery["type"];
     readonly status: "DELIVERED" | "FAILED";
     readonly missionId: string;
     readonly employeeId: string;

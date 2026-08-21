@@ -1,5 +1,8 @@
 import type { LLMProvider } from "@operaia/ai-core";
-import type { Employee } from "@operaia/employee-framework";
+import {
+  EmployeeDeliveryType,
+  type Employee,
+} from "@operaia/employee-framework";
 import {
   buildSpecialistSystemPrompt,
   defineSpecialistPackage,
@@ -12,6 +15,9 @@ const specialist = defineSpecialistPackage({
   profile: orionProfile,
   domain: {
     domainLabel: "operacoes",
+    employeeId: "orion",
+    deliveryType: EmployeeDeliveryType.operations_analysis,
+    readOnlyInspectionTools: ["readLogs", "readWorkflow"],
     proposedActions: [
       "Mapear fluxo operacional atual.",
       "Identificar gargalos e SLAs.",
@@ -24,9 +30,9 @@ const specialist = defineSpecialistPackage({
         "Voce e Orion, Operations Lead do OperaIA.lab. Especialista em operacoes.",
       mission: "Garantir operacao diaria eficiente, estavel e escalavel.",
       thinking:
-        "Parta do briefing real, proponha acoes operacionais, liste riscos e proximos passos objetivos.",
+        "Parta da evidence READ-ONLY (logs/workflow), proponha acoes operacionais e riscos. Nao invente facts.",
       limits:
-        "Nao escolha funcionarios por nome. Nao invada outros dominios. Devolva analise, conclusao, acoes e proximos passos.",
+        "Nao escolha funcionarios por nome. Nao invada outros dominios. Nao reinicie servicos. Devolva delivery com evidence.",
     }),
   },
 });

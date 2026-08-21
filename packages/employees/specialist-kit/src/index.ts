@@ -14,9 +14,7 @@ import {
 
 export interface SpecialistPackageConfig {
   readonly profile: EmployeeProfile;
-  readonly domain: Omit<SpecialistDomainConfig, "systemPrompt"> & {
-    readonly systemPrompt: string;
-  };
+  readonly domain: SpecialistDomainConfig;
 }
 
 export interface SpecialistDependencies {
@@ -33,12 +31,7 @@ export function defineSpecialistPackage(
 } {
   const blueprint: EmployeeBlueprint<SpecialistDependencies> = {
     profile: config.profile,
-    build: (deps) =>
-      new SpecialistBrain(deps.llm, {
-        domainLabel: config.domain.domainLabel,
-        proposedActions: config.domain.proposedActions,
-        systemPrompt: config.domain.systemPrompt,
-      }),
+    build: (deps) => new SpecialistBrain(deps.llm, config.domain),
   };
 
   const registered = defineEmployee(blueprint);
@@ -55,5 +48,7 @@ export function defineSpecialistPackage(
 export {
   SpecialistBrain,
   buildSpecialistSystemPrompt,
+  SPECIALIST_READ_ONLY_TOOL_IDS,
   type SpecialistDomainConfig,
+  type SpecialistReadOnlyToolId,
 } from "./specialist-brain.js";
