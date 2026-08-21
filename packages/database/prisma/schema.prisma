@@ -543,3 +543,28 @@ model ChangeProposal {
   @@index([projectId])
   @@map("change_proposals")
 }
+
+/// Decision Ledger append-only do Work Governance Gate (AlreadyDoneGate).
+/// Nao editar linhas historicas — so INSERT.
+model WorkGovernanceDecision {
+  id                 String   @id @default(uuid())
+  /// Idempotencia por request (multiplos NULL permitidos no Postgres).
+  correlationId      String?  @unique
+  workspaceId        String
+  /// assisted | signal | supervisor
+  source             String
+  workIdentity       String
+  contextFingerprint String?
+  /// SKIP | REUSE | REOPEN | EXECUTE
+  decision           String
+  reason             String
+  authority          String   @default("AlreadyDoneGate")
+  resultingMissionId String?
+  evidencesJson      Json?
+  forceExecute       Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  @@index([workspaceId, workIdentity, createdAt])
+  @@index([createdAt])
+  @@map("work_governance_decisions")
+}

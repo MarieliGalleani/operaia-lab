@@ -40,6 +40,10 @@ import {
   resolveAssistedExecutionConfig,
   type AssistedExecutionConfig,
 } from "./assisted-execution-config.js";
+import type {
+  AlreadyDoneGate,
+  WorkContextHints,
+} from "../runtime/work-governance/index.js";
 
 export {
   AssistedQueueMissionFailedError,
@@ -53,6 +57,12 @@ export interface RunOperationalMissionInput {
   readonly employeeId?: string;
   /** Origem conversacional (ex.: ceo-sala). */
   readonly source?: string;
+  /** Idempotencia do Work Governance Gate. */
+  readonly correlationId?: string;
+  /** Override auditavel — forca EXECUTE mesmo com ValidResult. */
+  readonly forceExecute?: boolean;
+  /** Hints estruturados (SHA/files/PR) para ContextFingerprint. */
+  readonly contextHints?: WorkContextHints;
 }
 
 /**
@@ -82,6 +92,8 @@ export interface OperationalMissionServiceOptions {
   /** A.4.2 / A.5.1 — default ConversationMissionRouter. */
   readonly intentRouter?: IntentRouter;
   readonly conversationRouter?: ConversationMissionRouter;
+  /** Work Governance Gate (AlreadyDoneGate) — admissão antes do enqueue. */
+  readonly workGovernanceGate?: AlreadyDoneGate;
 }
 
 /**
@@ -97,6 +109,7 @@ export class OperationalMissionService {
   private preferQueue: boolean;
   private readonly waitOptions: WaitUntilTerminalOptions;
   private readonly conversationRouter: ConversationMissionRouter;
+  private workGovernanceGate: AlreadyDoneGate | undefined;
 
   constructor(
     office: DigitalOffice,
@@ -118,11 +131,17 @@ export class OperationalMissionService {
       (options.intentRouter
         ? new ConversationMissionRouter({ intentRouter: options.intentRouter })
         : defaultConversationMissionRouter);
+    this.workGovernanceGate = options.workGovernanceGate;
   }
 
   /** Late-binding (product: ContinuousRuntime.queue apos composition). */
   bindQueue(queue: AssistedMissionQueuePort): void {
     this.queue = queue;
+  }
+
+  /** Late-binding do AlreadyDoneGate (produto). */
+  bindWorkGovernanceGate(gate: AlreadyDoneGate): void {
+    this.workGovernanceGate = gate;
   }
 
   setPreferQueue(prefer: boolean): void {
@@ -246,16 +265,64 @@ export class OperationalMissionService {
       });
     }
 
-    const { mission } = await this.queue.enqueue({
-      workspaceId: input.workspaceId,
-      objective: input.objective,
-      ownerEmployeeId: CEO_EMPLOYEE_ID,
-      dedupe: false,
-    });
+    const gate = this.workGovernanceGate;
+    let missionId: string;
+
+    if (gate) {
+      const governanceRequest = {
+        workspaceId: input.workspaceId,
+        objective: input.objective,
+        source: "assisted" as const,
+        missionKind: "COORDINATE",
+        contextHints: input.contextHints,
+        correlationId: input.correlationId ?? null,
+        forceExecute: input.forceExecute === true,
+      };
+      const admit = await gate.admit(governanceRequest);
+
+      if (
+        (admit.decision === "SKIP" || admit.decision === "REUSE") &&
+        admit.resultingMissionId
+      ) {
+        console.log(
+          JSON.stringify({
+            level: "info",
+            component: "work-governance-gate",
+            event: "assisted_admit_skip",
+            decision: admit.decision,
+            reason: admit.reason,
+            resultingMissionId: admit.resultingMissionId,
+            workIdentity: admit.workIdentity,
+          }),
+        );
+        missionId = admit.resultingMissionId;
+      } else {
+        const { mission } = await this.queue.enqueue({
+          workspaceId: input.workspaceId,
+          objective: input.objective,
+          ownerEmployeeId: CEO_EMPLOYEE_ID,
+          dedupe: false,
+        });
+        missionId = mission.id;
+        await gate.bindExecute({
+          admit,
+          request: governanceRequest,
+          missionId: mission.id,
+        });
+      }
+    } else {
+      const { mission } = await this.queue.enqueue({
+        workspaceId: input.workspaceId,
+        objective: input.objective,
+        ownerEmployeeId: CEO_EMPLOYEE_ID,
+        dedupe: false,
+      });
+      missionId = mission.id;
+    }
 
     let timedOut = false;
     try {
-      await waitUntilTerminal(this.queue, mission.id, this.waitOptions);
+      await waitUntilTerminal(this.queue, missionId, this.waitOptions);
     } catch (error) {
       if (error instanceof MissionWaitTimeoutError) {
         timedOut = true;
@@ -274,12 +341,12 @@ export class OperationalMissionService {
       }
     }
 
-    const root = await this.queue.get(mission.id);
+    const root = await this.queue.get(missionId);
     if (!root) {
-      throw new Error(`Missao nao encontrada apos wait: ${mission.id}`);
+      throw new Error(`Missao nao encontrada apos wait: ${missionId}`);
     }
 
-    const children = await this.queue.listChildren(mission.id);
+    const children = await this.queue.listChildren(missionId);
 
     if (timedOut) {
       const pending = projectPendingMissionTreeToOperationalRun({

@@ -21,6 +21,7 @@ export {
   type WorkspaceGithubSnapshot,
   type CoordinationSignalLatch,
   type ActionExecution,
+  type WorkGovernanceDecision,
   MissionStatus,
   MissionKind,
   MissionReadiness,

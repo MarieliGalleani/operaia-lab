@@ -75,6 +75,8 @@ export interface ContinuousRuntimeConfig {
   /** Habilita scan GitHub no ciclo do Operational Supervisor. */
   readonly domainSignals?: DomainSignalService;
   readonly githubToken?: string | null;
+  /** AlreadyDoneGate compartilhado com Assisted / webhook. */
+  readonly workGovernanceGate?: import("./work-governance/index.js").AlreadyDoneGate;
   /**
    * Roots locais por workspace para LocalInfrastructureAdapter (A.3).
    * Ex.: { "operaia-lab": "/home/ubuntu/operaia-lab" }
@@ -201,6 +203,7 @@ export class ContinuousRuntime {
       logger: config.logger,
       domainSignals: config.domainSignals,
       githubToken: config.githubToken,
+      workGovernanceGate: config.workGovernanceGate,
       githubRepoClient: sharedGithubApi
         ? new FetchGithubRepoClient({ client: sharedGithubApi })
         : undefined,

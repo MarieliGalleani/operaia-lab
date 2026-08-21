@@ -14,6 +14,7 @@ import {
 import type { MissionQueue } from "./mission-queue.js";
 import { enqueueSignalCoordinateMission } from "./signal-mission-converter.js";
 import type { GithubRepositoryScanReport } from "./supervisor/github-repository-scanner.js";
+import type { AlreadyDoneGate } from "./work-governance/index.js";
 
 export interface SignalDecisionResult {
   readonly signalId: string;
@@ -33,6 +34,7 @@ export interface SignalDecisionResult {
 export interface SignalDecisionEngineDeps {
   readonly signals: DomainSignalService;
   readonly queue: MissionQueue;
+  readonly workGovernanceGate: AlreadyDoneGate;
 }
 
 export class SignalDecisionEngine {
@@ -135,6 +137,7 @@ export class SignalDecisionEngine {
     const missionId = await enqueueSignalCoordinateMission({
       queue: this.deps.queue,
       signal: evaluated,
+      gate: this.deps.workGovernanceGate,
     });
     const converted = await this.deps.signals.markConverted({
       signalId: evaluated.id,

@@ -18,11 +18,21 @@ import { probeRealQueueReady } from "../operations/assisted-queue-real-harness.j
 import { MissionQueue } from "../runtime/mission-queue.js";
 import { CEO_EMPLOYEE_ID, MissionKind } from "../runtime/mission-states.js";
 import { enqueueSignalCoordinateMission } from "../runtime/signal-mission-converter.js";
+import { AlreadyDoneGate } from "../runtime/work-governance/already-done-gate.js";
+import { InMemoryWorkGovernanceLedger } from "../runtime/work-governance/decision-ledger.js";
+import { InMemoryPriorMissionLookup } from "../runtime/work-governance/prior-mission-lookup.js";
 import { processGithubWebhook } from "./github-webhook-pipeline.js";
 import { PrismaDomainSignalStore } from "./prisma-domain-signal-store.js";
 
 const READY = await probeRealQueueReady();
 const SECRET = "gh-int-secret";
+
+function createTestGate(): AlreadyDoneGate {
+  return new AlreadyDoneGate({
+    ledger: new InMemoryWorkGovernanceLedger(),
+    missions: new InMemoryPriorMissionLookup(),
+  });
+}
 
 describe.skipIf(!READY.ok)(
   "GitHub webhook → MissionQueue (integration)",
@@ -92,7 +102,11 @@ describe.skipIf(!READY.ok)(
           ingest,
           resolveSecret: () => SECRET,
           onConvertCandidate: async ({ signal }) =>
-            enqueueSignalCoordinateMission({ queue, signal }),
+            enqueueSignalCoordinateMission({
+              queue,
+              signal,
+              gate: createTestGate(),
+            }),
         },
         {
           rawBody,

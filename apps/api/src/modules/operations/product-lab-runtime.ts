@@ -22,10 +22,14 @@ import { PrismaDomainSignalStore } from "../signals/prisma-domain-signal-store.j
 import { PrismaTaskRepository } from "../tasks/infrastructure/prisma-task.repository.js";
 import { ContinuousRuntime } from "../runtime/continuous-runtime.js";
 import { resolveWorkerLivenessMs } from "../runtime/worker-liveness.js";
+import { createPrismaAlreadyDoneGate } from "../runtime/work-governance/index.js";
 
 export interface ProductRuntime {
   readonly lab: LabRuntime;
   readonly continuous: ContinuousRuntime;
+  readonly workGovernanceGate: ReturnType<
+    typeof createPrismaAlreadyDoneGate
+  >;
 }
 
 /**
@@ -48,6 +52,8 @@ export function createProductLabRuntime(): ProductRuntime {
     resolveMemoryStoreMode(env.MEMORY_STORE),
   );
 
+  const workGovernanceGate = createPrismaAlreadyDoneGate();
+
   const lab = createLabRuntime({
     stack: {
       provider: env.LLM_PROVIDER,
@@ -69,6 +75,7 @@ export function createProductLabRuntime(): ProductRuntime {
       timeoutMs: env.ASSISTED_MISSION_WAIT_TIMEOUT_MS,
       pollIntervalMs: env.ASSISTED_MISSION_WAIT_POLL_MS,
     },
+    workGovernanceGate,
   });
 
   const continuous = new ContinuousRuntime({
@@ -98,6 +105,7 @@ export function createProductLabRuntime(): ProductRuntime {
     },
     domainSignals: signals,
     githubToken: env.GITHUB_TOKEN,
+    workGovernanceGate,
     workspaceInfraRoots: {
       "operaia-lab": process.cwd(),
     },
@@ -115,9 +123,10 @@ export function createProductLabRuntime(): ProductRuntime {
 
   // Fila disponivel para Assisted; default ASSISTED_QUEUE_MODE=true (kill-switch=false).
   lab.operations.service.bindQueue(continuous.queue);
+  lab.operations.service.bindWorkGovernanceGate(workGovernanceGate);
   lab.operations.fallbackObserver.bindSink(continuous.queue);
 
-  return { lab, continuous };
+  return { lab, continuous, workGovernanceGate };
 }
 
 function createPinoLikeLogger() {

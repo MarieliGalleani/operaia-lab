@@ -75,6 +75,8 @@ export interface CreateOperationalSupervisorInput {
   readonly githubSnapshotStore?: GithubSnapshotStore;
   readonly githubRepositoryScanner?: GitHubRepositoryScanner;
   readonly signalDecisionEngine?: SignalDecisionEngine;
+  /** Work Governance Gate — obrigatório quando domainSignals cria SignalDecisionEngine. */
+  readonly workGovernanceGate?: import("../work-governance/index.js").AlreadyDoneGate;
   /** Latch edge-triggered persistente; default Prisma. */
   readonly coordinationLatchStore?: CoordinationLatchPort;
   /** A.5.3 — override; default Prisma metrics + maintenance. */
@@ -150,10 +152,11 @@ export function createOperationalSupervisor(
 
   const signalDecisionEngine =
     input.signalDecisionEngine ??
-    (input.domainSignals
+    (input.domainSignals && input.workGovernanceGate
       ? new SignalDecisionEngine({
           signals: input.domainSignals,
           queue: input.queue,
+          workGovernanceGate: input.workGovernanceGate,
         })
       : undefined);
 

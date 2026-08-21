@@ -12,6 +12,16 @@ import { SignalDecisionEngine } from "./signal-decision-engine.js";
 import type { MissionQueue } from "./mission-queue.js";
 import { CEO_EMPLOYEE_ID } from "./mission-states.js";
 import { buildSignalCoordinateObjective } from "./signal-mission-converter.js";
+import { AlreadyDoneGate } from "./work-governance/already-done-gate.js";
+import { InMemoryWorkGovernanceLedger } from "./work-governance/decision-ledger.js";
+import { InMemoryPriorMissionLookup } from "./work-governance/prior-mission-lookup.js";
+
+function createTestGate(): AlreadyDoneGate {
+  return new AlreadyDoneGate({
+    ledger: new InMemoryWorkGovernanceLedger(),
+    missions: new InMemoryPriorMissionLookup(),
+  });
+}
 
 type Enqueued = {
   readonly workspaceId: string;
@@ -165,7 +175,7 @@ describe("SignalDecisionEngine", () => {
       deliveryId: "d-readme",
     });
 
-    const engine = new SignalDecisionEngine({ signals, queue });
+    const engine = new SignalDecisionEngine({ signals, queue, workGovernanceGate: createTestGate() });
     const result = await engine.processSignal(ingested.signal);
 
     expect(result.outcome).toBe("ignored");
@@ -193,7 +203,7 @@ describe("SignalDecisionEngine", () => {
       deliveryId: "d-code",
     });
 
-    const engine = new SignalDecisionEngine({ signals, queue });
+    const engine = new SignalDecisionEngine({ signals, queue, workGovernanceGate: createTestGate() });
     const result = await engine.processSignal(ingested.signal);
 
     expect(result.outcome).toBe("converted");
@@ -248,7 +258,7 @@ describe("SignalDecisionEngine", () => {
       deliveryId: "d-flow-code",
     });
 
-    const engine = new SignalDecisionEngine({ signals, queue });
+    const engine = new SignalDecisionEngine({ signals, queue, workGovernanceGate: createTestGate() });
     const nexoResult = await engine.processSignal(nexoSignal.signal);
     const flowResult = await engine.processSignal(flowSignal.signal);
 

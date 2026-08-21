@@ -59,6 +59,7 @@ export interface LabRuntimeOptions {
   readonly missionQueue?: AssistedMissionQueuePort;
   readonly preferQueue?: boolean;
   readonly missionWait?: OperationalMissionServiceOptions["wait"];
+  readonly workGovernanceGate?: OperationalMissionServiceOptions["workGovernanceGate"];
 }
 
 /**
@@ -111,6 +112,9 @@ export function createLabRuntime(
       ...(options.missionQueue ? { queue: options.missionQueue } : {}),
       preferQueue: options.preferQueue ?? false,
       ...(options.missionWait ? { wait: options.missionWait } : {}),
+      ...(options.workGovernanceGate
+        ? { workGovernanceGate: options.workGovernanceGate }
+        : {}),
     },
   );
 

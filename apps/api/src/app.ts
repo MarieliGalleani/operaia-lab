@@ -67,7 +67,7 @@ export function buildApp(): AppBundle {
   );
   registerAuthGuard(app, authService);
 
-  const { lab, continuous } = createProductLabRuntime();
+  const { lab, continuous, workGovernanceGate } = createProductLabRuntime();
   const signalRuntime = createSignalRuntime();
 
   app.register(healthRoutes);
@@ -110,6 +110,7 @@ export function buildApp(): AppBundle {
         enqueueSignalCoordinateMission({
           queue: continuous.queue,
           signal,
+          gate: workGovernanceGate,
         }),
     }),
     { prefix: "/api/v1/webhooks" },
