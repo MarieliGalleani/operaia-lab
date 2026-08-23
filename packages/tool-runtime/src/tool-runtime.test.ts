@@ -56,9 +56,30 @@ describe("ToolPermissionPolicy", () => {
     expect(policy.isAllowed("orion", ToolId.readDockerCompose)).toBe(false);
   });
 
-  it("Aurora Finance e placeholder (sem tools ainda)", () => {
+  it("Aurora Finance: listDirectory, readFile, searchFiles; sem readRepository/infra", () => {
     expect(policy.groupsFor("aurora")).toEqual([ToolCapabilityGroup.Finance]);
-    expect(policy.allowedTools("aurora")).toEqual([]);
+    expect([...policy.allowedTools("aurora")].sort()).toEqual(
+      [ToolId.listDirectory, ToolId.readFile, ToolId.searchFiles].sort(),
+    );
+    expect(policy.isAllowed("aurora", ToolId.listDirectory)).toBe(true);
+    expect(policy.isAllowed("aurora", ToolId.readFile)).toBe(true);
+    expect(policy.isAllowed("aurora", ToolId.searchFiles)).toBe(true);
+    expect(policy.isAllowed("aurora", ToolId.readRepository)).toBe(false);
+    expect(policy.isAllowed("aurora", ToolId.readCommit)).toBe(false);
+    expect(policy.isAllowed("aurora", ToolId.readPullRequest)).toBe(false);
+    expect(policy.isAllowed("aurora", ToolId.readIssue)).toBe(false);
+    expect(policy.isAllowed("aurora", ToolId.readLogs)).toBe(false);
+    expect(policy.isAllowed("aurora", ToolId.readCaddy)).toBe(false);
+    expect(policy.isAllowed("aurora", ToolId.readDockerCompose)).toBe(false);
+    expect(policy.isAllowed("aurora", ToolId.readWorkflow)).toBe(false);
+    expect(policy.isAllowed("aurora", ToolId.listInfrastructure)).toBe(false);
+  });
+
+  it("Finance group nao altera outros employees", () => {
+    expect(policy.isAllowed("themis", ToolId.readRepository)).toBe(false);
+    expect(policy.isAllowed("mercurio", ToolId.readRepository)).toBe(true);
+    expect(policy.allowedTools("luna")).toContain(ToolId.readRepository);
+    expect(policy.allowedTools("aurora")).not.toContain(ToolId.readRepository);
   });
 
   it("Themis Documents; Mercurio RepositoryDocs; Nexus RoadmapDocs", () => {

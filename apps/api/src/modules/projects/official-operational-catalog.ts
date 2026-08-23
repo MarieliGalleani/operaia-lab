@@ -6,6 +6,8 @@ export interface OfficialOperationalWorkspace {
   readonly name: string;
   readonly repository: string;
   readonly description: string;
+  /** Branch/ref GitHub operacional do workspace (configJson.operationalRef). */
+  readonly operationalRef?: string;
 }
 
 export const OFFICIAL_OPERATIONAL_WORKSPACES: readonly OfficialOperationalWorkspace[] =
@@ -15,6 +17,7 @@ export const OFFICIAL_OPERATIONAL_WORKSPACES: readonly OfficialOperationalWorksp
       name: "OperaIA.lab",
       repository: "MarieliGalleani/operaia-lab",
       description: "Evolucao continua da Equipe Digital — OperaIA.lab",
+      operationalRef: "lab",
     },
     {
       workspaceId: "nexo",

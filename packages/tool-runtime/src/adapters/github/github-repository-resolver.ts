@@ -4,6 +4,8 @@
  */
 export interface GithubRepositoryResolver {
   resolveRepository(workspaceId: string): Promise<string | null>;
+  /** Branch/ref operacional do workspace (WorkspaceSourceBinding.configJson). */
+  resolveOperationalRef?(workspaceId: string): Promise<string | null>;
 }
 
 export class StaticGithubRepositoryResolver

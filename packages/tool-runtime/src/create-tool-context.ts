@@ -10,6 +10,7 @@ import type { ToolPorts } from "./tools.js";
 
 export interface CreateToolContextInput {
   readonly employeeId: string;
+  readonly workspaceId?: string;
   readonly policy?: ToolPermissionPolicy;
   /** Adapters concretos (A.2+). Em A.1 permanece vazio. */
   readonly ports?: ToolPorts;
@@ -21,6 +22,7 @@ export function createToolContext(
   const policy = input.policy ?? defaultToolPermissionPolicy;
   return new ToolContext({
     employeeId: input.employeeId,
+    workspaceId: input.workspaceId,
     allowedTools: policy.allowedTools(input.employeeId),
     ports: input.ports,
   });

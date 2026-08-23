@@ -16,6 +16,13 @@ const workspace = {
 };
 
 describe("Employee Runtime × ToolContext", () => {
+  it("propaga workspaceId quando informado na composicao", () => {
+    const tools = buildToolsForEmployee("aurora", {
+      workspaceId: "operaia-lab",
+    });
+    expect(tools.workspaceId).toBe("operaia-lab");
+  });
+
   it("injeta ToolContext permitido no briefing durante run", async () => {
     const runner = new EmployeeRunner();
     const tools = buildToolsForEmployee("cto-mag");
@@ -77,6 +84,62 @@ describe("Employee Runtime × ToolContext", () => {
     expect(result.employeeId).toBe("cto-mag");
     expect(getToolContextFromBriefing(result.briefing)?.employeeId).toBe(
       "cto-mag",
+    );
+  });
+
+  it("preenche workspaceId ausente no ToolContext a partir do WorkspaceSnapshot", async () => {
+    const runner = new EmployeeRunner();
+    const tools = buildToolsForEmployee("aurora");
+
+    const fakeEmployee = {
+      profile: {
+        id: "aurora",
+        name: "Aurora",
+        role: "Finance",
+        specialization: Specialization.FINANCE,
+        responsibilities: [],
+        limits: [],
+        qualityRules: [],
+      },
+      async work({ briefing }: { briefing: ReturnType<BriefingBuilder["build"]> }) {
+        const ctx = getToolContextFromBriefing(briefing);
+        expect(ctx?.workspaceId).toBe("operaia-lab");
+        return {
+          decision: {
+            analyzed: "ok",
+            decision: "ok",
+            reasoning: "ok",
+            recommendations: [],
+            delegations: [],
+            risks: [],
+            nextActions: [],
+          },
+          report: {
+            summary: "ok",
+            analysis: "ok",
+            plan: [],
+            recommendations: [],
+            risks: [],
+            nextActions: [],
+          },
+          quality: { passed: true, issues: [] },
+        };
+      },
+    };
+
+    const result = await runner.run(fakeEmployee as never, {
+      workspace: {
+        workspaceId: "operaia-lab",
+        name: "OperaIA.lab",
+        objective: "x",
+        tasks: [],
+      },
+      objective: "Finance proof",
+      tools,
+    });
+
+    expect(getToolContextFromBriefing(result.briefing)?.workspaceId).toBe(
+      "operaia-lab",
     );
   });
 

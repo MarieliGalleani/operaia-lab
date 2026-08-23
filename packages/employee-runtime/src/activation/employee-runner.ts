@@ -41,7 +41,11 @@ export class EmployeeRunner {
       withDelegation,
       context.executionSummaries,
     );
-    const withTools = attachToolContext(withExecution, context.tools);
+    const withTools = attachToolContext(
+      withExecution,
+      context.tools,
+      context.workspace.workspaceId,
+    );
     const withActions = attachActionCapability(withTools, context.actions);
     const briefing = attachPreviousDelivery(
       withActions,
@@ -151,17 +155,20 @@ function attachExecutionSummaries(
 function attachToolContext(
   briefing: EmployeeBriefing,
   tools: ToolContext | undefined,
+  workspaceId: string | undefined,
 ): EmployeeBriefing {
   if (!tools) {
     return briefing;
   }
 
+  const resolved = tools.withWorkspaceId(workspaceId);
+
   return {
     ...briefing,
     additional: {
       ...briefing.additional,
-      [BRIEFING_TOOL_CONTEXT_KEY]: tools,
-      toolIds: tools.listAllowedTools(),
+      [BRIEFING_TOOL_CONTEXT_KEY]: resolved,
+      toolIds: resolved.listAllowedTools(),
     },
   };
 }

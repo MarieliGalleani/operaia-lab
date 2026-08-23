@@ -50,7 +50,7 @@ export const TOOL_GROUP_TOOLS: Readonly<
   Caddy: [ToolId.readCaddy],
   Logs: [ToolId.readLogs],
   Runtime: [ToolId.readWorkflow, ToolId.readLogs],
-  Finance: [], // placeholder A.1
+  Finance: [ToolId.readFile, ToolId.listDirectory, ToolId.searchFiles],
   Documents: [ToolId.readFile, ToolId.listDirectory, ToolId.searchFiles],
   RepositoryDocs: [
     ToolId.readRepository,

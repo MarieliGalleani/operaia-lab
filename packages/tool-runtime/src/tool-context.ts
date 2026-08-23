@@ -37,17 +37,21 @@ import type {
 
 export interface ToolContextOptions {
   readonly employeeId: string;
+  /** Workspace da missao/execucao (composicao EmployeeRunner). */
+  readonly workspaceId?: string;
   readonly allowedTools: ReadonlySet<ToolIdType> | readonly ToolIdType[];
   readonly ports?: ToolPorts;
 }
 
 export class ToolContext {
   readonly employeeId: string;
+  readonly workspaceId?: string;
   private readonly allowed: ReadonlySet<ToolIdType>;
   private readonly ports: ToolPorts;
 
   constructor(options: ToolContextOptions) {
     this.employeeId = options.employeeId;
+    this.workspaceId = options.workspaceId?.trim() || undefined;
     this.allowed = toSet(options.allowedTools);
     this.ports = options.ports ?? {};
   }
@@ -153,6 +157,23 @@ export class ToolContext {
     return this.invoke(ToolId.listInfrastructure, input, (ports, value) =>
       ports.listInfrastructure!.execute(value),
     );
+  }
+
+  /**
+   * Preenche workspaceId quando ausente na composicao (mission → EmployeeRunner).
+   * Nao sobrescreve valor ja presente no ToolContext.
+   */
+  withWorkspaceId(workspaceId: string | undefined): ToolContext {
+    const id = workspaceId?.trim();
+    if (!id || this.workspaceId?.trim()) {
+      return this;
+    }
+    return new ToolContext({
+      employeeId: this.employeeId,
+      workspaceId: id,
+      allowedTools: this.allowed,
+      ports: this.ports,
+    });
   }
 
   private async invoke<TIn, TOut>(

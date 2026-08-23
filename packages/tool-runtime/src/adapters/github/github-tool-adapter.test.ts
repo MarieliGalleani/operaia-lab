@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { createToolContext, ToolErrorCode, ToolId } from "../../index.js";
 import { GithubApiClient } from "./github-api-client.js";
-import { FixedGithubRepositoryResolver } from "./github-repository-resolver.js";
+import {
+  FixedGithubRepositoryResolver,
+  type GithubRepositoryResolver,
+} from "./github-repository-resolver.js";
 import { GitHubToolAdapter, createGithubToolPorts } from "./github-tool-adapter.js";
 import { MemoryTtlCache } from "./memory-ttl-cache.js";
 
@@ -45,6 +48,9 @@ function createMockFetch(routes: Record<string, MockRoute | MockRoute[]>) {
 function createAdapter(
   fetchImpl: typeof fetch,
   cache = new MemoryTtlCache(60_000),
+  resolver: GithubRepositoryResolver = new FixedGithubRepositoryResolver(
+    "marieligalleani/operaia-core-nexo",
+  ),
 ) {
   const client = new GithubApiClient({
     fetchImpl,
@@ -53,9 +59,7 @@ function createAdapter(
   });
   return new GitHubToolAdapter({
     workspaceId: "nexo",
-    resolver: new FixedGithubRepositoryResolver(
-      "marieligalleani/operaia-core-nexo",
-    ),
+    resolver,
     client,
     cache,
     employeeId: "cto-mag",
@@ -85,6 +89,71 @@ describe("GitHubToolAdapter", () => {
       expect(result.data.primaryLanguage).toBe("TypeScript");
     }
     expect(calls[0]).toContain("/repos/marieligalleani/operaia-core-nexo");
+  });
+
+  it("listDirectory usa operationalRef quando caller nao informa ref", async () => {
+    const { fetchImpl, calls } = createMockFetch({
+      "/repos/marieligalleani/operaia-lab/contents?ref=lab": {
+        body: [{ name: "finance", path: "finance", type: "dir", size: 0 }],
+      },
+    });
+    const resolver: GithubRepositoryResolver = {
+      resolveRepository: async () => "marieligalleani/operaia-lab",
+      resolveOperationalRef: async () => "lab",
+    };
+    const client = new GithubApiClient({
+      fetchImpl,
+      token: "test-token",
+      baseUrl: "https://api.github.com",
+    });
+    const adapter = new GitHubToolAdapter({
+      workspaceId: "operaia-lab",
+      resolver,
+      client,
+      employeeId: "aurora",
+    });
+    const result = await adapter.listDirectory({});
+    expect(result.ok).toBe(true);
+    expect(calls.some((path) => path.includes("ref=lab"))).toBe(true);
+  });
+
+  it("searchFiles tree fallback usa operationalRef", async () => {
+    const calls: string[] = [];
+    const flexible = vi.fn(async (url: string) => {
+      const path = url.replace("https://api.github.com", "");
+      calls.push(path);
+      if (url.includes("/search/code")) {
+        return new Response(JSON.stringify({ items: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      if (url.includes("/git/trees/lab")) {
+        return new Response(
+          JSON.stringify({
+            tree: [{ path: "finance/overview.md", type: "blob" }],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(JSON.stringify({ message: "Not Found" }), {
+        status: 404,
+      });
+    }) as unknown as typeof fetch;
+
+    const resolver: GithubRepositoryResolver = {
+      resolveRepository: async () => "marieligalleani/operaia-lab",
+      resolveOperationalRef: async () => "lab",
+    };
+    const adapter = createAdapter(flexible, new MemoryTtlCache(60_000), resolver);
+    const result = await adapter.searchFiles({ query: "overview" });
+    expect(result.ok).toBe(true);
+    expect(calls.some((path) => path.includes("/git/trees/lab"))).toBe(true);
+    if (result.ok) {
+      expect(
+        result.data.hits.some((hit) => hit.path === "finance/overview.md"),
+      ).toBe(true);
+    }
   });
 
   it("listDirectory retorna arquivos e dirs com size", async () => {

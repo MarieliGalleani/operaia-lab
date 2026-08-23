@@ -121,7 +121,7 @@ export class GitHubToolAdapter {
     return this.guard(ToolId.listDirectory, async () => {
       const repository = await this.resolveRepo(input.repository);
       const path = (input.path ?? "").replace(/^\/+/, "");
-      const ref = input.ref?.trim() || undefined;
+      const ref = await this.resolveContentRef(input.ref);
       const cacheKey = `tree:${repository}:${ref ?? "default"}:${path}`;
       const cached = this.cache.get<ListDirectoryResult>(cacheKey);
       if (cached) {
@@ -159,7 +159,7 @@ export class GitHubToolAdapter {
       }
       const repository = await this.resolveRepo(input.repository);
       const path = input.path.replace(/^\/+/, "");
-      const ref = input.ref?.trim() || undefined;
+      const ref = await this.resolveContentRef(input.ref);
       const cacheKey = `file:${repository}:${ref ?? "default"}:${path}`;
       const cached = this.cache.get<FileContent>(cacheKey);
       if (cached) {
@@ -212,7 +212,8 @@ export class GitHubToolAdapter {
       }
       const repository = await this.resolveRepo(input.repository);
       const limit = Math.min(Math.max(input.limit ?? 30, 1), 100);
-      const cacheKey = `search:${repository}:${input.query}:${input.pathPrefix ?? ""}:${limit}`;
+      const ref = await this.resolveContentRef(input.ref);
+      const cacheKey = `search:${repository}:${ref ?? "default"}:${input.query}:${input.pathPrefix ?? ""}:${limit}`;
       const cached = this.cache.get<SearchFilesResult>(cacheKey);
       if (cached) {
         return toolOk(cached);
@@ -250,6 +251,7 @@ export class GitHubToolAdapter {
           input.query,
           input.pathPrefix,
           limit,
+          ref,
         );
       }
 
@@ -499,15 +501,19 @@ export class GitHubToolAdapter {
     query: string,
     pathPrefix: string | undefined,
     limit: number,
+    ref?: string,
   ): Promise<SearchFilesResult["hits"][number][]> {
     const { owner, repo } = parseOwnerRepo(repository);
-    const repoInfo = (await this.client.getJson(
-      `/repos/${owner}/${repo}`,
-    )) as RepoPayload;
-    const branch =
-      typeof repoInfo.default_branch === "string"
-        ? repoInfo.default_branch
-        : "main";
+    let branch = ref?.trim();
+    if (!branch) {
+      const repoInfo = (await this.client.getJson(
+        `/repos/${owner}/${repo}`,
+      )) as RepoPayload;
+      branch =
+        typeof repoInfo.default_branch === "string"
+          ? repoInfo.default_branch
+          : "main";
+    }
     const tree = (await this.client.getJson(
       `/repos/${owner}/${repo}/git/trees/${encodeURIComponent(branch)}?recursive=1`,
     )) as TreePayload;
@@ -547,6 +553,21 @@ export class GitHubToolAdapter {
       });
     }
     return resolved.trim().toLowerCase();
+  }
+
+  /** Ref explicita do caller tem prioridade; senao operationalRef do binding. */
+  private async resolveContentRef(explicit?: string): Promise<string | undefined> {
+    const trimmed = explicit?.trim();
+    if (trimmed) {
+      return trimmed;
+    }
+    if (!this.resolver.resolveOperationalRef) {
+      return undefined;
+    }
+    const operational = await this.resolver.resolveOperationalRef(
+      this.workspaceId,
+    );
+    return operational?.trim() || undefined;
   }
 
   private async guard<T>(

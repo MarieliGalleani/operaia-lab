@@ -11,7 +11,7 @@ export type WorkGovernanceDecisionKind =
   | "REOPEN"
   | "EXECUTE";
 
-export type WorkIdentityKind = "technical" | "generic" | "unsafe";
+export type WorkIdentityKind = "technical" | "generic" | "finance" | "unsafe";
 
 export interface WorkContextHints {
   readonly commitSha?: string | null;

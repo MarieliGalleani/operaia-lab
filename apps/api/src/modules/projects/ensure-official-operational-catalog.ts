@@ -54,6 +54,9 @@ export async function ensureOfficialOperationalCatalog(input: {
         ignoreUnmergedClose: true,
         ignoreIssueClosed: true,
         repository: canonicalGithubExternalRef(entry.repository),
+        ...(entry.operationalRef
+          ? { operationalRef: entry.operationalRef }
+          : {}),
       },
       secretRef: "env:GITHUB_WEBHOOK_SECRET",
     });

@@ -1,7 +1,13 @@
 /**
  * ValidResult — COMPLETED sozinho NÃO basta.
- * Requer delivery DELIVERED + evidence; técnico exige technical_analysis.
+ * Requer delivery DELIVERED + evidence; técnico exige technical_analysis;
+ * financeiro exige contrato financial_analysis (P0.2H-5L).
  */
+import {
+  extractFinancialToolExecutions,
+  isValidFinancialAnalysisDelivery,
+  isValidFinancialResultJson,
+} from "@operaia/specialist-kit/finance-delivery-validation.js";
 import type {
   GovernanceMissionSnapshot,
   WorkIdentityKind,
@@ -10,16 +16,38 @@ import type {
 interface DeliveryLike {
   readonly type?: string;
   readonly status?: string;
+  readonly employeeId?: string;
   readonly evidence?: readonly unknown[];
 }
 
 export function isValidDelivery(
   delivery: DeliveryLike | null | undefined,
   identityKind: WorkIdentityKind,
+  resultJson?: unknown,
 ): boolean {
   if (!delivery) {
     return false;
   }
+
+  const isFinance =
+    identityKind === "finance" || delivery.type === "financial_analysis";
+
+  if (isFinance) {
+    const toolExecutions = extractFinancialToolExecutions(resultJson);
+    if (
+      !isValidFinancialAnalysisDelivery(
+        delivery as Parameters<typeof isValidFinancialAnalysisDelivery>[0],
+        toolExecutions,
+      )
+    ) {
+      return false;
+    }
+    if (resultJson !== undefined && !isValidFinancialResultJson(resultJson)) {
+      return false;
+    }
+    return true;
+  }
+
   if (delivery.status !== "DELIVERED") {
     return false;
   }
@@ -86,7 +114,7 @@ export function treeHasValidResult(
       continue;
     }
     const delivery = extractDeliveryFromResultJson(node.resultJson);
-    if (isValidDelivery(delivery, identityKind)) {
+    if (isValidDelivery(delivery, identityKind, node.resultJson)) {
       return true;
     }
   }

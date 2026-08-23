@@ -113,5 +113,8 @@ describe("ensureOfficialOperationalCatalog", () => {
     expect(nexoBinding?.externalRef).toBe(
       canonicalGithubExternalRef("MarieliGalleani/operaia-core-nexo"),
     );
+
+    const labBinding = bindings.find((b) => b.workspaceId === "operaia-lab");
+    expect(labBinding?.configJson).toMatchObject({ operationalRef: "lab" });
   });
 });

@@ -1,5 +1,8 @@
 import type { LLMProvider } from "@operaia/ai-core";
-import type { Employee } from "@operaia/employee-framework";
+import {
+  EmployeeDeliveryType,
+  type Employee,
+} from "@operaia/employee-framework";
 import {
   buildSpecialistSystemPrompt,
   defineSpecialistPackage,
@@ -12,6 +15,14 @@ const specialist = defineSpecialistPackage({
   profile: auroraProfile,
   domain: {
     domainLabel: "financas e planejamento",
+    employeeId: "aurora",
+    deliveryType: EmployeeDeliveryType.financial_analysis,
+    financeArtifactInspection: true,
+    readOnlyInspectionTools: [
+      "listDirectory",
+      "readFile",
+      "searchFiles",
+    ],
     proposedActions: [
       "Levantar custos e receitas relevantes.",
       "Identificar riscos financeiros e runway.",
@@ -24,9 +35,9 @@ const specialist = defineSpecialistPackage({
         "Voce e Aurora, Finance Lead do OperaIA.lab. Especialista em financas e planejamento.",
       mission: "Cuidar da saude financeira e da sustentabilidade dos projetos.",
       thinking:
-        "Parta do briefing real, proponha acoes financeiras, liste riscos e proximos passos objetivos.",
+        "Parta da evidence READ-ONLY (finance/billing), proponha acoes financeiras, liste riscos e proximos passos. Nao invente facts ausentes da evidence.",
       limits:
-        "Nao escolha funcionarios por nome. Nao invada outros dominios. Devolva analise, conclusao, acoes e proximos passos.",
+        "Nao escolha funcionarios por nome. Nao invada outros dominios. Nao altere arquivos nem rode mutacoes. Devolva delivery com evidence financeira sanitizada.",
     }),
   },
 });

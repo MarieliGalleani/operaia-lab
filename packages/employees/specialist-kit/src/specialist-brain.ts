@@ -10,6 +10,19 @@ import type {
   EmployeeToolExecution,
 } from "@operaia/employee-framework";
 import { TaskStatus } from "@operaia/shared";
+import {
+  FINANCE_MANDATORY_OVERVIEW,
+  FINANCE_OPTIONAL_FILES,
+  FINANCE_SEARCH_QUERIES,
+  validateFinanceListDirectoryPath,
+  validateFinanceReadFilePath,
+  validateFinanceSearchPrefix,
+  validateFinanceSearchQuery,
+} from "./finance-artifact-path.js";
+import {
+  buildFinanceEvidence,
+  sanitizeFinanceEvidenceForResultJson,
+} from "./finance-evidence.js";
 
 const TOP_ACTIONS = 4;
 const BRIEFING_TOOL_CONTEXT_KEY = "toolContext";
@@ -43,6 +56,11 @@ export interface SpecialistDomainConfig {
   readonly deliveryType?: EmployeeDeliveryType;
   /** Subconjunto READ-ONLY a tentar, na ordem (policy ainda restringe). */
   readonly readOnlyInspectionTools?: readonly SpecialistReadOnlyToolId[];
+  /**
+   * Inspecao READ-ONLY de artefatos finance/** e billing/** (P0.2H-5J).
+   * Requer employeeId + deliveryType + tools Finance na policy.
+   */
+  readonly financeArtifactInspection?: boolean;
 }
 
 type ToolOk<T> = { readonly ok: true; readonly data: T };
@@ -58,6 +76,8 @@ type ToolCallResult<T> = ToolOk<T> | ToolErr;
  */
 interface SpecialistToolContext {
   canUse(toolId: string): boolean;
+  /** Workspace resolvido pelo runtime (quando disponivel no ToolContext). */
+  readonly workspaceId?: string;
   listInfrastructure?(
     input?: Record<string, never>,
   ): Promise<ToolCallResult<Readonly<Record<string, unknown>>>>;
@@ -174,10 +194,11 @@ export class SpecialistBrain implements EmployeeBrain {
     briefing: EmployeeBriefing,
   ): Promise<SpecialistInspection> {
     const toolIds = this.config.readOnlyInspectionTools ?? [];
+    const financeMode = this.config.financeArtifactInspection === true;
     if (
       !this.config.employeeId ||
       !this.config.deliveryType ||
-      toolIds.length === 0
+      (!financeMode && toolIds.length === 0)
     ) {
       return {
         toolExecutions: [],
@@ -205,6 +226,10 @@ export class SpecialistBrain implements EmployeeBrain {
         allSucceeded: false,
         attempted: true,
       };
+    }
+
+    if (this.config.financeArtifactInspection) {
+      return this.inspectFinanceArtifacts(tools);
     }
 
     const executions: EmployeeToolExecution[] = [];
@@ -284,6 +309,237 @@ export class SpecialistBrain implements EmployeeBrain {
       toolExecutions: executions,
       evidence,
       allSucceeded: allSucceeded && called > 0,
+      attempted: true,
+    };
+  }
+
+  private async inspectFinanceArtifacts(
+    tools: SpecialistToolContext,
+  ): Promise<SpecialistInspection> {
+    const executions: EmployeeToolExecution[] = [];
+    const evidence: EmployeeDeliveryEvidence[] = [];
+    let mandatoryOk = true;
+    let called = 0;
+    const workspaceId = tools.workspaceId?.trim() ?? "";
+
+    const recordFinanceSuccess = (
+      toolId: "listDirectory" | "readFile" | "searchFiles",
+      artifactPath: string,
+      rawToolData: Readonly<Record<string, unknown>>,
+      mandatory: boolean,
+    ): boolean => {
+      const repository =
+        typeof rawToolData.repository === "string"
+          ? rawToolData.repository
+          : "";
+      const built = buildFinanceEvidence({
+        toolId,
+        workspaceId,
+        repository,
+        artifactPath,
+        rawToolData,
+      });
+      const at = new Date().toISOString();
+      called += 1;
+      if (!built.ok) {
+        executions.push({
+          toolId,
+          success: false,
+          outcome: `${built.code}: ${built.message}`,
+          at,
+        });
+        if (mandatory) {
+          mandatoryOk = false;
+          evidence.push({
+            source: toolId,
+            data: { error: built.code, message: built.message },
+          });
+        }
+        return false;
+      }
+      const safeData = sanitizeFinanceEvidenceForResultJson(
+        built.data,
+      ) as Readonly<Record<string, unknown>>;
+      executions.push({
+        toolId,
+        success: true,
+        outcome: summarizeToolData(toolId, safeData),
+        at,
+      });
+      evidence.push({
+        source: toolId,
+        data: safeData,
+      });
+      return true;
+    };
+
+    const recordFailure = (
+      toolId: string,
+      code: string,
+      message: string,
+      mandatory: boolean,
+    ) => {
+      const at = new Date().toISOString();
+      called += 1;
+      if (mandatory) {
+        mandatoryOk = false;
+      }
+      executions.push({
+        toolId,
+        success: false,
+        outcome: `${code}: ${message}`,
+        at,
+      });
+      evidence.push({
+        source: toolId,
+        data: { error: code, message },
+      });
+    };
+
+    const invokeListDirectory = async (path: string, mandatory: boolean) => {
+      const toolId = "listDirectory";
+      if (!isReadOnlyToolId(toolId) || !tools.canUse(toolId)) {
+        recordFailure(
+          toolId,
+          "PERMISSION_DENIED",
+          `Employee sem permissao de policy para ${toolId}.`,
+          mandatory,
+        );
+        return;
+      }
+      const validated = validateFinanceListDirectoryPath(path);
+      if (!validated.ok) {
+        recordFailure(toolId, validated.code, validated.message, mandatory);
+        return;
+      }
+      if (!tools.listDirectory) {
+        recordFailure(toolId, "METHOD_ABSENT", `Metodo ausente: ${toolId}`, mandatory);
+        return;
+      }
+      const result = await tools.listDirectory({ path: validated.normalized });
+      if (result.ok) {
+        recordFinanceSuccess(
+          toolId,
+          validated.normalized,
+          { ...result.data, path: validated.normalized },
+          mandatory,
+        );
+      } else {
+        recordFailure(
+          toolId,
+          result.error.code,
+          result.error.message,
+          mandatory,
+        );
+      }
+    };
+
+    const invokeReadFile = async (path: string, mandatory: boolean) => {
+      const toolId = "readFile";
+      if (!isReadOnlyToolId(toolId) || !tools.canUse(toolId)) {
+        recordFailure(
+          toolId,
+          "PERMISSION_DENIED",
+          `Employee sem permissao de policy para ${toolId}.`,
+          mandatory,
+        );
+        return;
+      }
+      const validated = validateFinanceReadFilePath(path);
+      if (!validated.ok) {
+        recordFailure(toolId, validated.code, validated.message, mandatory);
+        return;
+      }
+      if (!tools.readFile) {
+        recordFailure(toolId, "METHOD_ABSENT", `Metodo ausente: ${toolId}`, mandatory);
+        return;
+      }
+      const result = await tools.readFile({ path: validated.normalized });
+      if (result.ok) {
+        recordFinanceSuccess(
+          toolId,
+          validated.normalized,
+          result.data,
+          mandatory,
+        );
+        return;
+      }
+      if (!mandatory && result.error.code === "NOT_FOUND") {
+        return;
+      }
+      recordFailure(
+        toolId,
+        result.error.code,
+        result.error.message,
+        mandatory,
+      );
+    };
+
+    const invokeSearchFiles = async () => {
+      const toolId = "searchFiles";
+      if (!isReadOnlyToolId(toolId) || !tools.canUse(toolId)) {
+        recordFailure(
+          toolId,
+          "PERMISSION_DENIED",
+          `Employee sem permissao de policy para ${toolId}.`,
+          false,
+        );
+        return;
+      }
+      const queryCheck = validateFinanceSearchQuery(FINANCE_SEARCH_QUERIES[0]);
+      const prefixCheck = validateFinanceSearchPrefix("finance/");
+      if (!queryCheck.ok) {
+        recordFailure(toolId, queryCheck.code, queryCheck.message, false);
+        return;
+      }
+      if (!prefixCheck.ok) {
+        recordFailure(toolId, prefixCheck.code, prefixCheck.message, false);
+        return;
+      }
+      if (!tools.searchFiles) {
+        recordFailure(toolId, "METHOD_ABSENT", `Metodo ausente: ${toolId}`, false);
+        return;
+      }
+      const result = await tools.searchFiles({
+        query: queryCheck.normalized,
+        pathPrefix: prefixCheck.normalized,
+        limit: 10,
+      });
+      if (result.ok) {
+        recordFinanceSuccess(toolId, prefixCheck.normalized, result.data, false);
+        return;
+      }
+      recordFailure(
+        toolId,
+        result.error.code,
+        result.error.message,
+        false,
+      );
+    };
+
+    await invokeListDirectory("finance", true);
+    await invokeReadFile(FINANCE_MANDATORY_OVERVIEW, true);
+    for (const optionalPath of FINANCE_OPTIONAL_FILES) {
+      await invokeReadFile(optionalPath, false);
+    }
+    await invokeSearchFiles();
+    await invokeListDirectory("billing", false);
+
+    if (called === 0 && evidence.length === 0) {
+      evidence.push({
+        source: "specialist_contract",
+        data: {
+          error: "NO_TOOLS_INVOKED",
+          message: "Nenhuma tool financeira foi invocavel sob a policy atual.",
+        },
+      });
+      mandatoryOk = false;
+    }
+
+    return {
+      toolExecutions: executions,
+      evidence,
+      allSucceeded: mandatoryOk && called > 0,
       attempted: true,
     };
   }

@@ -13,12 +13,14 @@ import {
 export function buildToolsForEmployee(
   employeeId: string,
   options: {
+    readonly workspaceId?: string;
     readonly policy?: ToolPermissionPolicy;
     readonly ports?: ToolPorts;
   } = {},
 ): ToolContext {
   return createToolContext({
     employeeId,
+    workspaceId: options.workspaceId,
     policy: options.policy ?? defaultToolPermissionPolicy,
     ports: options.ports,
   });
