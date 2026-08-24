@@ -52,3 +52,23 @@ export {
   type SpecialistDomainConfig,
   type SpecialistReadOnlyToolId,
 } from "./specialist-brain.js";
+
+export {
+  UX_DELIVERY_TYPE,
+  UX_EMPLOYEE_ID,
+  isValidUxAnalysisDelivery,
+  isValidUxResultJson,
+  extractUxToolExecutions,
+} from "./ux-delivery-validation.js";
+
+export {
+  UX_EVIDENCE_DOMAIN,
+  buildUxEvidence,
+  sanitizeUxEvidenceForResultJson,
+} from "./ux-evidence.js";
+
+export {
+  isUxSensitivePath,
+  validateUxReadFilePath,
+  validateUxListDirectoryPath,
+} from "./ux-artifact-path.js";

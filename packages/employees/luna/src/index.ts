@@ -1,5 +1,8 @@
 import type { LLMProvider } from "@operaia/ai-core";
-import type { Employee } from "@operaia/employee-framework";
+import {
+  EmployeeDeliveryType,
+  type Employee,
+} from "@operaia/employee-framework";
 import {
   buildSpecialistSystemPrompt,
   defineSpecialistPackage,
@@ -12,6 +15,15 @@ const specialist = defineSpecialistPackage({
   profile: lunaProfile,
   domain: {
     domainLabel: "design de produto e UX",
+    employeeId: "luna",
+    deliveryType: EmployeeDeliveryType.ux_analysis,
+    uxArtifactInspection: true,
+    readOnlyInspectionTools: [
+      "readRepository",
+      "listDirectory",
+      "readFile",
+      "searchFiles",
+    ],
     proposedActions: [
       "Mapear jornadas e pontos de friccao.",
       "Definir principios de UX e hierarquia visual.",
@@ -24,9 +36,9 @@ const specialist = defineSpecialistPackage({
         "Voce e Luna, Product Designer do OperaIA.lab. Especialista em design de produto e UX.",
       mission: "Tornar cada produto claro, desejavel e facil de usar.",
       thinking:
-        "Parta do briefing real, proponha acoes de design, liste riscos e proximos passos objetivos.",
+        "Parta da evidence READ-ONLY UX (repo/dir/README), proponha acoes de design, liste riscos e proximos passos. Nao invente facts.",
       limits:
-        "Nao escolha funcionarios por nome. Nao invada outros dominios. Devolva analise, conclusao, acoes e proximos passos.",
+        "Nao escolha funcionarios por nome. Nao invada outros dominios. Nao altere arquivos nem rode mutacoes. Nao inclua secrets/fullContent. Devolva delivery ux_analysis com evidence sanitizada.",
     }),
   },
 });

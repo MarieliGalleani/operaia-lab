@@ -71,12 +71,80 @@ describe("isValidDelivery finance P0.2H-5L", () => {
 
   it("nao altera validacao generica de outros specialists", () => {
     const delivery = {
-      type: "ux_analysis",
+      type: "ops_analysis",
       status: "DELIVERED" as const,
       evidence: [{ source: "readFile", data: { path: "README.md" } }],
     };
     expect(isValidDelivery(delivery, "generic")).toBe(true);
     expect(isValidDelivery(delivery, "finance")).toBe(false);
+  });
+
+  it("ux_analysis fraco (sem contrato) falha governance UX", () => {
+    const delivery = {
+      type: "ux_analysis",
+      status: "DELIVERED" as const,
+      evidence: [{ source: "readFile", data: { path: "README.md" } }],
+    };
+    expect(isValidDelivery(delivery, "generic")).toBe(false);
+    expect(isValidDelivery(delivery, "ux")).toBe(false);
+  });
+
+  it("PASS — ux_analysis com evidence governada", () => {
+    const delivery = {
+      type: "ux_analysis",
+      status: "DELIVERED" as const,
+      employeeId: "luna",
+      summary: "Superficie UX inspecionada no repo bound.",
+      findings: ["README presente"],
+      evidence: [
+        {
+          source: "readRepository",
+          data: {
+            domain: "ux_artifacts",
+            workspaceId: "operaia-lab",
+            repository: "marieligalleani/operaia-lab",
+            branchRef: "lab",
+            artifactPath: "repository",
+            analysisType: "ux_surface",
+            summary: "Repo marieligalleani/operaia-lab branch=lab",
+            structured: { name: "operaia-lab" },
+          },
+        },
+        {
+          source: "listDirectory",
+          data: {
+            domain: "ux_artifacts",
+            workspaceId: "operaia-lab",
+            artifactPath: "",
+            analysisType: "ux_surface",
+            summary: "Dir path=/ entries=3",
+            structured: { entryCount: 3 },
+          },
+        },
+        {
+          source: "readFile",
+          data: {
+            domain: "ux_artifacts",
+            workspaceId: "operaia-lab",
+            artifactPath: "README.md",
+            analysisType: "ux_surface",
+            summary: "File README.md bytes=42",
+            structured: { byteLength: 42, hasHeading: true },
+          },
+        },
+      ],
+    };
+    const resultJson = {
+      delivery,
+      toolExecutions: [
+        { toolId: "readRepository", success: true, outcome: "ok" },
+        { toolId: "listDirectory", success: true, outcome: "ok" },
+        { toolId: "readFile", success: true, outcome: "ok" },
+      ],
+    };
+    expect(isValidDelivery(delivery, "ux", resultJson)).toBe(true);
+    expect(isValidDelivery(delivery, "generic", resultJson)).toBe(true);
+    expect(isValidDelivery(delivery, "finance", resultJson)).toBe(false);
   });
 
   it("PASS — billing NOT_FOUND opcional nao invalida governanca financeira", () => {

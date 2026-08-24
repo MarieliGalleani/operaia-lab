@@ -33,6 +33,7 @@
     "@operaia/digital-team": "workspace:*",
     "@operaia/domain-signals": "workspace:*",
     "@operaia/employee-framework": "workspace:*",
+    "@operaia/employee-luna": "workspace:*",
     "@operaia/employee-runtime": "workspace:*",
     "@operaia/execution-engine": "workspace:*",
     "@operaia/memory": "workspace:*",

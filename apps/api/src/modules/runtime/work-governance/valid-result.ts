@@ -1,13 +1,19 @@
 /**
  * ValidResult — COMPLETED sozinho NÃO basta.
  * Requer delivery DELIVERED + evidence; técnico exige technical_analysis;
- * financeiro exige contrato financial_analysis (P0.2H-5L).
+ * financeiro exige contrato financial_analysis (P0.2H-5L);
+ * UX exige contrato ux_analysis (P0.2H-POST.5).
  */
 import {
   extractFinancialToolExecutions,
   isValidFinancialAnalysisDelivery,
   isValidFinancialResultJson,
 } from "@operaia/specialist-kit/finance-delivery-validation.js";
+import {
+  extractUxToolExecutions,
+  isValidUxAnalysisDelivery,
+  isValidUxResultJson,
+} from "@operaia/specialist-kit/ux-delivery-validation.js";
 import type {
   GovernanceMissionSnapshot,
   WorkIdentityKind,
@@ -43,6 +49,23 @@ export function isValidDelivery(
       return false;
     }
     if (resultJson !== undefined && !isValidFinancialResultJson(resultJson)) {
+      return false;
+    }
+    return true;
+  }
+
+  const isUx = identityKind === "ux" || delivery.type === "ux_analysis";
+  if (isUx) {
+    const toolExecutions = extractUxToolExecutions(resultJson);
+    if (
+      !isValidUxAnalysisDelivery(
+        delivery as Parameters<typeof isValidUxAnalysisDelivery>[0],
+        toolExecutions,
+      )
+    ) {
+      return false;
+    }
+    if (resultJson !== undefined && !isValidUxResultJson(resultJson)) {
       return false;
     }
     return true;

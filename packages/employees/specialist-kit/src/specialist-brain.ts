@@ -23,6 +23,7 @@ import {
   buildFinanceEvidence,
   sanitizeFinanceEvidenceForResultJson,
 } from "./finance-evidence.js";
+import { inspectUxArtifacts } from "./ux-inspection.js";
 
 const TOP_ACTIONS = 4;
 const BRIEFING_TOOL_CONTEXT_KEY = "toolContext";
@@ -61,6 +62,11 @@ export interface SpecialistDomainConfig {
    * Requer employeeId + deliveryType + tools Finance na policy.
    */
   readonly financeArtifactInspection?: boolean;
+  /**
+   * Inspecao READ-ONLY de superficie UX (P0.2H-POST.5).
+   * Requer employeeId + deliveryType + workspaceId no ToolContext.
+   */
+  readonly uxArtifactInspection?: boolean;
 }
 
 type ToolOk<T> = { readonly ok: true; readonly data: T };
@@ -195,10 +201,11 @@ export class SpecialistBrain implements EmployeeBrain {
   ): Promise<SpecialistInspection> {
     const toolIds = this.config.readOnlyInspectionTools ?? [];
     const financeMode = this.config.financeArtifactInspection === true;
+    const uxMode = this.config.uxArtifactInspection === true;
     if (
       !this.config.employeeId ||
       !this.config.deliveryType ||
-      (!financeMode && toolIds.length === 0)
+      (!financeMode && !uxMode && toolIds.length === 0)
     ) {
       return {
         toolExecutions: [],
@@ -230,6 +237,10 @@ export class SpecialistBrain implements EmployeeBrain {
 
     if (this.config.financeArtifactInspection) {
       return this.inspectFinanceArtifacts(tools);
+    }
+
+    if (this.config.uxArtifactInspection) {
+      return inspectUxArtifacts(tools);
     }
 
     const executions: EmployeeToolExecution[] = [];
