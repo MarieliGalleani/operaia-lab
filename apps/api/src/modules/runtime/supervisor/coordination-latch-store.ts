@@ -41,10 +41,38 @@ export interface CoordinationLatchPort {
 
   /** PENDING → CONSUMED apos COORDINATE confirmada. */
   complete(key: CoordinationLatchKey, missionId: string): Promise<void>;
+
+  /**
+   * Leitura: latch ja CONSUMED (escalacao entregue).
+   * FAILED esgotado com latch CONSUMED nao deve permanecer needsCoordination.
+   */
+  isConsumed(key: CoordinationLatchKey): Promise<boolean>;
 }
 
 export function coordinationLatchKeyOf(
   key: CoordinationLatchKey,
 ): string {
   return `${key.workspaceId}\0${key.reason}`;
+}
+
+/** Reason persistido por missao FAILED esgotada (escalacao operacional). */
+export const EXHAUSTED_MISSION_LATCH_PREFIX = "missao_esgotada:";
+
+export function exhaustedMissionLatchReason(missionId: string): string {
+  return `${EXHAUSTED_MISSION_LATCH_PREFIX}${missionId}`;
+}
+
+export function isExhaustedMissionLatchReason(reason: string): boolean {
+  return reason.startsWith(EXHAUSTED_MISSION_LATCH_PREFIX);
+}
+
+/** CONSUMED de missao esgotada permanece auditavel enquanto o FAILED existir. */
+export function shouldPreserveConsumedExhaustedLatch(input: {
+  readonly reason: string;
+  readonly status: string;
+}): boolean {
+  return (
+    input.status === "CONSUMED" &&
+    isExhaustedMissionLatchReason(input.reason)
+  );
 }

@@ -509,6 +509,89 @@ describe("Operational Supervisor v2 — missao permanente", () => {
     expect(emitted).toContain(SupervisorEvent.SUPERVISOR_SLEEP);
   });
 
+  it("F — FAILED exhausted CONSUMED nao infla coordinationNeeded no SupervisorLoop", async () => {
+    const latches = freshLatches();
+    const key = {
+      workspaceId: "nexo",
+      reason: "missao_esgotada:m-acked",
+    };
+    await latches.tryAcquire(key);
+    await latches.complete(key, "coord-already");
+
+    const events: string[] = [];
+    const logger: SupervisorLoggerPort = {
+      emit(event) {
+        events.push(event);
+      },
+    };
+    const queue = createQueue({
+      rows: [
+        mission({
+          id: "m-acked",
+          status: "FAILED",
+          attempt: 3,
+          maxAttempts: 3,
+          workspaceId: "nexo",
+          missionKind: "EXECUTE",
+        }),
+      ],
+    });
+    const workspaces = new InMemoryWorkspaceSource([
+      {
+        id: "quiet",
+        projectId: "project-quiet",
+        name: "Quiet",
+        objective: "sem backlog",
+        status: "ACTIVE",
+        progress: 100,
+        teamIds: ["operaia-ceo"],
+        tasks: [],
+      },
+    ]);
+
+    const loop = new SupervisorLoop({
+      healthMonitor: new HealthMonitor(
+        [
+          {
+            name: "registry",
+            check: async () => ({ status: "ok" as const, detail: "ok" }),
+          },
+        ],
+        clock,
+      ),
+      workspaceScanner: new WorkspaceScanner(workspaces, queue, clock),
+      missionScanner: new MissionScanner(queue, clock, 30_000, latches),
+      queueMonitor: new QueueMonitor(
+        queue,
+        {
+          list: () => [{ employeeId: "operaia-ceo", status: "idle" }],
+          aliveCount: () => 1,
+        },
+        clock,
+        30_000,
+      ),
+      recoveryCoordinator: new RecoveryCoordinator(
+        queue,
+        logger,
+        clock,
+        30_000,
+      ),
+      coordinationDispatcher: new CoordinationDispatcher(queue, logger, latches),
+      snapshots: new SnapshotGenerator(clock),
+      snapshotStore: new InMemorySnapshotStore(),
+      logger,
+      intervalMs: 60_000,
+      staleRunningMs: 30_000,
+    });
+
+    const ctx = await loop.runCycle();
+    expect(ctx).not.toBeNull();
+    expect(ctx!.missions.coordinationNeeded).toBe(0);
+    expect(ctx!.dispatch.dispatched).toBe(0);
+    expect(events).not.toContain(SupervisorEvent.COORDINATION_CREATED);
+    expect(latches.getForTest(key)?.status).toBe("CONSUMED");
+  });
+
   it("runCycle captura excecao, emite SUPERVISOR_CYCLE_FAILED e libera ticking", async () => {
     const emitted: Array<{ event: string; data: Record<string, unknown> }> =
       [];
@@ -1137,7 +1220,7 @@ describe("Coordination latch edge-triggered (PENDING/CONSUMED)", () => {
       recovery: emptyRecovery(),
       healthOk: true,
     };
-    // requests.length===0 → releaseAll no dispatcher atual.
+    // requests.length===0 → releaseAbsent(exhaustedKeep), sem releaseAll.
     // Sticky so aplica quando ha requests; para oscilacao parcial use so mudanca_importante sumindo.
     const onlyOtherGone = {
       workspaces: reportWith([

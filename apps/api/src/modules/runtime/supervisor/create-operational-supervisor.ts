@@ -203,6 +203,9 @@ export function createOperationalSupervisor(
           ledger: new PrismaLedgerMaintenance(),
         }));
 
+  const coordinationLatchStore =
+    input.coordinationLatchStore ?? new PrismaCoordinationLatchStore();
+
   const supervisor = new SupervisorLoop({
     healthMonitor: new HealthMonitor(buildHealthChecks(input), clock),
     workspaceScanner: new WorkspaceScanner(
@@ -214,6 +217,7 @@ export function createOperationalSupervisor(
       queuePort,
       clock,
       input.staleRunningMs,
+      coordinationLatchStore,
     ),
     queueMonitor: new QueueMonitor(
       queuePort,
@@ -231,7 +235,7 @@ export function createOperationalSupervisor(
     coordinationDispatcher: new CoordinationDispatcher(
       queuePort,
       supervisorLogger,
-      input.coordinationLatchStore ?? new PrismaCoordinationLatchStore(),
+      coordinationLatchStore,
       input.intervalMs,
     ),
     snapshots: new SnapshotGenerator(clock),

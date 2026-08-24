@@ -403,6 +403,105 @@ describe("F6.1 — FAILED retry automatico", () => {
     expect(events).not.toContain(SupervisorEvent.COORDINATION_CREATED);
   });
 
+  it("B — FAILED exhausted com latch PENDING continua needsCoordination", async () => {
+    const queue = createStatefulQueue([
+      mission({ id: "m-open", attempt: 3, maxAttempts: 3 }),
+    ]);
+    const latches = new InMemoryCoordinationLatchStore();
+    await latches.tryAcquire({
+      workspaceId: "nexo",
+      reason: "missao_esgotada:m-open",
+    });
+
+    const report = await new MissionScanner(
+      queue,
+      clock,
+      30_000,
+      latches,
+    ).scan();
+    const item = report.items.find((i) => i.missionId === "m-open");
+    expect(item?.category).toBe("FAILED");
+    expect(item?.needsCoordination).toBe(true);
+    expect(report.coordinationNeeded).toBe(1);
+    expect(
+      latches.getForTest({
+        workspaceId: "nexo",
+        reason: "missao_esgotada:m-open",
+      })?.status,
+    ).toBe("PENDING");
+  });
+
+  it("FAILED exhausted com latch CONSUMED nao permanece needsCoordination", async () => {
+    const queue = createStatefulQueue([
+      mission({ id: "m-acked", attempt: 3, maxAttempts: 3 }),
+    ]);
+    const latches = new InMemoryCoordinationLatchStore();
+    await latches.tryAcquire({
+      workspaceId: "nexo",
+      reason: "missao_esgotada:m-acked",
+    });
+    await latches.complete(
+      { workspaceId: "nexo", reason: "missao_esgotada:m-acked" },
+      "coord-already",
+    );
+
+    const report = await new MissionScanner(
+      queue,
+      clock,
+      30_000,
+      latches,
+    ).scan();
+    const item = report.items.find((i) => i.missionId === "m-acked");
+    expect(item?.category).toBe("FAILED");
+    expect(item?.needsCoordination).toBe(false);
+    expect(report.coordinationNeeded).toBe(0);
+
+    const recovery = await new RecoveryCoordinator(
+      queue,
+      { emit: () => {} },
+      clock,
+      30_000,
+    ).recover({
+      missions: report,
+      queue: emptyQueueReport,
+      workspaces: emptyWorkspaces,
+    });
+    expect(recovery.actions.some((a) => a.kind === "failed_exhausted")).toBe(
+      false,
+    );
+
+    const dispatcher = new CoordinationDispatcher(
+      queue,
+      { emit: () => {} },
+      latches,
+    );
+    const dispatched = await dispatcher.dispatch({
+      workspaces: emptyWorkspaces,
+      missions: report,
+      queue: emptyQueueReport,
+      recovery,
+      healthOk: true,
+    });
+    expect(dispatched.dispatched).toBe(0);
+    expect(queue.enqueued).toHaveLength(0);
+    expect(
+      latches.getForTest({
+        workspaceId: "nexo",
+        reason: "missao_esgotada:m-acked",
+      })?.status,
+    ).toBe("CONSUMED");
+
+    const second = await dispatcher.dispatch({
+      workspaces: emptyWorkspaces,
+      missions: await new MissionScanner(queue, clock, 30_000, latches).scan(),
+      queue: emptyQueueReport,
+      recovery,
+      healthOk: true,
+    });
+    expect(second.dispatched).toBe(0);
+    expect(queue.enqueued).toHaveLength(0);
+  });
+
   it("AutoRetryPolicy sinaliza fila quando ha RETRY", () => {
     const missions: MissionScanReport = {
       scannedAt: fixedNow.toISOString(),

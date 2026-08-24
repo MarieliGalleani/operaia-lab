@@ -13,7 +13,11 @@ import type {
   CoordinationLatchKey,
   CoordinationLatchPort,
 } from "../coordination-latch-store.js";
-import { coordinationLatchKeyOf } from "../coordination-latch-store.js";
+import {
+  coordinationLatchKeyOf,
+  EXHAUSTED_MISSION_LATCH_PREFIX,
+  shouldPreserveConsumedExhaustedLatch,
+} from "../coordination-latch-store.js";
 
 type LatchRow = {
   id: string;
@@ -162,25 +166,27 @@ export class PrismaCoordinationLatchStore implements CoordinationLatchPort {
   }
 
   async releaseAbsent(active: readonly CoordinationLatchKey[]): Promise<void> {
-    if (active.length === 0) {
-      await this.releaseAll();
-      return;
-    }
-
     const rows = await prisma.coordinationSignalLatch.findMany({
-      select: { id: true, workspaceId: true, reason: true },
+      select: { id: true, workspaceId: true, reason: true, status: true },
     });
     const keep = new Set(active.map(coordinationLatchKeyOf));
     const staleIds = rows
-      .filter(
-        (row) =>
-          !keep.has(
+      .filter((row) => {
+        if (
+          keep.has(
             coordinationLatchKeyOf({
               workspaceId: row.workspaceId,
               reason: row.reason,
             }),
-          ),
-      )
+          )
+        ) {
+          return false;
+        }
+        return !shouldPreserveConsumedExhaustedLatch({
+          reason: row.reason,
+          status: row.status,
+        });
+      })
       .map((row) => row.id);
 
     if (staleIds.length === 0) {
@@ -193,7 +199,29 @@ export class PrismaCoordinationLatchStore implements CoordinationLatchPort {
   }
 
   async releaseAll(): Promise<void> {
-    await prisma.coordinationSignalLatch.deleteMany({});
+    await prisma.coordinationSignalLatch.deleteMany({
+      where: {
+        NOT: {
+          AND: [
+            { status: CoordinationLatchStatus.CONSUMED },
+            { reason: { startsWith: EXHAUSTED_MISSION_LATCH_PREFIX } },
+          ],
+        },
+      },
+    });
+  }
+
+  async isConsumed(key: CoordinationLatchKey): Promise<boolean> {
+    const row = await prisma.coordinationSignalLatch.findUnique({
+      where: {
+        workspaceId_reason: {
+          workspaceId: key.workspaceId,
+          reason: key.reason,
+        },
+      },
+      select: { status: true },
+    });
+    return row?.status === CoordinationLatchStatus.CONSUMED;
   }
 
   async complete(

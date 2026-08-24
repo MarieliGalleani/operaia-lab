@@ -1,8 +1,9 @@
 import { CEO_EMPLOYEE_ID } from "../mission-states.js";
 import { hashObjective } from "../mission-queue.js";
-import type {
-  CoordinationLatchKey,
-  CoordinationLatchPort,
+import {
+  exhaustedMissionLatchReason,
+  type CoordinationLatchKey,
+  type CoordinationLatchPort,
 } from "./coordination-latch-store.js";
 import type { MissionQueuePort, SupervisorLoggerPort } from "./ports.js";
 import type {
@@ -57,8 +58,11 @@ export class CoordinationDispatcher {
       missions: input.missions,
       queue: input.queue,
     });
+    const exhaustedKeep = exhaustedLatchKeys(input.missions);
     if (requests.length === 0) {
-      await this.latches.releaseAll();
+      // Nunca releaseAll: FAILED esgotado fora da janela de scan ainda
+      // precisa do latch CONSUMED auditavel (missao_esgotada:*).
+      await this.latches.releaseAbsent(exhaustedKeep);
       return {
         dispatched: 0,
         skipped: 1,
@@ -68,7 +72,7 @@ export class CoordinationDispatcher {
       };
     }
 
-    const activeKeys = await this.buildActiveLatchKeys(requests);
+    const activeKeys = await this.buildActiveLatchKeys(requests, exhaustedKeep);
     await this.latches.releaseAbsent(activeKeys);
 
     const details: string[] = [];
@@ -158,6 +162,7 @@ export class CoordinationDispatcher {
    */
   private async buildActiveLatchKeys(
     requests: readonly CoordinationRequest[],
+    extraKeep: readonly CoordinationLatchKey[] = [],
   ): Promise<CoordinationLatchKey[]> {
     const keys = new Map<string, CoordinationLatchKey>();
     const put = (key: CoordinationLatchKey) => {
@@ -165,6 +170,9 @@ export class CoordinationDispatcher {
     };
     for (const req of requests) {
       put({ workspaceId: req.workspaceId, reason: latchReasonFor(req) });
+    }
+    for (const key of extraKeep) {
+      put(key);
     }
 
     try {
@@ -280,10 +288,27 @@ function collectCoordinationRequests(input: {
   return requests;
 }
 
+/** Latches de FAILED esgotado (mesmo apos CONSUMED / needsCoordination=false). */
+function exhaustedLatchKeys(
+  missions: MissionScanReport,
+): CoordinationLatchKey[] {
+  return missions.items
+    .filter(
+      (item) =>
+        item.category === "FAILED" &&
+        !item.canResume &&
+        item.attempt >= item.maxAttempts,
+    )
+    .map((item) => ({
+      workspaceId: item.workspaceId,
+      reason: exhaustedMissionLatchReason(item.missionId),
+    }));
+}
+
 /** Latch/reason persistido — por missao quando escalacao de FAILED esgotado. */
 function latchReasonFor(req: CoordinationRequest): string {
   if (req.reason === "missao_esgotada" && req.sourceMissionId) {
-    return `missao_esgotada:${req.sourceMissionId}`;
+    return exhaustedMissionLatchReason(req.sourceMissionId);
   }
   return req.reason;
 }

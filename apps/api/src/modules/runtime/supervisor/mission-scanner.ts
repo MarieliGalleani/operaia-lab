@@ -1,3 +1,7 @@
+import {
+  exhaustedMissionLatchReason,
+  type CoordinationLatchPort,
+} from "./coordination-latch-store.js";
 import type { ClockPort, MissionQueuePort, MissionView } from "./ports.js";
 import type {
   MissionScanCategory,
@@ -15,6 +19,7 @@ export class MissionScanner {
     private readonly queue: MissionQueuePort,
     private readonly clock: ClockPort,
     private readonly staleRunningMs: number,
+    private readonly latches?: CoordinationLatchPort,
   ) {}
 
   async scan(): Promise<MissionScanReport> {
@@ -100,13 +105,57 @@ export class MissionScanner {
       }
     }
 
+    const resolved = await this.suppressConsumedExhausted(items);
+
     return {
       scannedAt: this.clock.now().toISOString(),
-      items,
-      resumableCount: items.filter((i) => i.canResume).length,
-      coordinationNeeded: items.filter((i) => i.needsCoordination).length,
+      items: resolved,
+      resumableCount: resolved.filter((i) => i.canResume).length,
+      coordinationNeeded: resolved.filter((i) => i.needsCoordination).length,
       byStatus,
     };
+  }
+
+  /**
+   * Governanca: FAILED esgotado cuja escalacao ja foi entregue (latch CONSUMED)
+   * nao permanece needsCoordination — evita noise eterno no Supervisor.
+   */
+  private async suppressConsumedExhausted(
+    items: readonly MissionScanItem[],
+  ): Promise<readonly MissionScanItem[]> {
+    if (!this.latches) {
+      return items;
+    }
+    const exhausted = items.filter(
+      (item) => item.category === "FAILED" && item.needsCoordination,
+    );
+    if (exhausted.length === 0) {
+      return items;
+    }
+    const consumedIds = new Set<string>();
+    await Promise.all(
+      exhausted.map(async (item) => {
+        const consumed = await this.latches!.isConsumed({
+          workspaceId: item.workspaceId,
+          reason: exhaustedMissionLatchReason(item.missionId),
+        });
+        if (consumed) {
+          consumedIds.add(item.missionId);
+        }
+      }),
+    );
+    if (consumedIds.size === 0) {
+      return items;
+    }
+    return items.map((item) =>
+      consumedIds.has(item.missionId)
+        ? {
+            ...item,
+            needsCoordination: false,
+            reason: `FAILED esgotado ja escalado (latch CONSUMED ${item.attempt}/${item.maxAttempts})`,
+          }
+        : item,
+    );
   }
 }
 

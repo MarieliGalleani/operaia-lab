@@ -7,7 +7,10 @@ import type {
   CoordinationLatchKey,
   CoordinationLatchPort,
 } from "../coordination-latch-store.js";
-import { coordinationLatchKeyOf } from "../coordination-latch-store.js";
+import {
+  coordinationLatchKeyOf,
+  shouldPreserveConsumedExhaustedLatch,
+} from "../coordination-latch-store.js";
 
 type LatchRecord = {
   readonly key: CoordinationLatchKey;
@@ -68,15 +71,39 @@ export class InMemoryCoordinationLatchStore implements CoordinationLatchPort {
 
   async releaseAbsent(active: readonly CoordinationLatchKey[]): Promise<void> {
     const keep = new Set(active.map(coordinationLatchKeyOf));
-    for (const id of [...this.latches.keys()]) {
-      if (!keep.has(id)) {
-        this.latches.delete(id);
+    for (const [id, record] of [...this.latches.entries()]) {
+      if (keep.has(id)) {
+        continue;
       }
+      if (
+        shouldPreserveConsumedExhaustedLatch({
+          reason: record.key.reason,
+          status: record.status,
+        })
+      ) {
+        continue;
+      }
+      this.latches.delete(id);
     }
   }
 
   async releaseAll(): Promise<void> {
-    this.latches.clear();
+    for (const [id, record] of [...this.latches.entries()]) {
+      if (
+        shouldPreserveConsumedExhaustedLatch({
+          reason: record.key.reason,
+          status: record.status,
+        })
+      ) {
+        continue;
+      }
+      this.latches.delete(id);
+    }
+  }
+
+  async isConsumed(key: CoordinationLatchKey): Promise<boolean> {
+    const current = this.latches.get(coordinationLatchKeyOf(key));
+    return current?.status === "CONSUMED";
   }
 
   async complete(
