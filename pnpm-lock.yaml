@@ -59,6 +59,9 @@ importers:
       '@operaia/employee-luna':
         specifier: workspace:*
         version: link:../../packages/employees/luna
+      '@operaia/employee-mercurio':
+        specifier: workspace:*
+        version: link:../../packages/employees/mercurio
       '@operaia/employee-runtime':
         specifier: workspace:*
         version: link:../../packages/employee-runtime
@@ -418,6 +421,9 @@ importers:
       '@operaia/specialist-kit':
         specifier: workspace:*
         version: link:../specialist-kit
+      '@operaia/tool-runtime':
+        specifier: workspace:*
+        version: link:../../tool-runtime
     devDependencies:
       vitest:
         specifier: ^3.0.5

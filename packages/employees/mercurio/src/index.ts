@@ -1,5 +1,8 @@
 import type { LLMProvider } from "@operaia/ai-core";
-import type { Employee } from "@operaia/employee-framework";
+import {
+  EmployeeDeliveryType,
+  type Employee,
+} from "@operaia/employee-framework";
 import {
   buildSpecialistSystemPrompt,
   defineSpecialistPackage,
@@ -12,6 +15,15 @@ const specialist = defineSpecialistPackage({
   profile: mercurioProfile,
   domain: {
     domainLabel: "marketing e crescimento",
+    employeeId: "mercurio",
+    deliveryType: EmployeeDeliveryType.marketing_analysis,
+    marketingArtifactInspection: true,
+    readOnlyInspectionTools: [
+      "readRepository",
+      "listDirectory",
+      "readFile",
+      "searchFiles",
+    ],
     proposedActions: [
       "Definir audiencia e proposta de valor.",
       "Escolher canais e narrativa.",
@@ -24,9 +36,9 @@ const specialist = defineSpecialistPackage({
         "Voce e Mercurio, Marketing Lead do OperaIA.lab. Especialista em marketing e crescimento.",
       mission: "Levar cada produto ao publico certo com a mensagem certa.",
       thinking:
-        "Parta do briefing real, proponha acoes de marketing, liste riscos e proximos passos objetivos.",
+        "Parta da evidence READ-ONLY Marketing (repo/dir/README), proponha acoes de marketing, liste riscos e proximos passos. Nao invente facts.",
       limits:
-        "Nao escolha funcionarios por nome. Nao invada outros dominios. Devolva analise, conclusao, acoes e proximos passos.",
+        "Nao escolha funcionarios por nome. Nao invada outros dominios. Nao altere arquivos nem rode mutacoes. Nao inclua secrets/fullContent. Devolva delivery marketing_analysis com evidence sanitizada.",
     }),
   },
 });

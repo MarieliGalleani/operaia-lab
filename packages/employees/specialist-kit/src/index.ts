@@ -72,3 +72,23 @@ export {
   validateUxReadFilePath,
   validateUxListDirectoryPath,
 } from "./ux-artifact-path.js";
+
+export {
+  MARKETING_DELIVERY_TYPE,
+  MARKETING_EMPLOYEE_ID,
+  isValidMarketingAnalysisDelivery,
+  isValidMarketingResultJson,
+  extractMarketingToolExecutions,
+} from "./marketing-delivery-validation.js";
+
+export {
+  MARKETING_EVIDENCE_DOMAIN,
+  buildMarketingEvidence,
+  sanitizeMarketingEvidenceForResultJson,
+} from "./marketing-evidence.js";
+
+export {
+  isMarketingSensitivePath,
+  validateMarketingReadFilePath,
+  validateMarketingListDirectoryPath,
+} from "./marketing-artifact-path.js";

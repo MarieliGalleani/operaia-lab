@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./finance-delivery-validation.js": "./src/finance-delivery-validation.ts",
-    "./ux-delivery-validation.js": "./src/ux-delivery-validation.ts"
+    "./ux-delivery-validation.js": "./src/ux-delivery-validation.ts",
+    "./marketing-delivery-validation.js": "./src/marketing-delivery-validation.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
