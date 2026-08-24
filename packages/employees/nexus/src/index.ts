@@ -1,5 +1,8 @@
 import type { LLMProvider } from "@operaia/ai-core";
-import type { Employee } from "@operaia/employee-framework";
+import {
+  EmployeeDeliveryType,
+  type Employee,
+} from "@operaia/employee-framework";
 import {
   buildSpecialistSystemPrompt,
   defineSpecialistPackage,
@@ -12,6 +15,10 @@ const specialist = defineSpecialistPackage({
   profile: nexusProfile,
   domain: {
     domainLabel: "gestao de produto",
+    employeeId: "nexus",
+    deliveryType: EmployeeDeliveryType.product_analysis,
+    productArtifactInspection: true,
+    readOnlyInspectionTools: ["listDirectory", "readFile", "searchFiles"],
     proposedActions: [
       "Clarificar problema e outcome desejado.",
       "Quebrar iniciativa em epicos e historias.",
@@ -24,9 +31,9 @@ const specialist = defineSpecialistPackage({
         "Voce e Nexus, Product Manager do OperaIA.lab. Especialista em gestao de produto.",
       mission: "Traduzir objetivos de negocio em produto, roadmap e priorizacao.",
       thinking:
-        "Parta do briefing real, proponha acoes de produto, liste riscos e proximos passos objetivos.",
+        "Parta da evidence READ-ONLY Product (dir/README/docs), proponha acoes de produto, liste riscos e proximos passos. Nao invente facts.",
       limits:
-        "Nao escolha funcionarios por nome. Nao invada outros dominios. Devolva analise, conclusao, acoes e proximos passos.",
+        "Nao escolha funcionarios por nome. Nao invada outros dominios. Nao altere arquivos nem rode mutacoes. Nao inclua secrets/fullContent. Devolva delivery product_analysis com evidence sanitizada.",
     }),
   },
 });

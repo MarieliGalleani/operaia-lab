@@ -24,6 +24,7 @@ import {
   sanitizeFinanceEvidenceForResultJson,
 } from "./finance-evidence.js";
 import { inspectMarketingArtifacts } from "./marketing-inspection.js";
+import { inspectProductArtifacts } from "./product-inspection.js";
 import { inspectUxArtifacts } from "./ux-inspection.js";
 
 const TOP_ACTIONS = 4;
@@ -73,6 +74,12 @@ export interface SpecialistDomainConfig {
    * Requer employeeId + deliveryType + workspaceId no ToolContext.
    */
   readonly marketingArtifactInspection?: boolean;
+  /**
+   * Inspecao READ-ONLY de superficie Product (P0.2H-POST.7).
+   * Requer employeeId + deliveryType + workspaceId no ToolContext.
+   * Tools: RoadmapDocs (listDirectory/readFile/searchFiles).
+   */
+  readonly productArtifactInspection?: boolean;
 }
 
 type ToolOk<T> = { readonly ok: true; readonly data: T };
@@ -209,10 +216,15 @@ export class SpecialistBrain implements EmployeeBrain {
     const financeMode = this.config.financeArtifactInspection === true;
     const uxMode = this.config.uxArtifactInspection === true;
     const marketingMode = this.config.marketingArtifactInspection === true;
+    const productMode = this.config.productArtifactInspection === true;
     if (
       !this.config.employeeId ||
       !this.config.deliveryType ||
-      (!financeMode && !uxMode && !marketingMode && toolIds.length === 0)
+      (!financeMode &&
+        !uxMode &&
+        !marketingMode &&
+        !productMode &&
+        toolIds.length === 0)
     ) {
       return {
         toolExecutions: [],
@@ -252,6 +264,10 @@ export class SpecialistBrain implements EmployeeBrain {
 
     if (this.config.marketingArtifactInspection) {
       return inspectMarketingArtifacts(tools);
+    }
+
+    if (this.config.productArtifactInspection) {
+      return inspectProductArtifacts(tools);
     }
 
     const executions: EmployeeToolExecution[] = [];

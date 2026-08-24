@@ -92,3 +92,23 @@ export {
   validateMarketingReadFilePath,
   validateMarketingListDirectoryPath,
 } from "./marketing-artifact-path.js";
+
+export {
+  PRODUCT_DELIVERY_TYPE,
+  PRODUCT_EMPLOYEE_ID,
+  isValidProductAnalysisDelivery,
+  isValidProductResultJson,
+  extractProductToolExecutions,
+} from "./product-delivery-validation.js";
+
+export {
+  PRODUCT_EVIDENCE_DOMAIN,
+  buildProductEvidence,
+  sanitizeProductEvidenceForResultJson,
+} from "./product-evidence.js";
+
+export {
+  isProductSensitivePath,
+  validateProductReadFilePath,
+  validateProductListDirectoryPath,
+} from "./product-artifact-path.js";

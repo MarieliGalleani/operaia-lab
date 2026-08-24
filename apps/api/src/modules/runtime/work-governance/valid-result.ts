@@ -3,7 +3,8 @@
  * Requer delivery DELIVERED + evidence; técnico exige technical_analysis;
  * financeiro exige contrato financial_analysis (P0.2H-5L);
  * UX exige contrato ux_analysis (P0.2H-POST.5);
- * Marketing exige contrato marketing_analysis (P0.2H-POST.6).
+ * Marketing exige contrato marketing_analysis (P0.2H-POST.6);
+ * Product exige contrato product_analysis (P0.2H-POST.7).
  */
 import {
   extractFinancialToolExecutions,
@@ -15,6 +16,11 @@ import {
   isValidMarketingAnalysisDelivery,
   isValidMarketingResultJson,
 } from "@operaia/specialist-kit/marketing-delivery-validation.js";
+import {
+  extractProductToolExecutions,
+  isValidProductAnalysisDelivery,
+  isValidProductResultJson,
+} from "@operaia/specialist-kit/product-delivery-validation.js";
 import {
   extractUxToolExecutions,
   isValidUxAnalysisDelivery,
@@ -92,6 +98,27 @@ export function isValidDelivery(
     if (
       resultJson !== undefined &&
       !isValidMarketingResultJson(resultJson)
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  const isProduct =
+    identityKind === "product" || delivery.type === "product_analysis";
+  if (isProduct) {
+    const toolExecutions = extractProductToolExecutions(resultJson);
+    if (
+      !isValidProductAnalysisDelivery(
+        delivery as Parameters<typeof isValidProductAnalysisDelivery>[0],
+        toolExecutions,
+      )
+    ) {
+      return false;
+    }
+    if (
+      resultJson !== undefined &&
+      !isValidProductResultJson(resultJson)
     ) {
       return false;
     }

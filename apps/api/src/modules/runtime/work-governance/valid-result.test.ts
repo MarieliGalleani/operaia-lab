@@ -215,6 +215,60 @@ describe("isValidDelivery finance P0.2H-5L", () => {
     expect(isValidDelivery(delivery, "ux", resultJson)).toBe(false);
   });
 
+  it("product_analysis fraco (sem contrato) falha governance Product", () => {
+    const delivery = {
+      type: "product_analysis",
+      status: "DELIVERED" as const,
+      evidence: [{ source: "readFile", data: { path: "README.md" } }],
+    };
+    expect(isValidDelivery(delivery, "generic")).toBe(false);
+    expect(isValidDelivery(delivery, "product")).toBe(false);
+  });
+
+  it("PASS — product_analysis com evidence governada", () => {
+    const delivery = {
+      type: "product_analysis",
+      status: "DELIVERED" as const,
+      employeeId: "nexus",
+      summary: "Roadmap e priorizacao inspecionados no repo bound.",
+      findings: ["README presente"],
+      evidence: [
+        {
+          source: "listDirectory",
+          data: {
+            domain: "product_artifacts",
+            workspaceId: "operaia-lab",
+            artifactPath: "",
+            analysisType: "product_surface",
+            summary: "Dir path=/ entries=3",
+            structured: { entryCount: 3 },
+          },
+        },
+        {
+          source: "readFile",
+          data: {
+            domain: "product_artifacts",
+            workspaceId: "operaia-lab",
+            artifactPath: "README.md",
+            analysisType: "product_surface",
+            summary: "File README.md bytes=40",
+            structured: { byteLength: 40, hasHeading: true },
+          },
+        },
+      ],
+    };
+    const resultJson = {
+      delivery,
+      toolExecutions: [
+        { toolId: "listDirectory", success: true, outcome: "ok" },
+        { toolId: "readFile", success: true, outcome: "ok" },
+      ],
+    };
+    expect(isValidDelivery(delivery, "product", resultJson)).toBe(true);
+    expect(isValidDelivery(delivery, "generic", resultJson)).toBe(true);
+    expect(isValidDelivery(delivery, "marketing", resultJson)).toBe(false);
+  });
+
   it("PASS — billing NOT_FOUND opcional nao invalida governanca financeira", () => {
     const resultJson = {
       ...validFinanceResultJson(),

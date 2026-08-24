@@ -62,6 +62,9 @@ importers:
       '@operaia/employee-mercurio':
         specifier: workspace:*
         version: link:../../packages/employees/mercurio
+      '@operaia/employee-nexus':
+        specifier: workspace:*
+        version: link:../../packages/employees/nexus
       '@operaia/employee-runtime':
         specifier: workspace:*
         version: link:../../packages/employee-runtime
@@ -431,6 +434,9 @@ importers:
 
   packages/employees/nexus:
     dependencies:
+      '@operaia/action-runtime':
+        specifier: workspace:*
+        version: link:../../action-runtime
       '@operaia/ai-core':
         specifier: workspace:*
         version: link:../../ai-core
@@ -443,6 +449,9 @@ importers:
       '@operaia/specialist-kit':
         specifier: workspace:*
         version: link:../specialist-kit
+      '@operaia/tool-runtime':
+        specifier: workspace:*
+        version: link:../../tool-runtime
     devDependencies:
       vitest:
         specifier: ^3.0.5

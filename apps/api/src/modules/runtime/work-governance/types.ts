@@ -17,6 +17,7 @@ export type WorkIdentityKind =
   | "finance"
   | "ux"
   | "marketing"
+  | "product"
   | "unsafe";
 
 export interface WorkContextHints {
