@@ -25,6 +25,7 @@ import {
 } from "./finance-evidence.js";
 import { inspectMarketingArtifacts } from "./marketing-inspection.js";
 import { inspectProductArtifacts } from "./product-inspection.js";
+import { inspectLegalArtifacts } from "./legal-inspection.js";
 import { inspectUxArtifacts } from "./ux-inspection.js";
 
 const TOP_ACTIONS = 4;
@@ -80,6 +81,12 @@ export interface SpecialistDomainConfig {
    * Tools: RoadmapDocs (listDirectory/readFile/searchFiles).
    */
   readonly productArtifactInspection?: boolean;
+  /**
+   * Inspecao READ-ONLY de superficie Legal (P0.2H-POST.8).
+   * Requer employeeId + deliveryType + workspaceId no ToolContext.
+   * Tools: Documents (listDirectory/readFile/searchFiles).
+   */
+  readonly legalArtifactInspection?: boolean;
 }
 
 type ToolOk<T> = { readonly ok: true; readonly data: T };
@@ -217,6 +224,7 @@ export class SpecialistBrain implements EmployeeBrain {
     const uxMode = this.config.uxArtifactInspection === true;
     const marketingMode = this.config.marketingArtifactInspection === true;
     const productMode = this.config.productArtifactInspection === true;
+    const legalMode = this.config.legalArtifactInspection === true;
     if (
       !this.config.employeeId ||
       !this.config.deliveryType ||
@@ -224,6 +232,7 @@ export class SpecialistBrain implements EmployeeBrain {
         !uxMode &&
         !marketingMode &&
         !productMode &&
+        !legalMode &&
         toolIds.length === 0)
     ) {
       return {
@@ -268,6 +277,10 @@ export class SpecialistBrain implements EmployeeBrain {
 
     if (this.config.productArtifactInspection) {
       return inspectProductArtifacts(tools);
+    }
+
+    if (this.config.legalArtifactInspection) {
+      return inspectLegalArtifacts(tools);
     }
 
     const executions: EmployeeToolExecution[] = [];

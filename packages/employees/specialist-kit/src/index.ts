@@ -112,3 +112,23 @@ export {
   validateProductReadFilePath,
   validateProductListDirectoryPath,
 } from "./product-artifact-path.js";
+
+export {
+  LEGAL_DELIVERY_TYPE,
+  LEGAL_EMPLOYEE_ID,
+  isValidLegalAnalysisDelivery,
+  isValidLegalResultJson,
+  extractLegalToolExecutions,
+} from "./legal-delivery-validation.js";
+
+export {
+  LEGAL_EVIDENCE_DOMAIN,
+  buildLegalEvidence,
+  sanitizeLegalEvidenceForResultJson,
+} from "./legal-evidence.js";
+
+export {
+  isLegalSensitivePath,
+  validateLegalReadFilePath,
+  validateLegalListDirectoryPath,
+} from "./legal-artifact-path.js";

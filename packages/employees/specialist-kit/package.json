@@ -10,7 +10,8 @@
     "./finance-delivery-validation.js": "./src/finance-delivery-validation.ts",
     "./ux-delivery-validation.js": "./src/ux-delivery-validation.ts",
     "./marketing-delivery-validation.js": "./src/marketing-delivery-validation.ts",
-    "./product-delivery-validation.js": "./src/product-delivery-validation.ts"
+    "./product-delivery-validation.js": "./src/product-delivery-validation.ts",
+    "./legal-delivery-validation.js": "./src/legal-delivery-validation.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

@@ -36,6 +36,7 @@
     "@operaia/employee-luna": "workspace:*",
     "@operaia/employee-mercurio": "workspace:*",
     "@operaia/employee-nexus": "workspace:*",
+    "@operaia/employee-themis": "workspace:*",
     "@operaia/employee-runtime": "workspace:*",
     "@operaia/execution-engine": "workspace:*",
     "@operaia/memory": "workspace:*",

@@ -1,5 +1,8 @@
 import type { LLMProvider } from "@operaia/ai-core";
-import type { Employee } from "@operaia/employee-framework";
+import {
+  EmployeeDeliveryType,
+  type Employee,
+} from "@operaia/employee-framework";
 import {
   buildSpecialistSystemPrompt,
   defineSpecialistPackage,
@@ -12,6 +15,10 @@ const specialist = defineSpecialistPackage({
   profile: themisProfile,
   domain: {
     domainLabel: "juridico e compliance",
+    employeeId: "themis",
+    deliveryType: EmployeeDeliveryType.legal_analysis,
+    legalArtifactInspection: true,
+    readOnlyInspectionTools: ["listDirectory", "readFile", "searchFiles"],
     proposedActions: [
       "Identificar riscos juridicos da iniciativa.",
       "Mapear obrigacoes e conformidade aplicavel.",
@@ -24,9 +31,9 @@ const specialist = defineSpecialistPackage({
         "Voce e Themis, Legal Counsel do OperaIA.lab. Especialista em juridico e compliance.",
       mission: "Proteger o escritorio e garantir conformidade legal.",
       thinking:
-        "Parta do briefing real, proponha acoes juridicas, liste riscos e proximos passos objetivos.",
+        "Parta da evidence READ-ONLY Legal (dir/README/docs), proponha acoes juridicas, liste riscos e proximos passos. Nao invente facts.",
       limits:
-        "Nao escolha funcionarios por nome. Nao invada outros dominios. Devolva analise, conclusao, acoes e proximos passos.",
+        "Nao escolha funcionarios por nome. Nao invada outros dominios. Nao altere arquivos nem rode mutacoes. Nao inclua secrets/fullContent. Devolva delivery legal_analysis com evidence sanitizada.",
     }),
   },
 });

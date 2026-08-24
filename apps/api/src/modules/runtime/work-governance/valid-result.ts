@@ -4,13 +4,19 @@
  * financeiro exige contrato financial_analysis (P0.2H-5L);
  * UX exige contrato ux_analysis (P0.2H-POST.5);
  * Marketing exige contrato marketing_analysis (P0.2H-POST.6);
- * Product exige contrato product_analysis (P0.2H-POST.7).
+ * Product exige contrato product_analysis (P0.2H-POST.7);
+ * Legal exige contrato legal_analysis (P0.2H-POST.8).
  */
 import {
   extractFinancialToolExecutions,
   isValidFinancialAnalysisDelivery,
   isValidFinancialResultJson,
 } from "@operaia/specialist-kit/finance-delivery-validation.js";
+import {
+  extractLegalToolExecutions,
+  isValidLegalAnalysisDelivery,
+  isValidLegalResultJson,
+} from "@operaia/specialist-kit/legal-delivery-validation.js";
 import {
   extractMarketingToolExecutions,
   isValidMarketingAnalysisDelivery,
@@ -120,6 +126,24 @@ export function isValidDelivery(
       resultJson !== undefined &&
       !isValidProductResultJson(resultJson)
     ) {
+      return false;
+    }
+    return true;
+  }
+
+  const isLegal =
+    identityKind === "legal" || delivery.type === "legal_analysis";
+  if (isLegal) {
+    const toolExecutions = extractLegalToolExecutions(resultJson);
+    if (
+      !isValidLegalAnalysisDelivery(
+        delivery as Parameters<typeof isValidLegalAnalysisDelivery>[0],
+        toolExecutions,
+      )
+    ) {
+      return false;
+    }
+    if (resultJson !== undefined && !isValidLegalResultJson(resultJson)) {
       return false;
     }
     return true;

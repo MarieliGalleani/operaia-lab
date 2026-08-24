@@ -269,6 +269,60 @@ describe("isValidDelivery finance P0.2H-5L", () => {
     expect(isValidDelivery(delivery, "marketing", resultJson)).toBe(false);
   });
 
+  it("legal_analysis fraco (sem contrato) falha governance Legal", () => {
+    const delivery = {
+      type: "legal_analysis",
+      status: "DELIVERED" as const,
+      evidence: [{ source: "readFile", data: { path: "README.md" } }],
+    };
+    expect(isValidDelivery(delivery, "generic")).toBe(false);
+    expect(isValidDelivery(delivery, "legal")).toBe(false);
+  });
+
+  it("PASS — legal_analysis com evidence governada", () => {
+    const delivery = {
+      type: "legal_analysis",
+      status: "DELIVERED" as const,
+      employeeId: "themis",
+      summary: "Compliance e politicas inspecionados no repo bound.",
+      findings: ["README presente"],
+      evidence: [
+        {
+          source: "listDirectory",
+          data: {
+            domain: "legal_artifacts",
+            workspaceId: "operaia-lab",
+            artifactPath: "",
+            analysisType: "legal_surface",
+            summary: "Dir path=/ entries=3",
+            structured: { entryCount: 3 },
+          },
+        },
+        {
+          source: "readFile",
+          data: {
+            domain: "legal_artifacts",
+            workspaceId: "operaia-lab",
+            artifactPath: "README.md",
+            analysisType: "legal_surface",
+            summary: "File README.md bytes=40",
+            structured: { byteLength: 40, hasHeading: true },
+          },
+        },
+      ],
+    };
+    const resultJson = {
+      delivery,
+      toolExecutions: [
+        { toolId: "listDirectory", success: true, outcome: "ok" },
+        { toolId: "readFile", success: true, outcome: "ok" },
+      ],
+    };
+    expect(isValidDelivery(delivery, "legal", resultJson)).toBe(true);
+    expect(isValidDelivery(delivery, "generic", resultJson)).toBe(true);
+    expect(isValidDelivery(delivery, "product", resultJson)).toBe(false);
+  });
+
   it("PASS — billing NOT_FOUND opcional nao invalida governanca financeira", () => {
     const resultJson = {
       ...validFinanceResultJson(),
