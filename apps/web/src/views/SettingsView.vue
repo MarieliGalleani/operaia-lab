@@ -13,11 +13,11 @@ const rows = computed(() => [
 ]);
 
 const shortcuts = [
-  { label: "Status", to: "/app/office/status", desc: "Porta do escritório" },
+  { label: "Command Center", to: "/app/command", desc: "Porta do escritório" },
+  { label: "Nova demanda", to: "/app/command/new", desc: "Pedir ao escritório" },
   { label: "Sala da Opera", to: "/app/office/sala-ceo", desc: "Decidir com a CEO" },
-  { label: "Campus", to: "/app/campus", desc: "Explorar o mundo" },
-  { label: "Infra", to: "/app/office/vps", desc: "Profundidade técnica" },
-  { label: "Projetos", to: "/app/office/projetos", desc: "Workspaces vivos" },
+  { label: "Infra", to: "/app/system/infra", desc: "Profundidade técnica" },
+  { label: "Workspaces", to: "/app/workspaces", desc: "Clientes e projetos" },
 ];
 </script>
 
@@ -29,7 +29,7 @@ const shortcuts = [
         <h1 class="page__title">Configurações</h1>
       </div>
       <div class="topbar__right">
-        <router-link to="/app/office/status" class="btn btn--primary">Abrir Status</router-link>
+        <router-link to="/app/command" class="btn btn--primary">Command Center</router-link>
       </div>
     </header>
 

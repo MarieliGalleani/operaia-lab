@@ -19,25 +19,25 @@ function involvedProjects(employeeId: string): readonly string[] {
   <div class="studio">
     <header class="studio__topbar">
       <div class="topbar__left">
-        <p class="page__kicker">Pessoas do lab</p>
-        <h1 class="page__title">Equipe</h1>
+        <p class="page__kicker">Capacidade do escritório</p>
+        <h1 class="page__title">Digital Team</h1>
       </div>
 
       <div class="studio__pulse" aria-label="Resumo da equipe">
         <span class="studio__pulse-item">
-          <strong>{{ hired.length }}</strong> contratados
+          <strong>{{ hired.length }}</strong> disponíveis
+        </span>
+        <span class="studio__pulse-item">
+          <strong>{{ summary?.workingEmployees ?? 0 }}</strong> em trabalho
         </span>
         <span class="studio__pulse-item">
           <strong>{{ upcoming.length }}</strong> em contratação
         </span>
-        <span class="studio__pulse-item">
-          <strong>{{ summary?.workingEmployees ?? 0 }}</strong> em operação
-        </span>
       </div>
 
       <div class="topbar__right">
-        <router-link to="/app/campus" class="btn btn--ghost">Campus</router-link>
-        <router-link to="/app/office/sala-ceo" class="btn btn--primary">Falar com Opera</router-link>
+        <router-link to="/app/command/new" class="btn btn--primary">Nova demanda</router-link>
+        <router-link to="/app/command" class="btn btn--ghost">Command Center</router-link>
       </div>
     </header>
 
@@ -45,10 +45,10 @@ function involvedProjects(employeeId: string): readonly string[] {
       <section class="block">
         <div class="block__head">
           <div>
-            <h2 class="block__title">Contratados</h2>
-            <p class="block__sub">Especialistas ativos — clique mentalmente no próximo passo com a Opera</p>
+            <h2 class="block__title">Quem está resolvendo o quê</h2>
+            <p class="block__sub">Especialistas ativos — trabalho atual e capacidade</p>
           </div>
-          <router-link to="/app/office/projetos" class="section__link">Ver projetos</router-link>
+          <router-link to="/app/workspaces" class="section__link">Workspaces</router-link>
         </div>
         <div class="grid grid--cards">
           <EmployeeProfileCard

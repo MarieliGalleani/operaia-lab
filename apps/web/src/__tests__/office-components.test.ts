@@ -131,28 +131,32 @@ describe("Chat executivo e navegação por salas", () => {
     expect(wrapper.text()).toContain("Opera");
   });
 
-  it("SidebarNav exibe Status primeiro e grupos do escritório", () => {
+  it("SidebarNav exibe Command Center e IA P0.3B", () => {
     const wrapper = mount(SidebarNav, {
       global: { plugins: [testRouter()] },
     });
     const text = wrapper.text();
-    expect(text.indexOf("Status")).toBeLessThan(text.indexOf("Sala da CEO"));
+    expect(text.indexOf("Command Center")).toBeLessThan(
+      text.indexOf("Nova demanda"),
+    );
     for (const label of [
-      "Escritório",
-      "Status",
-      "Sala da CEO",
+      "Comando",
+      "Command Center",
+      "Nova demanda",
+      "Aprovações",
       "Trabalho",
-      "Projetos",
       "Missões",
-      "Atividades",
-      "Mundo",
-      "Campus",
-      "Lab",
+      "Decisões",
+      "Automações",
+      "Execuções",
+      "Clientes",
+      "Workspaces",
       "Equipe",
+      "Digital Team",
       "Sistema",
       "Infra",
-      "Conhecimento",
       "Configurações",
+      "Experiência",
     ]) {
       expect(text).toContain(label);
     }

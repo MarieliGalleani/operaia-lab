@@ -22,7 +22,7 @@ const team = computed(() =>
 </script>
 
 <template>
-  <router-link :to="`/app/office/projetos/${project.id}`" class="project panel card-motion">
+  <router-link :to="`/app/workspaces/${project.id}`" class="project panel card-motion">
     <header class="project__head">
       <h3 class="project__name">{{ project.name }}</h3>
       <span class="badge" :class="STATUS[project.status].cls">

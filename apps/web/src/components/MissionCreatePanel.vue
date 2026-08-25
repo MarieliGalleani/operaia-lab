@@ -42,7 +42,7 @@ async function submit(): Promise<void> {
     });
     console.log("[missions] criada", result.mission.id, result.created);
     emit("closed");
-    await router.push(`/app/office/missions/${result.mission.id}`);
+    await router.push(`/app/missions/${result.mission.id}`);
   } catch (cause) {
     console.log("[missions] falha ao criar", cause);
     error.value =

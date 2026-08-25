@@ -58,7 +58,7 @@ watch(
   <div class="ws-page" :class="{ 'ws-page--ready': Boolean(project) }">
     <header class="topbar">
       <div class="topbar__left">
-        <router-link to="/app/office/projetos" class="topbar__back">← Projetos</router-link>
+        <router-link to="/app/workspaces" class="topbar__back">← Workspaces</router-link>
         <h1 v-if="project" class="topbar__title">{{ project.name }}</h1>
         <h1 v-else class="topbar__title">Workspace</h1>
       </div>
@@ -86,11 +86,32 @@ watch(
             {{ member.emoji }}
           </span>
         </div>
-        <router-link to="/app/office/sala-ceo" class="btn btn--primary">Com Opera</router-link>
+        <router-link
+          v-if="project"
+          :to="{ path: '/app/command/new', query: { workspace: project.id } }"
+          class="btn btn--primary"
+        >
+          Nova demanda
+        </router-link>
+        <router-link to="/app/office/sala-ceo" class="btn btn--ghost">Com Opera</router-link>
       </div>
     </header>
 
     <template v-if="project">
+      <section class="ws-context panel" aria-label="Contexto do workspace">
+        <span class="badge badge--planned">Cliente / Workspace</span>
+        <strong>{{ project.name }}</strong>
+        <span class="ws-context__sep">·</span>
+        <span>Status {{ project.status }}</span>
+        <span class="ws-context__sep">·</span>
+        <router-link :to="{ path: '/app/command/new', query: { workspace: project.id } }">
+          Nova demanda neste workspace
+        </router-link>
+        <p class="backend-note">
+          Credenciais: valores nunca exibidos. Integrações e contagens Oficiais
+          dependem de GET /office/workspaces/:id/context (P0.3C).
+        </p>
+      </section>
       <section class="kpi-strip">
         <article class="kpi-card panel card-motion" style="--d: 1">
           <p class="kpi-card__label">Progresso</p>
@@ -176,6 +197,25 @@ watch(
   box-sizing: border-box;
   padding: 0 0 16px;
   animation: rise-in 0.45s var(--ease) both;
+}
+
+.ws-context {
+  margin: 12px 20px 0;
+  padding: 12px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.ws-context .badge {
+  margin-right: 10px;
+}
+.ws-context__sep {
+  margin: 0 8px;
+  color: var(--text-soft);
+}
+.ws-context .backend-note {
+  flex-basis: 100%;
+  margin-top: 8px;
 }
 
 .topbar {

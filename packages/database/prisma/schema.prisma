@@ -568,3 +568,161 @@ model WorkGovernanceDecision {
   @@index([createdAt])
   @@map("work_governance_decisions")
 }
+
+// --- Automation Office (P0.3C) — camada de intencao/coordenacao UX ---
+
+enum OfficeDemandStatus {
+  DRAFT
+  INTERPRETING
+  PLANNED
+  AWAITING_APPROVAL
+  READY
+  EXECUTING
+  VALIDATING
+  COMPLETED
+  PAUSED
+  FAILED
+  CANCELLED
+}
+
+enum OfficeRiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum OfficeAutonomyLevel {
+  READ_PLAN
+  CONTROLLED
+  AUTONOMOUS
+  HUMAN_APPROVAL
+}
+
+enum OfficePriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum OfficeApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  MODIFIED
+  EXPIRED
+  CANCELLED
+}
+
+enum OfficeConfidenceLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum OfficeAutomationStatus {
+  DRAFT
+  PLANNED
+  READY
+  RUNNING
+  PAUSED
+  FAILED
+  VALIDATING
+  ACTIVE
+  ARCHIVED
+}
+
+/// Intencao operacional da usuaria — distinta de Mission (execucao Core).
+model OfficeDemand {
+  id              String             @id @default(uuid())
+  workspaceId     String
+  status          OfficeDemandStatus @default(DRAFT)
+  objective       String
+  context         String             @default("")
+  expectedOutcome String             @default("")
+  constraintsJson Json               @default("[]")
+  priority        OfficePriority     @default(MEDIUM)
+  risk            OfficeRiskLevel    @default(MEDIUM)
+  autonomy        OfficeAutonomyLevel @default(CONTROLLED)
+  planJson        Json?
+  missionId       String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  resolvedAt      DateTime?
+
+  approvals OfficeApprovalRequest[]
+
+  @@index([workspaceId, status])
+  @@index([workspaceId, createdAt])
+  @@map("office_demands")
+}
+
+/// Gate operacional humano — distinto de ChangeProposal (estrutural).
+model OfficeApprovalRequest {
+  id             String               @id @default(uuid())
+  workspaceId    String
+  demandId       String?
+  demand         OfficeDemand?        @relation(fields: [demandId], references: [id], onDelete: SetNull)
+  action         String
+  risk           OfficeRiskLevel      @default(MEDIUM)
+  impact         String
+  reason         String
+  validatedJson  Json                 @default("[]")
+  approveEffect  String
+  rejectEffect   String
+  officeDecision String               @default("")
+  status         OfficeApprovalStatus @default(PENDING)
+  createdAt      DateTime             @default(now())
+  resolvedAt     DateTime?
+  resolvedBy     String?
+
+  @@index([workspaceId, status])
+  @@index([demandId])
+  @@map("office_approval_requests")
+}
+
+/// Auditoria operacional UX — sem chain-of-thought nem prompts internos.
+model OfficeDecisionTrace {
+  id                    String                @id @default(uuid())
+  workspaceId           String
+  missionId             String?
+  objective             String
+  context               String
+  optionsJson           Json
+  chosenOptionId        String
+  rationale             String
+  risk                  OfficeRiskLevel       @default(MEDIUM)
+  confidence            OfficeConfidenceLevel @default(MEDIUM)
+  autonomy              OfficeAutonomyLevel   @default(CONTROLLED)
+  impact                String
+  nextAction            String
+  responsibleEmployeeId String                @default("opera")
+  createdAt             DateTime              @default(now())
+
+  @@index([workspaceId, createdAt])
+  @@index([missionId])
+  @@map("office_decision_traces")
+}
+
+/// Definicao de automacao v1 (read-heavy) — execucao via Mission Core.
+model OfficeAutomation {
+  id                     String                 @id @default(uuid())
+  workspaceId            String
+  name                   String
+  objective              String
+  triggerType            String
+  triggerConfigJson      Json                   @default("{}")
+  actionsJson            Json                   @default("[]")
+  autonomy               OfficeAutonomyLevel    @default(CONTROLLED)
+  risk                   OfficeRiskLevel        @default(MEDIUM)
+  status                 OfficeAutomationStatus @default(DRAFT)
+  lastExecutionMissionId String?
+  lastExecutionAt        DateTime?
+  nextExecutionAt        DateTime?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+
+  @@index([workspaceId, status])
+  @@map("office_automations")
+}

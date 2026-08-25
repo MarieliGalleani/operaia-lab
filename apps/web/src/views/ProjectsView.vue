@@ -16,11 +16,11 @@ const byStatus = computed(() => ({
   <div class="studio">
     <header class="studio__topbar">
       <div class="topbar__left">
-        <p class="page__kicker">Workspaces</p>
-        <h1 class="page__title">Projetos</h1>
+        <p class="page__kicker">Clientes › Workspaces</p>
+        <h1 class="page__title">Workspaces</h1>
       </div>
 
-      <div class="studio__pulse" aria-label="Resumo dos projetos">
+      <div class="studio__pulse" aria-label="Resumo dos workspaces">
         <span class="studio__pulse-item">
           <strong>{{ projects.length }}</strong> total
         </span>
@@ -37,7 +37,7 @@ const byStatus = computed(() => ({
 
       <div class="topbar__right">
         <span class="hint">{{ summary?.pendingTasks ?? 0 }} tarefas abertas</span>
-        <router-link to="/app/office/sala-ceo" class="btn btn--primary">Priorizar com Opera</router-link>
+        <router-link to="/app/command/new" class="btn btn--primary">Nova demanda</router-link>
       </div>
     </header>
 

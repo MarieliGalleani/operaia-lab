@@ -108,7 +108,7 @@ onMounted(() => {
         <router-link
           v-for="(item, index) in missions"
           :key="item.id"
-          :to="`/app/office/missions/${item.id}`"
+          :to="`/app/missions/${item.id}`"
           class="card panel card-motion"
           :style="{ '--d': index + 1 }"
         >

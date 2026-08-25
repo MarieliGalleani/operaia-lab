@@ -111,7 +111,7 @@ const team = computed(() => {
   <div class="studio">
     <header class="studio__topbar">
       <div class="topbar__left">
-        <router-link to="/app/office/missions" class="back">← Missões</router-link>
+        <router-link to="/app/missions" class="back">← Missões</router-link>
         <h1 class="page__title">Missão</h1>
       </div>
       <div v-if="mission" class="studio__pulse">

@@ -2,6 +2,7 @@ import { Prisma } from "@operaia/database";
 import { isDomainError } from "@operaia/shared";
 import type { FastifyError, FastifyReply, FastifyRequest } from "fastify";
 import { hasZodFastifySchemaValidationErrors } from "fastify-type-provider-zod";
+import { OfficeUnavailableError } from "../modules/automation-office/automation-office.errors.js";
 
 /**
  * Handler central de erros: traduz erros de dominio, validacao e Prisma
@@ -22,6 +23,14 @@ export function errorHandler(
   }
 
   if (isDomainError(error)) {
+    if (error instanceof OfficeUnavailableError) {
+      reply.status(error.httpStatus).send({
+        code: error.code,
+        message: error.message,
+        degradations: error.degradations,
+      });
+      return;
+    }
     reply.status(error.httpStatus).send({
       code: error.code,
       message: error.message,
