@@ -1,18 +1,32 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import MissionCreatePanel from "@/components/MissionCreatePanel.vue";
-import MissionStatusBadge from "@/components/MissionStatusBadge.vue";
+import MissionListItem from "@/components/MissionListItem.vue";
 import { useMissionList } from "@/composables/useMissionList";
-import { useOffice } from "@/composables/useOffice";
-import { cleanMissionObjective } from "@/data/mappers";
-import { presentationFor } from "@/data/presentation";
-import { formatDateTime } from "@/utils/format";
-import type { MissionTreeNodeDTO } from "@/data/mission-contracts";
-import type { Specialization } from "@/types/office";
 
 const { missions, loading, error, refresh } = useMissionList();
-const { employeeById, projects } = useOffice();
 const creating = ref(false);
+type MissionFilter =
+  | "ALL"
+  | "IN_PROGRESS"
+  | "WAITING"
+  | "COMPLETED"
+  | "FAILED"
+  | "BLOCKED";
+const filter = ref<MissionFilter>("ALL");
+
+const filteredMissions = computed(() => {
+  if (filter.value === "ALL") return missions.value;
+  const statusMap: Record<MissionFilter, readonly string[]> = {
+    ALL: [],
+    IN_PROGRESS: ["CREATED", "QUEUED", "RUNNING"],
+    WAITING: ["WAITING"],
+    COMPLETED: ["COMPLETED"],
+    FAILED: ["FAILED"],
+    BLOCKED: ["BLOCKED"],
+  };
+  return missions.value.filter((item) => statusMap[filter.value].includes(item.status));
+});
 
 const openCount = computed(
   () =>
@@ -20,40 +34,6 @@ const openCount = computed(
       ["CREATED", "QUEUED", "RUNNING", "WAITING"].includes(item.status),
     ).length,
 );
-
-function workspaceName(id: string): string {
-  return projects.value.find((project) => project.id === id)?.name ?? id;
-}
-
-function ownerName(id: string): string {
-  return employeeById(id)?.name ?? (id === "operaia-ceo" ? "Opera" : id);
-}
-
-function ownerEmoji(id: string): string {
-  const person = employeeById(id);
-  if (person) {
-    return person.emoji;
-  }
-  return id === "operaia-ceo" ? presentationFor("MANAGEMENT").emoji : "👤";
-}
-
-function specialists(root: MissionTreeNodeDTO): readonly string[] {
-  const people = new Map<string, string>();
-  function walk(node: MissionTreeNodeDTO): void {
-    if (node.missionKind === "EXECUTE") {
-      const person = employeeById(node.ownerEmployeeId);
-      const spec = node.requiredSpecialization as Specialization | null;
-      const label = person?.name ?? node.ownerEmployeeId;
-      const emoji = person?.emoji ?? (spec ? presentationFor(spec).emoji : "👤");
-      people.set(node.ownerEmployeeId, `${emoji} ${label}`);
-    }
-    for (const child of node.children) {
-      walk(child);
-    }
-  }
-  walk(root);
-  return [...people.values()];
-}
 
 onMounted(() => {
   void refresh();
@@ -65,7 +45,7 @@ onMounted(() => {
     <header class="studio__topbar">
       <div class="topbar__left">
         <p class="page__kicker">Trabalho do escritório</p>
-        <h1 class="page__title">Missões</h1>
+        <h1 class="page__title">Meu trabalho</h1>
       </div>
       <div class="studio__pulse" aria-label="Resumo das missões">
         <span class="studio__pulse-item">
@@ -95,50 +75,45 @@ onMounted(() => {
         <button type="button" class="btn btn--primary" @click="refresh">Tentar de novo</button>
       </div>
       <div v-else-if="missions.length === 0" class="empty-state">
-        <p class="empty-state__title">Nenhuma missão ainda</p>
+        <p class="empty-state__title">Você ainda não possui trabalhos</p>
         <p class="empty-state__body">
-          Peça um trabalho ao escritório. A lista vem de GET /api/v1/missions — sem mock.
+          Peça um trabalho ao escritório para acompanhar a solicitação, a execução e o resultado.
         </p>
-        <button type="button" class="btn btn--primary" @click="creating = true">
-          Nova missão
-        </button>
+        <router-link to="/app/command/new" class="btn btn--primary">Nova demanda</router-link>
       </div>
 
-      <div v-else class="list">
-        <router-link
-          v-for="(item, index) in missions"
+      <template v-else>
+        <section class="mission-filters panel" aria-label="Filtrar meu trabalho">
+          <div>
+            <p class="eyebrow">Acompanhar</p>
+            <h2 class="mission-filters__title">Solicitações por estado</h2>
+          </div>
+          <label>
+            <span class="sr-only">Estado da solicitação</span>
+            <select v-model="filter">
+              <option value="ALL">Todas</option>
+              <option value="IN_PROGRESS">Em andamento</option>
+              <option value="WAITING">Aguardando</option>
+              <option value="COMPLETED">Concluídas</option>
+              <option value="FAILED">Com falha</option>
+              <option value="BLOCKED">Bloqueadas</option>
+            </select>
+          </label>
+        </section>
+
+      <div v-if="filteredMissions.length" class="list">
+        <MissionListItem
+          v-for="(item, index) in filteredMissions"
           :key="item.id"
-          :to="`/app/missions/${item.id}`"
-          class="card panel card-motion"
-          :style="{ '--d': index + 1 }"
-        >
-          <header class="card__head">
-            <MissionStatusBadge :status="item.status" />
-            <time>{{ formatDateTime(item.createdAt) }}</time>
-          </header>
-          <h2>{{ cleanMissionObjective(item.objective) }}</h2>
-          <dl class="meta">
-            <div>
-              <dt>Responsável</dt>
-              <dd>{{ ownerEmoji(item.ownerEmployeeId) }} {{ ownerName(item.ownerEmployeeId) }}</dd>
-            </div>
-            <div>
-              <dt>Workspace</dt>
-              <dd>{{ workspaceName(item.workspaceId) }}</dd>
-            </div>
-            <div>
-              <dt>Especialista(s)</dt>
-              <dd>{{ specialists(item).join(" · ") || "Ainda sem delegação" }}</dd>
-            </div>
-            <div>
-              <dt>Resultado</dt>
-              <dd>
-                {{ item.status === "COMPLETED" ? "Disponível no detalhe" : "Ainda não" }}
-              </dd>
-            </div>
-          </dl>
-        </router-link>
+          :item="item"
+          :index="index"
+        />
       </div>
+      <div v-else class="empty-state">
+        <p class="empty-state__title">Nenhum trabalho neste estado</p>
+        <p class="empty-state__body">Escolha outro estado ou volte a solicitar um trabalho.</p>
+      </div>
+      </template>
     </div>
   </div>
 </template>
@@ -164,62 +139,32 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
-.list {
-  display: flex;
-  flex-direction: column;
-}
-
-.card {
-  display: block;
-  padding: 16px 18px;
-  margin-bottom: 12px;
-  color: inherit;
-  text-decoration: none;
-  transition: border-color 0.2s var(--ease), transform 0.2s var(--ease);
-}
-
-.card:hover {
-  border-color: var(--brand-line);
-  transform: translateY(-1px);
-}
-
-.card__head {
+.mission-filters {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 16px 18px;
+  margin-bottom: 16px;
 }
 
-.card__head time {
-  font-size: var(--text-xs);
-  color: var(--text-soft);
-}
-
-.card h2 {
-  margin-top: 10px;
-  font-size: var(--text-md);
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.meta {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-column-gap: 12px;
-  grid-row-gap: 10px;
-  margin-top: 14px;
-}
-
-.meta dt {
-  font-size: var(--text-xs);
-  color: var(--text-soft);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.meta dd {
+.mission-filters__title {
   margin-top: 4px;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
+  font-size: var(--text-md);
+}
+
+.mission-filters select {
+  min-width: 190px;
+  padding: 9px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 900px) {
@@ -231,8 +176,16 @@ onMounted(() => {
     margin-left: 0;
     margin-top: 12px;
   }
-  .meta {
-    grid-template-columns: 1fr;
+  .mission-filters {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .mission-filters label,
+  .mission-filters select {
+    width: 100%;
+  }
+  .mission-filters label {
+    margin-top: 12px;
   }
 }
 </style>

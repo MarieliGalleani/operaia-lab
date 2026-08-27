@@ -27,18 +27,18 @@ defineExpose({ focus: () => area.value?.focus() });
 
 <template>
   <label class="cmd">
-    <span class="cmd__label">O que você precisa que o escritório faça?</span>
+    <span class="cmd__label">O que você precisa?</span>
     <textarea
       ref="area"
       class="cmd__input"
       rows="5"
       :value="modelValue"
       :disabled="disabled"
-      :placeholder="placeholder ?? 'Ex.: Quero automatizar o onboarding dos novos clientes da clínica X.'"
+      :placeholder="placeholder ?? 'Descreva o trabalho que você quer realizar.'"
       @input="emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
       @keydown="onKeydown"
     />
-    <span class="cmd__hint">Enter envia · Shift+Enter quebra linha</span>
+    <span class="cmd__hint">Conte um pouco mais, se quiser. Enter continua · Shift+Enter quebra linha</span>
   </label>
 </template>
 

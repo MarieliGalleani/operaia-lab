@@ -25,6 +25,19 @@ export {
 } from "./infrastructure-log-source.js";
 
 export {
+  JournalctlInfrastructureLogSource,
+  JournalctlUnitNotAllowedError,
+  JournalctlExecError,
+  JOURNALCTL_BIN,
+  JOURNAL_UNIT_ALLOWLIST,
+  DEFAULT_JOURNALCTL_TIMEOUT_MS,
+  resolveAllowedJournalUnit,
+  parseJournalctlJsonLines,
+  type JournalctlExec,
+  type JournalctlInfrastructureLogSourceOptions,
+} from "./journalctl-infrastructure-log-source.js";
+
+export {
   MapWorkspaceInfrastructureResolver,
   type WorkspaceInfrastructureResolver,
 } from "./workspace-infra-resolver.js";

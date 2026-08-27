@@ -1132,21 +1132,445 @@ describe("F7.1 — GET /api/v1/missions/:id (entrega persistida)", () => {
     expect(res.statusCode).toBe(200);
     const body = res.json() as {
       children: { id: string; missionKind: string }[];
-      events: { type: string; missionId: string }[];
+      events: { type: string; missionId: string; message?: string; payload?: unknown }[];
       specialists: { matched: boolean; employeeId?: string }[];
       usableResult: string | null;
     };
     expect(body.children).toHaveLength(1);
     expect(body.children[0]?.id).toBe(childId);
     expect(body.children[0]?.missionKind).toBe(MissionKind.EXECUTE);
-    expect(body.events.some((e) => e.type === "delivery_created")).toBe(true);
-    expect(
-      body.events.find((e) => e.type === "delivery_created")?.missionId,
-    ).toBe(childId);
+    const deliveryEvents = body.events.filter(
+      (e) => e.type === "delivery_created",
+    );
+    expect(deliveryEvents).toHaveLength(1);
+    expect(deliveryEvents[0]?.missionId).toBe(childId);
     expect(body.specialists.some((s) => s.matched && s.employeeId === "cto-mag")).toBe(
       true,
     );
     expect(body.usableResult).toBe("Analise consolidada");
+    await app.close();
+  });
+
+  it("C1) delivery no resultJson sem delivery_created persistido (sintetiza)", async () => {
+    const ceo = storedCeo();
+    const specialist = storedSpecialist();
+    const rootId = "root-with-delivery-no-event";
+    const childId = "exec-child-no-event";
+    const app = await buildApp({
+      async get(id: string) {
+        if (id !== rootId) {
+          return null;
+        }
+        return {
+          id: rootId,
+          status: "COMPLETED",
+          workspaceId: "operaia-lab",
+          objective: "Analisar repositorio",
+          missionKind: MissionKind.COORDINATE,
+          ownerEmployeeId: CEO_EMPLOYEE_ID,
+          requiredSpecialization: null,
+          parentMissionId: null,
+          resultJson: {
+            phase: "consolidated",
+            initial: ceo,
+            usableResult: "Analise consolidada",
+            final: ceo,
+          },
+          startedAt: new Date("2026-08-14T16:00:00.000Z"),
+          finishedAt: new Date("2026-08-14T16:05:00.000Z"),
+          events: [
+            {
+              id: "evt-root-1",
+              missionId: rootId,
+              type: "claimed",
+              message: "Claim por operaia-ceo",
+              createdAt: new Date("2026-08-14T16:00:01.000Z"),
+            },
+          ],
+        };
+      },
+      async listChildren(parentId: string) {
+        expect(parentId).toBe(rootId);
+        return [
+          {
+            id: childId,
+            status: "COMPLETED",
+            workspaceId: "operaia-lab",
+            objective: "Analisar estrutura",
+            missionKind: MissionKind.EXECUTE,
+            ownerEmployeeId: "cto-mag",
+            requiredSpecialization: Specialization.SOFTWARE_ENGINEERING,
+            parentMissionId: rootId,
+            resultJson: {
+              phase: "executed",
+              employeeResult: specialist,
+              delivery: {
+                type: "technical_analysis",
+                status: "DELIVERED",
+                summary: "Analise ok",
+                findings: ["repo ok"],
+                evidence: [{ source: "readRepository", data: {} }],
+                recommendations: [],
+                missionId: childId,
+                employeeId: "cto-mag",
+                objective: "Analisar estrutura",
+                deliveredAt: "2026-08-14T16:04:00.000Z",
+              },
+            },
+            startedAt: new Date("2026-08-14T16:01:00.000Z"),
+            finishedAt: new Date("2026-08-14T16:04:00.000Z"),
+            events: [],
+          },
+        ];
+      },
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/missions/${rootId}`,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      events: { type: string; missionId: string; message?: string }[];
+    };
+    const deliveryEvents = body.events.filter(
+      (e) => e.type === "delivery_created",
+    );
+    expect(deliveryEvents).toHaveLength(1);
+    expect(deliveryEvents[0]?.missionId).toBe(childId);
+    expect(deliveryEvents[0]?.message).toContain("DELIVERED");
+    await app.close();
+  });
+
+  it("C2) delivery_created duplicado persistido (resposta normalizada deduplica)", async () => {
+    const ceo = storedCeo();
+    const specialist = storedSpecialist();
+    const rootId = "root-with-delivery-dup-event";
+    const childId = "exec-child-dup-event";
+    const app = await buildApp({
+      async get(id: string) {
+        if (id !== rootId) {
+          return null;
+        }
+        return {
+          id: rootId,
+          status: "COMPLETED",
+          workspaceId: "operaia-lab",
+          objective: "Analisar repositorio",
+          missionKind: MissionKind.COORDINATE,
+          ownerEmployeeId: CEO_EMPLOYEE_ID,
+          requiredSpecialization: null,
+          parentMissionId: null,
+          resultJson: {
+            phase: "consolidated",
+            initial: ceo,
+            usableResult: "Analise consolidada",
+            final: ceo,
+          },
+          startedAt: new Date("2026-08-14T16:00:00.000Z"),
+          finishedAt: new Date("2026-08-14T16:05:00.000Z"),
+          events: [],
+        };
+      },
+      async listChildren(parentId: string) {
+        expect(parentId).toBe(rootId);
+        return [
+          {
+            id: childId,
+            status: "COMPLETED",
+            workspaceId: "operaia-lab",
+            objective: "Analisar estrutura",
+            missionKind: MissionKind.EXECUTE,
+            ownerEmployeeId: "cto-mag",
+            requiredSpecialization: Specialization.SOFTWARE_ENGINEERING,
+            parentMissionId: rootId,
+            resultJson: {
+              phase: "executed",
+              employeeResult: specialist,
+              delivery: {
+                type: "technical_analysis",
+                status: "DELIVERED",
+                summary: "Analise ok",
+                findings: ["repo ok"],
+                evidence: [{ source: "readRepository", data: {} }],
+                recommendations: [],
+                missionId: childId,
+                employeeId: "cto-mag",
+                objective: "Analisar estrutura",
+                deliveredAt: "2026-08-14T16:04:00.000Z",
+              },
+            },
+            startedAt: new Date("2026-08-14T16:01:00.000Z"),
+            finishedAt: new Date("2026-08-14T16:04:00.000Z"),
+            events: [
+              {
+                id: "evt-delivery-1",
+                missionId: childId,
+                type: "delivery_created",
+                message: "Delivery technical_analysis DELIVERED",
+                createdAt: new Date("2026-08-14T16:03:59.000Z"),
+                payload: { deliveryType: "technical_analysis", success: true },
+              },
+              {
+                id: "evt-delivery-2",
+                missionId: childId,
+                type: "delivery_created",
+                message: "Delivery technical_analysis DELIVERED",
+                createdAt: new Date("2026-08-14T16:04:00.000Z"),
+                payload: { deliveryType: "technical_analysis", success: true },
+              },
+            ],
+          },
+        ];
+      },
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/missions/${rootId}`,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      events: { type: string; missionId: string; message?: string }[];
+    };
+    const deliveryEvents = body.events.filter(
+      (e) => e.type === "delivery_created",
+    );
+    expect(deliveryEvents).toHaveLength(1);
+    expect(deliveryEvents[0]?.missionId).toBe(childId);
+    expect(deliveryEvents[0]?.message).toContain("DELIVERED");
+    await app.close();
+  });
+
+  it("C3) delivery FAILED no resultJson sem delivery_created persistido (observavel)", async () => {
+    const ceo = storedCeo();
+    const specialist = storedSpecialist();
+    const rootId = "root-with-failed-delivery";
+    const childId = "exec-child-failed";
+    const app = await buildApp({
+      async get(id: string) {
+        if (id !== rootId) {
+          return null;
+        }
+        return {
+          id: rootId,
+          status: "COMPLETED",
+          workspaceId: "operaia-lab",
+          objective: "Analisar repositorio",
+          missionKind: MissionKind.COORDINATE,
+          ownerEmployeeId: CEO_EMPLOYEE_ID,
+          requiredSpecialization: null,
+          parentMissionId: null,
+          resultJson: {
+            phase: "consolidated",
+            initial: ceo,
+            usableResult: "Analise consolidada",
+            final: ceo,
+          },
+          startedAt: new Date("2026-08-14T16:00:00.000Z"),
+          finishedAt: new Date("2026-08-14T16:05:00.000Z"),
+          events: [],
+        };
+      },
+      async listChildren(parentId: string) {
+        expect(parentId).toBe(rootId);
+        return [
+          {
+            id: childId,
+            status: "COMPLETED",
+            workspaceId: "operaia-lab",
+            objective: "Analisar estrutura",
+            missionKind: MissionKind.EXECUTE,
+            ownerEmployeeId: "cto-mag",
+            requiredSpecialization: Specialization.SOFTWARE_ENGINEERING,
+            parentMissionId: rootId,
+            resultJson: {
+              phase: "executed",
+              employeeResult: specialist,
+              delivery: {
+                type: "technical_analysis",
+                status: "FAILED",
+                summary: "Falha na entrega",
+                findings: [],
+                evidence: [],
+                recommendations: [],
+                missionId: childId,
+                employeeId: "cto-mag",
+                objective: "Analisar estrutura",
+                deliveredAt: "2026-08-14T16:04:00.000Z",
+              },
+            },
+            startedAt: new Date("2026-08-14T16:01:00.000Z"),
+            finishedAt: new Date("2026-08-14T16:04:00.000Z"),
+            events: [],
+          },
+        ];
+      },
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/missions/${rootId}`,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      events: { type: string; missionId: string; message?: string }[];
+    };
+    const deliveryEvents = body.events.filter(
+      (e) => e.type === "delivery_created",
+    );
+    expect(deliveryEvents).toHaveLength(1);
+    expect(deliveryEvents[0]?.missionId).toBe(childId);
+    expect(deliveryEvents[0]?.message).toContain("FAILED");
+    await app.close();
+  });
+
+  it("C4) multiplos filhos (2x DELIVERED, 1x FAILED) entregam deliveries distintas e deterministicas", async () => {
+    const ceo = storedCeo();
+    const rootId = "root-multi-children-delivery";
+    const app = await buildApp({
+      async get(id: string) {
+        if (id !== rootId) {
+          return null;
+        }
+        return {
+          id: rootId,
+          status: "COMPLETED",
+          workspaceId: "operaia-lab",
+          objective: "Analisar repositorio",
+          missionKind: MissionKind.COORDINATE,
+          ownerEmployeeId: CEO_EMPLOYEE_ID,
+          requiredSpecialization: null,
+          parentMissionId: null,
+          resultJson: {
+            phase: "consolidated",
+            initial: ceo,
+            usableResult: "Analise consolidada",
+            final: ceo,
+          },
+          startedAt: new Date("2026-08-14T16:00:00.000Z"),
+          finishedAt: new Date("2026-08-14T16:05:00.000Z"),
+          events: [],
+        };
+      },
+      async listChildren(parentId: string) {
+        expect(parentId).toBe(rootId);
+        return [
+          {
+            id: "exec-child-A",
+            status: "COMPLETED",
+            workspaceId: "operaia-lab",
+            objective: "child A",
+            missionKind: MissionKind.EXECUTE,
+            ownerEmployeeId: "cto-mag",
+            requiredSpecialization: Specialization.SOFTWARE_ENGINEERING,
+            parentMissionId: rootId,
+            resultJson: {
+              phase: "executed",
+              employeeResult: storedSpecialist(),
+              delivery: {
+                type: "technical_analysis",
+                status: "DELIVERED",
+                summary: "OK A",
+                findings: [],
+                evidence: [],
+                recommendations: [],
+                missionId: "exec-child-A",
+                employeeId: "cto-mag",
+                objective: "child A",
+                deliveredAt: "2026-08-14T16:04:00.000Z",
+              },
+            },
+            startedAt: new Date("2026-08-14T16:01:00.000Z"),
+            finishedAt: new Date("2026-08-14T16:04:00.000Z"),
+            events: [],
+          },
+          {
+            id: "exec-child-B",
+            status: "COMPLETED",
+            workspaceId: "operaia-lab",
+            objective: "child B",
+            missionKind: MissionKind.EXECUTE,
+            ownerEmployeeId: "cto-mag",
+            requiredSpecialization: Specialization.SOFTWARE_ENGINEERING,
+            parentMissionId: rootId,
+            resultJson: {
+              phase: "executed",
+              employeeResult: storedSpecialist(),
+              delivery: {
+                type: "technical_analysis",
+                status: "DELIVERED",
+                summary: "OK B",
+                findings: [],
+                evidence: [],
+                recommendations: [],
+                missionId: "exec-child-B",
+                employeeId: "cto-mag",
+                objective: "child B",
+                deliveredAt: "2026-08-14T16:04:10.000Z",
+              },
+            },
+            startedAt: new Date("2026-08-14T16:01:10.000Z"),
+            finishedAt: new Date("2026-08-14T16:04:10.000Z"),
+            events: [],
+          },
+          {
+            id: "exec-child-C",
+            status: "COMPLETED",
+            workspaceId: "operaia-lab",
+            objective: "child C",
+            missionKind: MissionKind.EXECUTE,
+            ownerEmployeeId: "cto-mag",
+            requiredSpecialization: Specialization.SOFTWARE_ENGINEERING,
+            parentMissionId: rootId,
+            resultJson: {
+              phase: "executed",
+              employeeResult: storedSpecialist(),
+              delivery: {
+                type: "technical_analysis",
+                status: "FAILED",
+                summary: "Falha C",
+                findings: [],
+                evidence: [],
+                recommendations: [],
+                missionId: "exec-child-C",
+                employeeId: "cto-mag",
+                objective: "child C",
+                deliveredAt: "2026-08-14T16:04:20.000Z",
+              },
+            },
+            startedAt: new Date("2026-08-14T16:01:20.000Z"),
+            finishedAt: new Date("2026-08-14T16:04:20.000Z"),
+            events: [],
+          },
+        ];
+      },
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: `/api/v1/missions/${rootId}`,
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      events: { type: string; missionId: string; message?: string }[];
+    };
+
+    const deliveryEvents = body.events.filter(
+      (e) => e.type === "delivery_created",
+    );
+    expect(deliveryEvents).toHaveLength(3);
+
+    const byMissionId = new Map(
+      deliveryEvents.map((e) => [e.missionId, e.message ?? ""]),
+    );
+    expect(byMissionId.get("exec-child-A")).toContain("DELIVERED");
+    expect(byMissionId.get("exec-child-B")).toContain("DELIVERED");
+    expect(byMissionId.get("exec-child-C")).toContain("FAILED");
     await app.close();
   });
 
@@ -1181,7 +1605,37 @@ describe("F7.1 — GET /api/v1/missions/:id (entrega persistida)", () => {
         };
       },
       async listChildren() {
-        return [];
+        return [
+          {
+            id: "exec-child-for-restart",
+            status: "COMPLETED",
+            workspaceId: "operaia-lab",
+            objective: "Analisar estrutura",
+            missionKind: MissionKind.EXECUTE,
+            ownerEmployeeId: "cto-mag",
+            requiredSpecialization: Specialization.SOFTWARE_ENGINEERING,
+            parentMissionId: rootId,
+            resultJson: {
+              phase: "executed",
+              employeeResult: storedSpecialist(),
+              delivery: {
+                type: "technical_analysis",
+                status: "DELIVERED",
+                summary: "Persistido, sem RAM",
+                findings: [],
+                evidence: [],
+                recommendations: [],
+                missionId: "exec-child-for-restart",
+                employeeId: "cto-mag",
+                objective: "Analisar estrutura",
+                deliveredAt: "2026-08-14T16:04:00.000Z",
+              },
+            },
+            startedAt: new Date("2026-08-14T16:01:00.000Z"),
+            finishedAt: new Date("2026-08-14T16:04:00.000Z"),
+            events: [],
+          },
+        ];
       },
     });
 
@@ -1202,6 +1656,14 @@ describe("F7.1 — GET /api/v1/missions/:id (entrega persistida)", () => {
     expect(second.json()).toMatchObject({
       usableResult: "So do PostgreSQL/resultJson",
     });
+    const firstBody = first.json() as {
+      events: { type: string; missionId: string; message?: string }[];
+    };
+    const deliveryEvents = firstBody.events.filter(
+      (e) => e.type === "delivery_created",
+    );
+    expect(deliveryEvents).toHaveLength(1);
+    expect(deliveryEvents[0]?.message).toContain("DELIVERED");
     // Cada GET consulta a fila persistente (mock = get), sem cache/store RAM.
     expect(getCalls).toBe(2);
     await app.close();

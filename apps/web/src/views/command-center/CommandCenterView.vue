@@ -1,14 +1,40 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import AttentionCard from "@/components/command/AttentionCard.vue";
-import WorkProgressCard from "@/components/command/WorkProgressCard.vue";
-import DecisionCard from "@/components/command/DecisionCard.vue";
-import EmptyState from "@/components/command/EmptyState.vue";
+import { computed, onMounted, ref } from "vue";
+import CommandActionGrid from "@/components/command/CommandActionGrid.vue";
+import CommandAutomationSection from "@/components/command/CommandAutomationSection.vue";
+import CommandTeamSection from "@/components/command/CommandTeamSection.vue";
+import CommandWorkSection from "@/components/command/CommandWorkSection.vue";
 import LoadingState from "@/components/command/LoadingState.vue";
 import { useCommandCenter } from "@/composables/useCommandCenter";
-import type { OfficeLevel } from "@/data/office-command";
+import { useOffice } from "@/composables/useOffice";
+import { officeCommandClient } from "@/data/adapters/office-client";
+import type { AutomationListItem, OfficeLevel } from "@/data/office-command";
 
 const { data, state, errorMessage, load } = useCommandCenter();
+const { employees, load: loadOffice } = useOffice();
+const automations = ref<readonly AutomationListItem[]>([]);
+const automationsState = ref<"idle" | "loading" | "ready" | "error">("idle");
+
+onMounted(async () => {
+  try {
+    await loadOffice();
+  } catch (error) {
+    console.log("[command-center] equipe indisponível", error);
+  }
+
+  automationsState.value = "loading";
+  try {
+    automations.value = await officeCommandClient.listAutomations();
+    automationsState.value = "ready";
+  } catch (error) {
+    console.log("[command-center] automações reais indisponíveis", error);
+    automationsState.value = "error";
+  }
+});
+
+const activeEmployees = computed(() =>
+  employees.value.filter((employee) => employee.active).slice(0, 6),
+);
 
 const levelMeta: Record<
   OfficeLevel,
@@ -25,9 +51,9 @@ const meta = computed(() =>
 
 const greeting = computed(() => {
   const h = new Date().getHours();
-  if (h < 12) return "Bom dia.";
-  if (h < 18) return "Boa tarde.";
-  return "Boa noite.";
+  if (h < 12) return "Bom dia";
+  if (h < 18) return "Boa tarde";
+  return "Boa noite";
 });
 
 const heroLine = computed(() => {
@@ -61,11 +87,8 @@ function formatWhen(iso: string | null | undefined): string {
   <div class="cc studio">
     <header class="studio__topbar">
       <div class="topbar__left">
-        <p class="page__kicker">
-          <span class="live-dot" aria-hidden="true" />
-          Command Center
-        </p>
-        <h1 class="page__title">Escritório</h1>
+        <p class="page__kicker">OperaIA.lab</p>
+        <h1 class="page__title">Seu escritório digital</h1>
       </div>
       <div class="topbar__right">
         <router-link to="/app/command/new" class="btn btn--primary">
@@ -96,14 +119,12 @@ function formatWhen(iso: string | null | undefined): string {
 
     <div v-else-if="data" class="studio__stage">
       <p
-        v-if="data.backendDependency || data.source !== 'api'"
+        v-if="data.source === 'mock-temporary'"
         class="backend-note"
+        role="status"
       >
-        Fonte: {{ data.source }}
-        <span v-if="data.backendDependency">
-          · BACKEND DEPENDENCY P0.3C — Decision Trace / Approvals operacionais ainda
-          parciais
-        </span>
+        Fonte: mock explícito (VITE_OFFICE_COMMAND_MOCK=true) — dados de demonstração,
+        sem operações reais.
       </p>
 
       <section
@@ -111,11 +132,14 @@ function formatWhen(iso: string | null | undefined): string {
         :class="`cc__hero--${data.status.level.toLowerCase()}`"
         aria-labelledby="cc-hero"
       >
-        <p class="cc__greet">{{ greeting }}</p>
+        <p class="cc__greet">{{ greeting }}, Marieli.</p>
         <h2 id="cc-hero" class="cc__level">
-          <span class="chip" :class="meta.chip" aria-hidden="true">●</span>
-          {{ meta.label }}
+          Este é o estado do seu escritório digital.
         </h2>
+        <p class="cc__status">
+          <span class="chip" :class="meta.chip" aria-hidden="true">●</span>
+          Escritório {{ meta.label.toLowerCase() }}
+        </p>
         <p class="cc__line">{{ heroLine }}</p>
         <p class="cc__meta">Atualizado {{ formatWhen(data.generatedAt) }}</p>
         <div class="sr-only" aria-live="polite" aria-atomic="true">
@@ -124,83 +148,15 @@ function formatWhen(iso: string | null | undefined): string {
         </div>
       </section>
 
-      <template v-if="data.idle && data.attention.length === 0">
-        <EmptyState
-          title="Seu escritório está em dia."
-          :body="data.zeroMessage"
-          cta-label="Nova demanda"
-          cta-to="/app/command/new"
-        />
-      </template>
+      <CommandActionGrid />
 
-      <template v-else>
-        <section
-          v-if="data.attention.length"
-          class="section"
-          aria-labelledby="cc-attention"
-        >
-          <div class="section__head">
-            <h2 id="cc-attention" class="section__title">Atenção</h2>
-            <router-link
-              v-if="data.pendingApprovals > 0"
-              to="/app/command/approvals"
-              class="section__link"
-            >
-              {{ data.pendingApprovals }} aprovação(ões)
-            </router-link>
-          </div>
-          <AttentionCard
-            v-for="item in data.attention"
-            :key="item.id"
-            :item="item"
-          />
-        </section>
+      <CommandAutomationSection
+        :automations="automations"
+        :state="automationsState"
+      />
 
-        <section class="section" aria-labelledby="cc-progress">
-          <div class="section__head">
-            <h2 id="cc-progress" class="section__title">Em andamento</h2>
-          </div>
-          <div v-if="data.inProgress.length" class="cc__grid">
-            <WorkProgressCard
-              v-for="item in data.inProgress"
-              :key="item.id"
-              :item="item"
-            />
-          </div>
-          <p v-else class="cc__quiet">Nada em andamento neste momento.</p>
-        </section>
-
-        <div class="cc__split">
-          <section aria-labelledby="cc-decisions">
-            <div class="section__head">
-              <h2 id="cc-decisions" class="section__title">Decisões</h2>
-              <router-link to="/app/decisions" class="section__link">Ver todas</router-link>
-            </div>
-            <DecisionCard
-              v-for="item in data.decisions.slice(0, 4)"
-              :key="item.id"
-              :item="item"
-            />
-            <p v-if="!data.decisions.length" class="cc__quiet">
-              Sem decisões recentes.
-            </p>
-          </section>
-
-          <section aria-labelledby="cc-done">
-            <div class="section__head">
-              <h2 id="cc-done" class="section__title">Concluídos</h2>
-              <router-link to="/app/missions" class="section__link">Missões</router-link>
-            </div>
-            <ul v-if="data.completed.length" class="cc__done">
-              <li v-for="item in data.completed.slice(0, 6)" :key="item.id">
-                <router-link :to="item.href">{{ item.title }}</router-link>
-                <span>{{ formatWhen(item.finishedAt) }}</span>
-              </li>
-            </ul>
-            <p v-else class="cc__quiet">Ainda não há entregas recentes.</p>
-          </section>
-        </div>
-      </template>
+      <CommandWorkSection :data="data" />
+      <CommandTeamSection :employees="activeEmployees" />
     </div>
   </div>
 </template>
@@ -209,6 +165,7 @@ function formatWhen(iso: string | null | undefined): string {
 .cc__hero {
   padding: 22px 24px;
   margin-bottom: var(--space-3);
+  background: var(--surface);
 }
 .cc__hero--operating {
   border-color: rgba(52, 211, 153, 0.25);
@@ -226,11 +183,16 @@ function formatWhen(iso: string | null | undefined): string {
 .cc__level {
   margin-top: 8px;
   font-size: var(--text-2xl);
+}
+.cc__status {
   display: flex;
   align-items: center;
+  margin-top: 14px;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
 }
-.cc__level .chip {
-  margin-right: 10px;
+.cc__status .chip {
+  margin-right: 8px;
 }
 .cc__line {
   margin-top: 10px;
@@ -242,53 +204,8 @@ function formatWhen(iso: string | null | undefined): string {
   font-size: var(--text-xs);
   color: var(--text-soft);
 }
-.cc__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.cc__grid > * {
-  margin-right: 12px;
-  margin-bottom: 12px;
-}
-.cc__split {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin-top: var(--space-3);
-}
-.cc__split > section {
-  margin-right: 16px;
-}
-.cc__quiet {
-  font-size: var(--text-sm);
-  color: var(--text-soft);
-}
-.cc__done {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.cc__done li {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: var(--text-sm);
-}
-.cc__done a:hover {
-  color: var(--brand);
-}
 .topbar__right .btn {
   margin-left: 8px;
-}
-@media (max-width: 980px) {
-  .cc__grid,
-  .cc__split {
-    grid-template-columns: 1fr;
-  }
-  .cc__split > section {
-    margin-right: 0;
-    margin-bottom: 24px;
-  }
 }
 @media (max-width: 768px) {
   .topbar__right {

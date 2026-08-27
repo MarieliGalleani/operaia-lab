@@ -259,7 +259,8 @@ export class QueuedMissionExecutor {
       options.allowLearningPrismaFallback ?? false;
     this.toolsFactory =
       options.toolsFactory ??
-      ((employeeId) => buildToolsForEmployee(employeeId));
+      ((employeeId, workspaceId) =>
+        buildToolsForEmployee(employeeId, { workspaceId }));
     this.actionsFactory = options.actionsFactory ?? (() => null);
   }
 

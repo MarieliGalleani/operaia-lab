@@ -1,7 +1,8 @@
 /**
- * TEMPORÁRIO — mocks isolados para desbloquear UX P0.3D enquanto P0.3C não existe.
- * Remover quando endpoints /office/* estiverem disponíveis.
- * NÃO usar como sucesso real de operações críticas.
+ * Mocks explícitos do Automation Office — somente via
+ * VITE_OFFICE_COMMAND_MOCK=true ou preferMock nos testes.
+ * Nunca usar como fallback silencioso da API real.
+ * NÃO apresentar mock de execute/approve como operação real.
  */
 import type {
   ApprovalDetailDto,
@@ -29,7 +30,7 @@ export function mockCommandCenter(): CommandCenterDto {
     status: {
       level: "OPERATING",
       label: "OPERANDO",
-      summary: "Escritório operacional. Dados de demonstração (P0.3C pendente).",
+      summary: "Escritório operacional. Dados de demonstração (mock explícito).",
     },
     attention: [
       {
@@ -191,7 +192,7 @@ export function mockExecuteDemand(demandId: string): ExecuteDemandResponse {
     backendDependency: true,
     accepted: false,
     message:
-      "BACKEND DEPENDENCY · P0.3C — execução real ainda não disponível. O plano foi preservado apenas na interface.",
+      "MOCK explícito (VITE_OFFICE_COMMAND_MOCK=true) — nenhuma execução real. Plano preservado só na interface.",
     demandId,
     redirectTo: "/app/command",
   };

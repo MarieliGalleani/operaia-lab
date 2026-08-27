@@ -19,10 +19,20 @@ interface NavGroup {
 
 const groups: readonly NavGroup[] = [
   {
-    title: "Comando",
+    title: "Trabalho",
     items: [
-      { label: "Command Center", icon: "status", to: "/app/command" },
+      { label: "Visão geral", icon: "status", to: "/app/command" },
       { label: "Nova demanda", icon: "plus", to: "/app/command/new" },
+      { label: "Automações", icon: "auto", to: "/app/automations" },
+      { label: "Missões", icon: "missions", to: "/app/missions" },
+      { label: "Workspaces", icon: "folder", to: "/app/workspaces" },
+    ],
+  },
+  {
+    title: "Equipe",
+    items: [
+      { label: "Equipe digital", icon: "users", to: "/app/team" },
+      { label: "Decisões", icon: "decision", to: "/app/decisions" },
       {
         label: "Aprovações",
         icon: "shield",
@@ -32,31 +42,15 @@ const groups: readonly NavGroup[] = [
     ],
   },
   {
-    title: "Trabalho",
-    items: [
-      { label: "Missões", icon: "missions", to: "/app/missions" },
-      { label: "Decisões", icon: "decision", to: "/app/decisions" },
-      { label: "Automações", icon: "auto", to: "/app/automations" },
-      { label: "Execuções", icon: "activity", to: "/app/executions" },
-    ],
-  },
-  {
-    title: "Clientes",
-    items: [{ label: "Workspaces", icon: "folder", to: "/app/workspaces" }],
-  },
-  {
-    title: "Equipe",
-    items: [{ label: "Digital Team", icon: "users", to: "/app/team" }],
-  },
-  {
     title: "Sistema",
     items: [
-      { label: "Infra", icon: "server", to: "/app/system/infra" },
+      { label: "Execuções", icon: "activity", to: "/app/executions" },
+      { label: "Infraestrutura", icon: "server", to: "/app/system/infra" },
       { label: "Configurações", icon: "settings", to: "/app/system/settings" },
     ],
   },
   {
-    title: "Experiência",
+    title: "Explorar",
     collapsible: true,
     items: [
       { label: "Campus", icon: "grid", to: "/app/campus" },

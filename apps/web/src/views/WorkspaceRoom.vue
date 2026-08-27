@@ -5,10 +5,13 @@
  */
 import { computed, onMounted, ref, watch } from "vue";
 import ActivityStream from "@/components/ActivityStream.vue";
+import LoadingState from "@/components/command/LoadingState.vue";
 import TaskBoard from "@/components/TaskBoard.vue";
 import WorkflowViewer from "@/components/WorkflowViewer.vue";
 import WorkspaceView from "@/components/WorkspaceView.vue";
 import { useOffice } from "@/composables/useOffice";
+import { officeCommandClient } from "@/data/adapters/office-client";
+import type { WorkspaceContextDto } from "@/data/office-command";
 import type { Workflow } from "@/types/office";
 
 const props = defineProps<{ id: string }>();
@@ -42,15 +45,40 @@ const doneCount = computed(
 const openTasks = computed(() => backlogCount.value + doingCount.value);
 
 const workflow = ref<Workflow | undefined>(undefined);
+const officeContext = ref<WorkspaceContextDto | null>(null);
+const contextState = ref<"idle" | "loading" | "ready" | "error">("idle");
+const contextError = ref("Não foi possível carregar o contexto oficial do Office.");
 
 async function loadWorkflow(id: string): Promise<void> {
   workflow.value = await fetchWorkflow(id);
 }
 
-onMounted(() => loadWorkflow(props.id));
+async function loadOfficeContext(id: string, fallbackName?: string): Promise<void> {
+  contextState.value = "loading";
+  contextError.value = "Não foi possível carregar o contexto oficial do Office.";
+  try {
+    officeContext.value = await officeCommandClient.getWorkspaceContext(
+      id,
+      fallbackName ?? id,
+    );
+    contextState.value = "ready";
+  } catch (error) {
+    console.log("[workspace] office context failed", error);
+    officeContext.value = null;
+    contextState.value = "error";
+  }
+}
+
+async function loadWorkspace(id: string): Promise<void> {
+  await loadWorkflow(id);
+  const name = projects.value.find((p) => p.id === id)?.name;
+  await loadOfficeContext(id, name);
+}
+
+onMounted(() => loadWorkspace(props.id));
 watch(
   () => props.id,
-  (id) => loadWorkflow(id),
+  (id) => loadWorkspace(id),
 );
 </script>
 
@@ -99,18 +127,107 @@ watch(
 
     <template v-if="project">
       <section class="ws-context panel" aria-label="Contexto do workspace">
-        <span class="badge badge--planned">Cliente / Workspace</span>
-        <strong>{{ project.name }}</strong>
+        <span
+          class="badge"
+          :class="
+            officeContext?.kind === 'lab' ? 'badge--active' : 'badge--planned'
+          "
+        >
+          {{
+            officeContext?.kind === "lab"
+              ? "OperaIA.lab"
+              : "Cliente / Workspace"
+          }}
+        </span>
+        <strong>{{ officeContext?.name ?? project.name }}</strong>
         <span class="ws-context__sep">·</span>
-        <span>Status {{ project.status }}</span>
+        <span>{{ officeContext?.statusLabel ?? `Status ${project.status}` }}</span>
         <span class="ws-context__sep">·</span>
         <router-link :to="{ path: '/app/command/new', query: { workspace: project.id } }">
           Nova demanda neste workspace
         </router-link>
-        <p class="backend-note">
-          Credenciais: valores nunca exibidos. Integrações e contagens Oficiais
-          dependem de GET /office/workspaces/:id/context (P0.3C).
+
+        <LoadingState
+          v-if="contextState === 'loading'"
+          label="Carregando contexto Office"
+        />
+        <p
+          v-else-if="contextState === 'error'"
+          class="ws-context__error"
+          role="alert"
+        >
+          {{ contextError }}
+          <button
+            type="button"
+            class="btn btn--ghost"
+            @click="loadOfficeContext(project.id, project.name)"
+          >
+            Tentar de novo
+          </button>
         </p>
+        <div
+          v-else-if="contextState === 'ready' && officeContext"
+          class="ws-context__office"
+        >
+          <p class="ws-context__counts" aria-label="Contagens oficiais">
+            <span
+              ><strong>{{ officeContext.automationsActive }}</strong> automações
+              ativas</span
+            >
+            <span
+              ><strong>{{ officeContext.missionsOpen }}</strong> missões
+              abertas</span
+            >
+            <span
+              ><strong>{{ officeContext.decisionsRecent }}</strong> decisões
+              (7d)</span
+            >
+            <span
+              ><strong>{{ officeContext.approvalsPending }}</strong> aprovações
+              pendentes</span
+            >
+          </p>
+          <p class="ws-context__hint">
+            Credenciais: valores nunca exibidos — apenas status configurado.
+          </p>
+          <ul
+            v-if="officeContext.integrations.length"
+            class="ws-context__list"
+            aria-label="Integrações"
+          >
+            <li
+              v-for="item in officeContext.integrations"
+              :key="item.id"
+            >
+              {{ item.label }}
+              ·
+              {{ item.configured ? "configurada" : "pendente" }}
+            </li>
+          </ul>
+          <ul
+            v-if="officeContext.credentials.length"
+            class="ws-context__list"
+            aria-label="Credenciais"
+          >
+            <li
+              v-for="item in officeContext.credentials"
+              :key="item.id"
+            >
+              {{ item.label }}
+              ·
+              {{ item.configured ? "configurada" : "pendente" }}
+            </li>
+          </ul>
+          <p
+            v-if="
+              !officeContext.integrations.length &&
+              !officeContext.credentials.length
+            "
+            class="ws-context__empty"
+          >
+            Nenhuma integração ou credencial registrada neste workspace.
+          </p>
+        </div>
       </section>
       <section class="kpi-strip">
         <article class="kpi-card panel card-motion" style="--d: 1">
@@ -213,9 +330,48 @@ watch(
   margin: 0 8px;
   color: var(--text-soft);
 }
-.ws-context .backend-note {
+.ws-context__error,
+.ws-context__office,
+.ws-context :deep(.loading) {
   flex-basis: 100%;
-  margin-top: 8px;
+  margin-top: 10px;
+}
+.ws-context__error {
+  color: var(--danger);
+  font-size: var(--text-sm);
+}
+.ws-context__error .btn {
+  margin-left: 8px;
+}
+.ws-context__counts {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.ws-context__counts span {
+  margin-right: 16px;
+  margin-bottom: 4px;
+}
+.ws-context__hint {
+  margin: 8px 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-soft);
+}
+.ws-context__list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.ws-context__list li {
+  margin-bottom: 2px;
+}
+.ws-context__empty {
+  margin: 8px 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-soft);
 }
 
 .topbar {

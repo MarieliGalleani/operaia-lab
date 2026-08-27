@@ -1,4 +1,4 @@
-import { prisma, MissionStatus } from "@operaia/database";
+import { prisma, MissionStatus, MissionKind } from "@operaia/database";
 import { NotFoundError } from "@operaia/shared";
 import type {
   ExecutionStatus,
@@ -13,6 +13,12 @@ import {
   officialWorkspaceFilter,
   resolveWorkspaceName,
 } from "./workspace-catalog.js";
+import {
+  extractDeliveryFromResultJson,
+  isValidDelivery,
+  treeHasValidResult,
+} from "../runtime/work-governance/index.js";
+import type { WorkIdentityKind } from "../runtime/work-governance/types.js";
 
 export function mapMissionStatusToExecution(
   status: MissionStatus,
@@ -118,6 +124,79 @@ export async function getExecutionById(id: string, workspaceId?: string) {
     take: 50,
   });
 
+  const children = await prisma.mission.findMany({
+    where: { parentMissionId: mission.id },
+    select: {
+      id: true,
+      workspaceId: true,
+      status: true,
+      missionKind: true,
+      objective: true,
+      resultJson: true,
+      parentMissionId: true,
+    },
+  });
+
+  const treeIds = [mission.id, ...children.map((child) => child.id)];
+  const treeEvents = await prisma.missionEvent.findMany({
+    where: { missionId: { in: treeIds } },
+    select: { type: true },
+    take: 200,
+  });
+  const eventTypes = [...new Set(treeEvents.map((event) => event.type))];
+  const hasDeliveryCreated = eventTypes.includes("delivery_created");
+  const executeChildCount = children.filter(
+    (child) => child.missionKind === MissionKind.EXECUTE,
+  ).length;
+
+  const rootSnap = {
+    id: mission.id,
+    workspaceId: mission.workspaceId,
+    status: mission.status,
+    missionKind: mission.missionKind,
+    objective: mission.objective,
+    resultJson: mission.resultJson,
+    parentMissionId: mission.parentMissionId,
+  };
+  const childSnaps = children.map((child) => ({
+    id: child.id,
+    workspaceId: child.workspaceId,
+    status: child.status,
+    missionKind: child.missionKind,
+    objective: child.objective,
+    resultJson: child.resultJson,
+    parentMissionId: child.parentMissionId,
+  }));
+  const validationKinds: readonly WorkIdentityKind[] = [
+    "technical",
+    "finance",
+    "ux",
+    "marketing",
+    "product",
+    "legal",
+    "generic",
+  ];
+  let hasValidResult = false;
+  for (const kind of validationKinds) {
+    if (treeHasValidResult(rootSnap, childSnaps, kind)) {
+      hasValidResult = true;
+      break;
+    }
+  }
+  if (!hasValidResult) {
+    for (const node of [rootSnap, ...childSnaps]) {
+      if (node.status !== MissionStatus.COMPLETED) continue;
+      const delivery = extractDeliveryFromResultJson(node.resultJson);
+      if (
+        isValidDelivery(delivery, "technical", node.resultJson) ||
+        isValidDelivery(delivery, "generic", node.resultJson)
+      ) {
+        hasValidResult = true;
+        break;
+      }
+    }
+  }
+
   const steps = events.map((event, index) => {
     const status = mapEventToStepStatus(event.type);
     const payload =
@@ -171,6 +250,12 @@ export async function getExecutionById(id: string, workspaceId?: string) {
     ...missionToListItem(mission),
     triggerLabel: "Demanda / Core",
     steps: timeline,
+    autonomyLoop: {
+      executeChildCount,
+      hasDeliveryCreated,
+      hasValidResult,
+      eventTypes,
+    },
   };
 }
 

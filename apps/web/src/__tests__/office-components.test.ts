@@ -140,7 +140,7 @@ describe("Chat executivo e navegação por salas", () => {
       text.indexOf("Nova demanda"),
     );
     for (const label of [
-      "Comando",
+      "Visão geral",
       "Command Center",
       "Nova demanda",
       "Aprovações",
@@ -149,14 +149,13 @@ describe("Chat executivo e navegação por salas", () => {
       "Decisões",
       "Automações",
       "Execuções",
-      "Clientes",
       "Workspaces",
       "Equipe",
-      "Digital Team",
+      "Equipe digital",
       "Sistema",
-      "Infra",
+      "Infraestrutura",
       "Configurações",
-      "Experiência",
+      "Explorar",
     ]) {
       expect(text).toContain(label);
     }

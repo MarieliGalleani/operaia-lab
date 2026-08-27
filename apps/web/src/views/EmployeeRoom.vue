@@ -19,16 +19,16 @@ function involvedProjects(employeeId: string): readonly string[] {
   <div class="studio">
     <header class="studio__topbar">
       <div class="topbar__left">
-        <p class="page__kicker">Capacidade do escritório</p>
-        <h1 class="page__title">Digital Team</h1>
+        <p class="page__kicker">Equipe</p>
+        <h1 class="page__title">Equipe digital</h1>
       </div>
 
       <div class="studio__pulse" aria-label="Resumo da equipe">
         <span class="studio__pulse-item">
-          <strong>{{ hired.length }}</strong> disponíveis
+          <strong>{{ hired.length }}</strong> especialistas
         </span>
         <span class="studio__pulse-item">
-          <strong>{{ summary?.workingEmployees ?? 0 }}</strong> em trabalho
+          <strong>{{ summary?.workingEmployees ?? "—" }}</strong> em trabalho
         </span>
         <span class="studio__pulse-item">
           <strong>{{ upcoming.length }}</strong> em contratação
@@ -45,8 +45,8 @@ function involvedProjects(employeeId: string): readonly string[] {
       <section class="block">
         <div class="block__head">
           <div>
-            <h2 class="block__title">Quem está resolvendo o quê</h2>
-            <p class="block__sub">Especialistas ativos — trabalho atual e capacidade</p>
+            <h2 class="block__title">Quem está trabalhando</h2>
+            <p class="block__sub">Estado e atividade informados pelo escritório digital</p>
           </div>
           <router-link to="/app/workspaces" class="section__link">Workspaces</router-link>
         </div>
@@ -61,7 +61,7 @@ function involvedProjects(employeeId: string): readonly string[] {
         </div>
         <div v-if="hired.length === 0" class="empty-state">
           <p class="empty-state__title">Ninguém contratado ainda</p>
-          <p class="empty-state__body">Quando a API trouxer a equipe, os perfis aparecem aqui.</p>
+          <p class="empty-state__body">A equipe ainda não está disponível para consulta.</p>
         </div>
       </section>
 

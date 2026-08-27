@@ -14,6 +14,8 @@ import {
   approvalListItemSchema,
   automationDetailSchema,
   automationListItemSchema,
+  autonomyLoopEvidenceSchema,
+  autonomyLoopHarnessSchema,
   commandCenterResponseSchema,
   decisionTraceSchema,
   executeDemandBodySchema,
@@ -34,6 +36,8 @@ import {
   listExecutions,
 } from "./execution-projection.service.js";
 import { getWorkspaceContext } from "./workspace-context.service.js";
+import { buildAutonomyLoopEvidence } from "./autonomy-loop-evidence.js";
+import { assessAutonomyLoop } from "./autonomy-loop-harness.js";
 
 export function createAutomationOfficeRoutes(
   deps: AutomationOfficeDeps,
@@ -89,6 +93,44 @@ export function createAutomationOfficeRoutes(
           demandId: request.params.id,
           autonomy: request.body.autonomy,
         }),
+    );
+
+    app.get(
+      "/office/demands/:id/autonomy-loop",
+      {
+        schema: {
+          tags: ["automation-office"],
+          params: z.object({ id: z.string().min(1) }),
+          querystring: z.object({ workspaceId: z.string().optional() }),
+          response: { 200: autonomyLoopEvidenceSchema },
+        },
+      },
+      async (request) => {
+        const body = await buildAutonomyLoopEvidence(
+          request.params.id,
+          request.query.workspaceId,
+        );
+        return JSON.parse(JSON.stringify(body));
+      },
+    );
+
+    app.get(
+      "/office/demands/:id/autonomy-loop/assess",
+      {
+        schema: {
+          tags: ["automation-office"],
+          params: z.object({ id: z.string().min(1) }),
+          querystring: z.object({ workspaceId: z.string().optional() }),
+          response: { 200: autonomyLoopHarnessSchema },
+        },
+      },
+      async (request) => {
+        const body = await assessAutonomyLoop(
+          request.params.id,
+          request.query.workspaceId,
+        );
+        return JSON.parse(JSON.stringify(body));
+      },
     );
 
     app.get(

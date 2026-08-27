@@ -4,6 +4,7 @@ import type { EmployeeReplyPayload } from "../employees/mission-presenter.js";
 import { CEO_EMPLOYEE_ID } from "../runtime/mission-states.js";
 import {
   toEmployeeResult,
+  type ExecutePhaseResult,
   type StoredEmployeeResult,
 } from "../runtime/mission-result-store.js";
 import { identifyOperationalGaps } from "./identify-operational-gaps.js";
@@ -570,10 +571,187 @@ export function buildPersistedMissionDeliveryView(input: {
   const workspaceName = input.workspaceName ?? input.mission.workspaceId;
   const rootNode = toQueueNode(input.mission);
   const childNodes = children.map(toQueueNode);
-  const events = mapEvents([input.mission, ...children]);
   const childViews = mapChildren(children);
 
   const consolidated = readConsolidateResult(input.mission.resultJson);
+  const eventsFromDb = mapEvents([input.mission, ...children]);
+
+  function deliveryEventKey(input: {
+    readonly missionId: string;
+    readonly deliveryType: string;
+    readonly deliveryStatus: "DELIVERED" | "FAILED";
+  }): string {
+    // Chave deterministica para dedupe na RESPOSTA HTTP (normalizacao de leitura).
+    return `${input.missionId}|${input.deliveryType}|${input.deliveryStatus}`;
+  }
+
+  const nonDeliveryEvents = eventsFromDb.filter(
+    (e) => e.type !== "delivery_created",
+  );
+  const deliveryEventsFromDb = eventsFromDb.filter(
+    (e) => e.type === "delivery_created",
+  );
+
+  const deliveryEventsByKey = new Map<
+    string,
+    PersistedMissionEventView
+  >();
+
+  function tryExtractDeliveryKeyFromEvent(
+    event: PersistedMissionEventView,
+  ): string | null {
+    const payload = event.payload as
+      | {
+          deliveryType?: unknown;
+          success?: unknown;
+        }
+      | undefined;
+
+    const deliveryType =
+      typeof payload?.deliveryType === "string" ? payload.deliveryType : null;
+
+    let status: "DELIVERED" | "FAILED" | null = null;
+    if (payload?.success === true) {
+      status = "DELIVERED";
+    } else if (payload?.success === false) {
+      status = "FAILED";
+    } else if (event.message.includes("DELIVERED")) {
+      status = "DELIVERED";
+    } else if (event.message.includes("FAILED")) {
+      status = "FAILED";
+    }
+
+    if (!deliveryType || !status) {
+      return null;
+    }
+
+    return deliveryEventKey({
+      missionId: event.missionId,
+      deliveryType,
+      deliveryStatus: status,
+    });
+  }
+
+  // Mantem apenas a primeira ocorrencia persistida por chave logica.
+  for (const event of deliveryEventsFromDb) {
+    const key = tryExtractDeliveryKeyFromEvent(event);
+    if (!key) {
+      continue;
+    }
+    if (!deliveryEventsByKey.has(key)) {
+      deliveryEventsByKey.set(key, event);
+    }
+  }
+
+  function syntheticDeliveryEvent(input: {
+    readonly missionId: string;
+    readonly deliveryType: string;
+    readonly deliveryStatus: "DELIVERED" | "FAILED";
+    readonly deliveredAt: Date | string;
+    readonly payload: {
+      readonly summary: string | undefined;
+      readonly evidence: unknown;
+      readonly employeeId: string | undefined;
+      readonly success: boolean;
+      readonly sourceMissionId?: string;
+    };
+  }): PersistedMissionEventView {
+    return {
+      id: `synth_delivery_created:${input.missionId}:${input.deliveryType}:${input.deliveryStatus}`,
+      missionId: input.missionId,
+      type: "delivery_created",
+      message: `Delivery ${input.deliveryType} ${input.deliveryStatus}`,
+      createdAt: toIso(input.deliveredAt) ?? new Date(0).toISOString(),
+      payload: {
+        deliveryType: input.deliveryType,
+        summary: input.payload.summary,
+        evidence: input.payload.evidence,
+        employeeId: input.payload.employeeId,
+        success: input.payload.success,
+        ...(input.payload.sourceMissionId
+          ? { sourceMissionId: input.payload.sourceMissionId }
+          : {}),
+      },
+    };
+  }
+
+  // Deriva deliveries do resultJson quando o evento persistido nao existe.
+  for (const child of children) {
+    const executed = child.resultJson as ExecutePhaseResult | null;
+    const delivery = executed?.delivery;
+    if (!delivery) {
+      continue;
+    }
+
+    const status = delivery.status;
+    if (status !== "DELIVERED" && status !== "FAILED") {
+      continue;
+    }
+
+    const key = deliveryEventKey({
+      missionId: child.id,
+      deliveryType: delivery.type,
+      deliveryStatus: status,
+    });
+
+    if (deliveryEventsByKey.has(key)) {
+      continue;
+    }
+
+    deliveryEventsByKey.set(
+      key,
+      syntheticDeliveryEvent({
+        missionId: child.id,
+        deliveryType: delivery.type,
+        deliveryStatus: status,
+        deliveredAt: delivery.deliveredAt,
+        payload: {
+          summary: delivery.summary,
+          evidence: delivery.evidence,
+          employeeId: delivery.employeeId,
+          success: status === "DELIVERED",
+          sourceMissionId: delivery.sourceMissionId,
+        },
+      }),
+    );
+  }
+
+  // Alguns fluxos gravam delivery direto no consolidate do COORDINATE.
+  const rootDelivery = consolidated?.delivery;
+  if (rootDelivery) {
+    const status = rootDelivery.status;
+    if (status === "DELIVERED" || status === "FAILED") {
+      const key = deliveryEventKey({
+        missionId: input.mission.id,
+        deliveryType: rootDelivery.type,
+        deliveryStatus: status,
+      });
+
+      if (!deliveryEventsByKey.has(key)) {
+        deliveryEventsByKey.set(
+          key,
+          syntheticDeliveryEvent({
+            missionId: input.mission.id,
+            deliveryType: rootDelivery.type,
+            deliveryStatus: status,
+            deliveredAt: rootDelivery.deliveredAt,
+            payload: {
+              summary: rootDelivery.summary,
+              evidence: rootDelivery.evidence,
+              employeeId: rootDelivery.employeeId,
+              success: status === "DELIVERED",
+              sourceMissionId: rootDelivery.sourceMissionId,
+            },
+          }),
+        );
+      }
+    }
+  }
+
+  const events = [
+    ...nonDeliveryEvents,
+    ...Array.from(deliveryEventsByKey.values()),
+  ].sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
   if (input.mission.status === "COMPLETED" && consolidated?.initial) {
     try {
       const run = projectMissionTreeToOperationalRun({

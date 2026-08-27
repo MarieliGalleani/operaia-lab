@@ -22,7 +22,7 @@ describe("assertProofDatabaseIsSafe", () => {
   it("parseDatabaseName extrai nome", () => {
     expect(
       parseDatabaseName(
-        "postgresql://USER:PASSWORD@HOST:5432/DATABASE",
+        "postgresql://u:p@127.0.0.1:5432/operaia_lab_test?schema=public",
       ),
     ).toBe("operaia_lab_test");
   });
@@ -30,26 +30,26 @@ describe("assertProofDatabaseIsSafe", () => {
   it("banco _test e seguro; operaia_lab e operacional", () => {
     expect(
       isOperationalDatabaseUrl(
-        "postgresql://USER:PASSWORD@HOST:5432/DATABASE",
+        "postgresql://u:p@127.0.0.1:5432/operaia_lab?schema=public",
       ),
     ).toBe(true);
     expect(
       isProofSafeDatabaseUrl(
-        "postgresql://USER:PASSWORD@HOST:5432/DATABASE",
+        "postgresql://u:p@127.0.0.1:5432/operaia_lab_test?schema=public",
       ),
     ).toBe(true);
   });
 
   it("harness com DB seguro → executa", () => {
     process.env.DATABASE_URL =
-      "postgresql://USER:PASSWORD@HOST:5432/DATABASE";
+      "postgresql://u:p@127.0.0.1:5432/operaia_lab_test?schema=public";
     delete process.env.OPERAIA_PROOF_ALLOW_OPERATIONAL_DB;
     expect(() => assertProofDatabaseIsSafe("unit")).not.toThrow();
   });
 
   it("harness com DATABASE_URL operacional → aborta antes de escrever", () => {
     process.env.DATABASE_URL =
-      "postgresql://USER:PASSWORD@HOST:5432/DATABASE";
+      "postgresql://u:p@127.0.0.1:5432/operaia_lab?schema=public";
     delete process.env.OPERAIA_PROOF_ALLOW_OPERATIONAL_DB;
     expect(() => assertProofDatabaseIsSafe("unit")).toThrow(
       ProofDatabaseUnsafeError,
@@ -58,7 +58,7 @@ describe("assertProofDatabaseIsSafe", () => {
 
   it("opt-in operacional explicito permite", () => {
     process.env.DATABASE_URL =
-      "postgresql://USER:PASSWORD@HOST:5432/DATABASE";
+      "postgresql://u:p@127.0.0.1:5432/operaia_lab?schema=public";
     process.env.OPERAIA_PROOF_ALLOW_OPERATIONAL_DB = "1";
     expect(() => assertProofDatabaseIsSafe("unit")).not.toThrow();
   });

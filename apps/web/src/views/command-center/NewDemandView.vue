@@ -32,7 +32,8 @@ const brief = ref<DemandBrief | null>(null);
 const plan = ref<WorkPlan | null>(null);
 const resultMessage = ref("");
 const resultAccepted = ref(false);
-const backendNote = ref(true);
+/** true somente quando a resposta veio do mock explícito. */
+const mockMode = ref(false);
 
 onMounted(() => {
   if (route.query.workspace) {
@@ -70,7 +71,7 @@ async function interpret() {
     );
     brief.value = res.brief;
     plan.value = res.plan;
-    backendNote.value = res.backendDependency;
+    mockMode.value = res.source === "mock-temporary" || res.backendDependency;
     step.value = "understood";
   } catch (err) {
     console.log("[new-demand] interpret failed", err);
@@ -107,7 +108,7 @@ async function executePlan() {
     );
     resultAccepted.value = res.accepted;
     resultMessage.value = res.message;
-    backendNote.value = res.backendDependency;
+    mockMode.value = res.source === "mock-temporary" || res.backendDependency;
     step.value = "result";
   } catch (err) {
     console.log("[new-demand] execute failed", err);
@@ -131,26 +132,35 @@ function setAutonomy(level: AutonomyLevel) {
   <div class="studio">
     <header class="studio__topbar">
       <div class="topbar__left">
-        <p class="page__kicker">Comando › Nova demanda</p>
+        <p class="page__kicker">Trabalho › Nova demanda</p>
         <h1 class="page__title">Nova demanda</h1>
       </div>
       <router-link to="/app/command" class="btn btn--ghost">Voltar</router-link>
     </header>
 
     <div class="studio__stage demand">
-      <p v-if="backendNote" class="backend-note">
-        TEMPORÁRIO · interpretação local / execução real depende de P0.3C.
-        Sucesso crítico não é simulado.
+      <p v-if="mockMode" class="backend-note" role="status">
+        Modo mock explícito — interpretação/execução não são operações reais.
       </p>
 
       <p v-if="error" class="demand__error" role="alert">{{ error }}</p>
 
       <section v-if="step === 'input'" class="panel demand__panel">
-        <CommandInput v-model="text" :disabled="interpreting" @submit="interpret" />
+        <p class="eyebrow">Comece pelo resultado que você deseja</p>
+        <h2 class="demand__question">O que você precisa?</h2>
+        <p class="demand__intro">
+          Descreva o trabalho com suas palavras. A OperaIA organiza o pedido antes de propor os próximos passos.
+        </p>
+        <CommandInput
+          v-model="text"
+          :disabled="interpreting"
+          placeholder="Descreva o trabalho que você quer realizar."
+          @submit="interpret"
+        />
         <label class="demand__ws">
-          <span>Workspace (obrigatório)</span>
+          <span>Onde esse trabalho acontece?</span>
           <select v-model="workspaceId" :disabled="interpreting" required>
-            <option disabled value="">Selecionar cliente / workspace</option>
+            <option disabled value="">Selecione um cliente ou workspace</option>
             <option v-for="p in projects" :key="p.id" :value="p.id">
               {{ p.name }}
             </option>
@@ -167,7 +177,7 @@ function setAutonomy(level: AutonomyLevel) {
           :disabled="!canInterpret || interpreting"
           @click="interpret"
         >
-          {{ interpreting ? "Interpretando…" : "Interpretar" }}
+          {{ interpreting ? "Organizando…" : "Continuar" }}
         </button>
       </section>
 
@@ -274,6 +284,15 @@ function setAutonomy(level: AutonomyLevel) {
 .demand__panel {
   padding: 22px;
   max-width: 720px;
+}
+.demand__question {
+  margin-top: 8px;
+  font-size: var(--text-2xl);
+}
+.demand__intro {
+  max-width: 580px;
+  margin: 8px 0 22px;
+  color: var(--text-muted);
 }
 .demand__ws {
   display: block;

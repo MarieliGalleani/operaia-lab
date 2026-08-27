@@ -1,6 +1,6 @@
 /**
  * Contratos oficiais P0.3B/P0.3D — Command Center / Automation Office.
- * Espelham a UX Spec. Backend P0.3C ainda não implementado.
+ * Espelham a UX Spec. Consumidos via `/office/*` (Automation Office).
  */
 
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";

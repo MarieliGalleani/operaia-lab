@@ -16,7 +16,8 @@ const filtered = computed(() =>
     : items.value,
 );
 
-onMounted(async () => {
+async function loadDecisions(): Promise<void> {
+  state.value = "loading";
   try {
     items.value = await officeCommandClient.listDecisions();
     state.value = "ready";
@@ -24,15 +25,17 @@ onMounted(async () => {
     console.log("[decisions] failed", error);
     state.value = "error";
   }
-});
+}
+
+onMounted(loadDecisions);
 </script>
 
 <template>
   <div class="studio">
     <header class="studio__topbar">
       <div class="topbar__left">
-        <p class="page__kicker">Trabalho › Decisões</p>
-        <h1 class="page__title">Decisões</h1>
+        <p class="page__kicker">Equipe › Meu controle</p>
+        <h1 class="page__title">Decisões que precisam de você</h1>
       </div>
       <label class="filter">
         Risco
@@ -46,11 +49,16 @@ onMounted(async () => {
       </label>
     </header>
     <div class="studio__stage">
-      <p class="backend-note">
-        Decision Trace auditável (sem chain-of-thought). BACKEND DEPENDENCY P0.3C.
+      <p class="backend-note" role="note">
+        Apenas decisões registradas pelo escritório aparecem aqui. Aguardando não significa decisão humana.
       </p>
       <LoadingState v-if="state === 'loading'" />
-      <p v-else-if="state === 'error'" role="alert">Falha ao carregar decisões.</p>
+      <section v-else-if="state === 'error'" class="panel decisions__error" role="alert">
+        <p>Não foi possível carregar as decisões.</p>
+        <button type="button" class="btn btn--primary" @click="loadDecisions">
+          Tentar de novo
+        </button>
+      </section>
       <template v-else>
         <DecisionCard
           v-for="d in filtered"
@@ -91,5 +99,11 @@ onMounted(async () => {
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
+}
+.decisions__error {
+  padding: 18px;
+}
+.decisions__error .btn {
+  margin-top: 12px;
 }
 </style>

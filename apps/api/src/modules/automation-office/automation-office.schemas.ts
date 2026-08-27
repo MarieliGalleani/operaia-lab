@@ -137,7 +137,52 @@ export const executeDemandResponseSchema = z.object({
   message: z.string(),
   demandId: z.string(),
   missionId: z.string().optional(),
+  gateDecision: z.string().optional(),
   redirectTo: z.string().optional(),
+});
+
+export const autonomyLoopStageSchema = z.object({
+  stage: z.enum([
+    "intake",
+    "planning",
+    "delegation",
+    "mission",
+    "execution",
+    "validation",
+    "delivery",
+  ]),
+  present: z.boolean(),
+  summary: z.string(),
+  details: z.record(z.string(), z.unknown()),
+});
+
+export const autonomyLoopEvidenceSchema = z.object({
+  demandId: z.string(),
+  correlationId: z.string(),
+  missionId: z.string().nullable(),
+  demandStatus: z.string(),
+  gateDecision: z.string().nullable(),
+  stages: z.array(autonomyLoopStageSchema),
+  loopEvidenceComplete: z.boolean(),
+});
+
+export const autonomyLoopHarnessSchema = z.object({
+  ok: z.boolean(),
+  demandId: z.string(),
+  correlationId: z.string(),
+  missingStages: z.array(
+    z.enum([
+      "intake",
+      "planning",
+      "delegation",
+      "mission",
+      "execution",
+      "validation",
+      "delivery",
+    ]),
+  ),
+  evidence: autonomyLoopEvidenceSchema,
+  message: z.string(),
 });
 
 export const approvalListItemSchema = z.object({
@@ -247,6 +292,15 @@ export const executionDetailSchema = executionListItemSchema.extend({
       nextStepLabel: z.string().optional(),
     }),
   ),
+  /** P0.3E projection flags — evidência Core existente, sem novos estados Demand. */
+  autonomyLoop: z
+    .object({
+      executeChildCount: z.number(),
+      hasDeliveryCreated: z.boolean(),
+      hasValidResult: z.boolean(),
+      eventTypes: z.array(z.string()),
+    })
+    .optional(),
 });
 
 export const workspaceContextSchema = z.object({

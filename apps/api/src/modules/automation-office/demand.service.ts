@@ -287,6 +287,7 @@ export async function executeDemand(
     message: "Demanda aceita e submetida ao Core.",
     demandId: demand.id,
     missionId: submission.missionId,
+    gateDecision: submission.gateDecision,
     redirectTo: `/app/missions/${submission.missionId}`,
   };
 }

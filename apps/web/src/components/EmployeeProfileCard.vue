@@ -34,7 +34,10 @@ const projects = computed(() => props.involvedProjects ?? []);
       <div class="profile__specialty">{{ employee.specialtyLabel }}</div>
     </div>
 
-    <p class="profile__mission">{{ employee.mission }}</p>
+    <p v-if="employee.mission" class="profile__mission">{{ employee.mission }}</p>
+    <p v-else class="profile__mission profile__mission--empty">
+      Atividade atual não disponível.
+    </p>
 
     <div class="profile__section">
       <span class="profile__label">Projetos envolvidos</span>
@@ -46,7 +49,7 @@ const projects = computed(() => props.involvedProjects ?? []);
       <span v-else class="profile__none">Nenhum no momento</span>
     </div>
 
-    <footer class="profile__foot">
+    <footer v-if="employee.lastActivity" class="profile__foot">
       <span class="profile__label">Última ação</span>
       <span class="profile__action">{{ employee.lastActivity }}</span>
     </footer>
