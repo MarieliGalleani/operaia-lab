@@ -82,6 +82,47 @@ function personEmoji(id: string, specialization: string | null): string {
   return "👤";
 }
 
+/**
+ * Traducao humana do event.type — so os tipos conhecidos e realmente
+ * emitidos pelo backend (mission-queue.ts / queued-mission-executor.ts).
+ * Tipo desconhecido cai no fallback (mostra o proprio type), nunca inventa.
+ */
+const EVENT_TYPE_LABEL: Record<string, string> = {
+  enqueued: "Missão criada e colocada na fila",
+  claimed: "Um especialista assumiu a missão",
+  tool_used: "Uma ferramenta foi utilizada",
+  delivery_created: "Resultado entregue",
+  completed: "Missão concluída",
+  failed: "Missão encontrou uma falha",
+  waiting: "Aguardando próxima etapa",
+  recovered: "Missão recuperada após interrupção",
+  stale: "Missão sinalizada como parada",
+};
+
+function eventEmployeeId(event: { payload?: unknown }): string | undefined {
+  const payload = event.payload;
+  if (payload && typeof payload === "object" && "employeeId" in payload) {
+    const id = (payload as { employeeId?: unknown }).employeeId;
+    return typeof id === "string" ? id : undefined;
+  }
+  return undefined;
+}
+
+function humanEventLabel(event: { type: string; payload?: unknown }): string {
+  const base = EVENT_TYPE_LABEL[event.type] ?? event.type;
+  const employeeId = eventEmployeeId(event);
+  if (
+    employeeId &&
+    (event.type === "claimed" || event.type === "tool_used")
+  ) {
+    const name = personName(employeeId);
+    return event.type === "claimed"
+      ? `${name} assumiu a missão`
+      : `${name} utilizou uma ferramenta`;
+  }
+  return base;
+}
+
 const team = computed(() => {
   if (!mission.value) {
     return [];
@@ -214,8 +255,9 @@ const team = computed(() => {
               <ol v-if="mission.events.length">
                 <li v-for="event in mission.events" :key="event.id">
                   <time>{{ formatDateTime(event.createdAt) }}</time>
-                  <strong>{{ event.type }}</strong>
+                  <strong>{{ humanEventLabel(event) }}</strong>
                   <span>{{ event.message }}</span>
+                  <code class="activity__type">{{ event.type }}</code>
                 </li>
               </ol>
               <p v-else class="muted">Nenhum evento neste response.</p>
@@ -391,6 +433,13 @@ const team = computed(() => {
   margin-top: 2px;
   font-size: var(--text-xs);
   color: var(--text-muted);
+}
+
+.activity__type {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--text-soft);
+  font-family: ui-monospace, monospace;
 }
 
 .muted {

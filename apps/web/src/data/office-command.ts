@@ -78,6 +78,7 @@ export interface WorkProgressItem {
   readonly workspaceId: string;
   readonly workspaceName: string;
   readonly objective: string;
+  readonly ownerEmployeeId: string;
   readonly stepLabel: string;
   readonly progressLabel: string;
   readonly risk: RiskLevel;
@@ -104,6 +105,7 @@ export interface CompletedItem {
   readonly kind: string;
   readonly href: string;
   readonly workspaceName?: string;
+  readonly deliveredByEmployeeIds: readonly string[];
 }
 
 export interface TeamMemberDto {

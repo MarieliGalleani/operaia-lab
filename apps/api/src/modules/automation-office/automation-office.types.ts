@@ -105,6 +105,7 @@ export interface WorkProgressItemDto {
   readonly workspaceId: string;
   readonly workspaceName: string;
   readonly objective: string;
+  readonly ownerEmployeeId: string;
   readonly stepLabel: string;
   readonly progressLabel: string;
   readonly risk: RiskLevel;
@@ -131,6 +132,13 @@ export interface CompletedItemDto {
   readonly kind: string;
   readonly href: string;
   readonly workspaceName?: string;
+  /**
+   * Especialista(s) cuja missão EXECUTE filha teve
+   * resultJson.delivery.status === "DELIVERED". Pode ter mais de um
+   * (delegação múltipla) ou nenhum (Opera respondeu sem delegar/sem
+   * delivery estruturado) — nunca escolhemos um "principal" arbitrário.
+   */
+  readonly deliveredByEmployeeIds: readonly string[];
 }
 
 export interface TeamMemberDto {

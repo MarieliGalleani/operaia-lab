@@ -53,6 +53,7 @@ export function mockCommandCenter(): CommandCenterDto {
         workspaceId: "clinica-x",
         workspaceName: "Clínica X",
         objective: "Automatizar onboarding de novos clientes",
+        ownerEmployeeId: "cto-mag",
         stepLabel: "Desenhar workflow",
         progressLabel: "Etapa 3/7",
         risk: "MEDIUM",
@@ -80,6 +81,7 @@ export function mockCommandCenter(): CommandCenterDto {
         kind: "ux_analysis",
         href: "/app/missions",
         workspaceName: "Clínica X",
+        deliveredByEmployeeIds: ["luna"],
       },
     ],
     team: [

@@ -2,9 +2,35 @@
 import AttentionCard from "@/components/command/AttentionCard.vue";
 import DecisionCard from "@/components/command/DecisionCard.vue";
 import WorkProgressCard from "@/components/command/WorkProgressCard.vue";
+import { useOffice } from "@/composables/useOffice";
 import type { CommandCenterDto } from "@/data/office-command";
 
 defineProps<{ data: CommandCenterDto }>();
+
+const { employeeById } = useOffice();
+
+function personLabel(employeeId: string): string {
+  const person = employeeById(employeeId);
+  const name = person?.name ?? (employeeId === "operaia-ceo" ? "Opera" : employeeId);
+  return person?.emoji ? `${person.emoji} ${name}` : name;
+}
+
+/**
+ * Nunca escolhe "o" especialista quando há mais de um com entrega real —
+ * mostra o nome só quando há exatamente 1, ou a contagem + todos os nomes
+ * quando há mais. Sem dado nenhum, não mostra nada (não inventa).
+ */
+function deliveredByLabel(employeeIds: readonly string[]): string | null {
+  if (employeeIds.length === 0) {
+    return null;
+  }
+  if (employeeIds.length === 1) {
+    return personLabel(employeeIds[0]!);
+  }
+  return `${employeeIds.length} especialistas envolvidos · ${employeeIds
+    .map(personLabel)
+    .join(" · ")}`;
+}
 
 function formatWhen(iso: string | null | undefined): string {
   if (!iso) return "—";
@@ -86,8 +112,13 @@ function formatWhen(iso: string | null | undefined): string {
       </div>
       <ul v-if="data.completed.length" class="done">
         <li v-for="item in data.completed.slice(0, 6)" :key="item.id">
-          <router-link :to="item.href">{{ item.title }}</router-link>
-          <span>{{ formatWhen(item.finishedAt) }}</span>
+          <div class="done__main">
+            <router-link :to="item.href">{{ item.title }}</router-link>
+            <span v-if="deliveredByLabel(item.deliveredByEmployeeIds)" class="done__owner">
+              {{ deliveredByLabel(item.deliveredByEmployeeIds) }}
+            </span>
+          </div>
+          <span class="done__when">{{ formatWhen(item.finishedAt) }}</span>
         </li>
       </ul>
       <p v-else class="quiet">Ainda não há entregas recentes.</p>
@@ -129,10 +160,29 @@ function formatWhen(iso: string | null | undefined): string {
 
 .done li {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
   font-size: var(--text-sm);
+}
+
+.done__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.done__owner {
+  margin-top: 4px;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.done__when {
+  flex-shrink: 0;
+  margin-left: 12px;
+  color: var(--text-soft);
 }
 
 .done a:hover {

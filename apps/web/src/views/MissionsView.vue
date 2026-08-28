@@ -99,7 +99,7 @@ onMounted(() => {
               <option value="ALL">Todas</option>
               <option value="IN_PROGRESS">Em andamento</option>
               <option value="WAITING">Aguardando</option>
-              <option value="COMPLETED">Concluídas</option>
+              <option value="COMPLETED">Entregues</option>
               <option value="FAILED">Com falha</option>
               <option value="BLOCKED">Bloqueadas</option>
             </select>

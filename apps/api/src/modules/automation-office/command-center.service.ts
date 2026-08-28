@@ -1,4 +1,4 @@
-import { prisma, MissionStatus } from "@operaia/database";
+import { prisma, MissionStatus, MissionKind } from "@operaia/database";
 import type { ContinuousRuntime } from "../runtime/continuous-runtime.js";
 import { ADMIN_OFFICIAL_WORKSPACE_IDS } from "../auth/official-workspace-access.js";
 import { buildOfficeStatus } from "../office/build-office-status.js";
@@ -186,6 +186,44 @@ export async function buildCommandCenter(
       (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99),
   );
 
+  // Missao raiz e sempre dona da CEO (COORDINATE); quem realmente entregou
+  // e o(s) especialista(s) cuja missao EXECUTE filha tem
+  // resultJson.delivery.status === "DELIVERED" — o mesmo criterio que o
+  // executor usa para gravar o evento delivery_created (ver
+  // queued-mission-executor.ts:583 / mission-result-store.ts ExecutePhaseResult).
+  // Sem esse sinal, nao ha como saber quem entregou de fato — nao adivinhamos.
+  const completedIds = completedMissions.map(
+    (mission: { id: string }) => mission.id,
+  );
+  const executeChildren = completedIds.length
+    ? await prisma.mission.findMany({
+        where: {
+          parentMissionId: { in: completedIds },
+          missionKind: MissionKind.EXECUTE,
+        },
+        select: {
+          parentMissionId: true,
+          ownerEmployeeId: true,
+          resultJson: true,
+        },
+      })
+    : [];
+  const deliveredByMap = new Map<string, string[]>();
+  for (const child of executeChildren) {
+    if (!child.parentMissionId) {
+      continue;
+    }
+    const resultJson = child.resultJson as { delivery?: { status?: string } } | null;
+    if (resultJson?.delivery?.status !== "DELIVERED") {
+      continue;
+    }
+    const existing = deliveredByMap.get(child.parentMissionId) ?? [];
+    if (!existing.includes(child.ownerEmployeeId)) {
+      existing.push(child.ownerEmployeeId);
+    }
+    deliveredByMap.set(child.parentMissionId, existing);
+  }
+
   const completed = completedMissions.map((mission) => ({
     id: mission.id,
     title: extractDeliveryTitle(mission.objective, mission.resultJson),
@@ -193,6 +231,7 @@ export async function buildCommandCenter(
     kind: mission.missionKind,
     href: `/app/missions/${mission.id}`,
     workspaceName: resolveWorkspaceName(mission.workspaceId),
+    deliveredByEmployeeIds: deliveredByMap.get(mission.id) ?? [],
   }));
 
   const idle =

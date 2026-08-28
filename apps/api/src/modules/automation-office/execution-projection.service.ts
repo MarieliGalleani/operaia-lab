@@ -299,6 +299,7 @@ export async function listInProgressMissions(take = 6) {
       objective: true,
       status: true,
       startedAt: true,
+      ownerEmployeeId: true,
     },
   });
 
@@ -307,6 +308,7 @@ export async function listInProgressMissions(take = 6) {
     workspaceId: mission.workspaceId,
     workspaceName: resolveWorkspaceName(mission.workspaceId),
     objective: mission.objective.slice(0, 160),
+    ownerEmployeeId: mission.ownerEmployeeId,
     stepLabel:
       mission.status === MissionStatus.RUNNING
         ? "Em execução"

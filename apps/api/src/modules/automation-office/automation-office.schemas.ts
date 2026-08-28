@@ -65,6 +65,7 @@ export const commandCenterResponseSchema = z.object({
     workspaceId: z.string(),
     workspaceName: z.string(),
     objective: z.string(),
+    ownerEmployeeId: z.string(),
     stepLabel: z.string(),
     progressLabel: z.string(),
     risk: riskLevelSchema,
@@ -89,6 +90,7 @@ export const commandCenterResponseSchema = z.object({
     kind: z.string(),
     href: z.string(),
     workspaceName: z.string().optional(),
+    deliveredByEmployeeIds: z.array(z.string()),
   })),
   team: z.array(z.object({
     employeeId: z.string(),
