@@ -150,13 +150,17 @@ function stationOf(roomId: string, dx = 2, dy = 1): { col: number; row: number; 
   return { col: b.col + dx, row: b.row + dy, floorId: FLOOR_ID };
 }
 
-/** Estações fixas dos 5 agentes (usado por office-actors). CEO/CTO privativos. */
+/** Estações fixas dos 9 agentes reais (usado por office-actors). CEO/CTO privativos. */
 export const OFFICE_STATIONS = {
   opera: stationOf("executive"),
   mag: stationOf("ai-lab"),
   atlas: stationOf("workspace", 1, 1),
   luna: stationOf("workspace", 3, 1),
   aurora: stationOf("workspace", 5, 1),
+  nexus: stationOf("meeting", 2, 1),
+  themis: stationOf("meeting", 5, 1),
+  mercurio: stationOf("lounge", 2, 1),
+  orion: stationOf("lounge", 5, 1),
 } as const;
 
 /** Spawn no centro de cada sala + entrada da recepção. */
@@ -228,38 +232,13 @@ const FRONT_DOOR: EntityBlueprint = {
   },
 };
 
-/** Elevador para o 2º andar da Geraí (mapa irmão no Campus). */
-const ELEVATOR_TO_GERAI: EntityBlueprint = {
-  id: "elevator-to-gerai",
-  ref: "portal-door",
-  components: {
-    transform: {
-      col: (ROOM_BOUNDS.reception?.col ?? ORIGIN_X) + 6,
-      row: 0,
-    },
-    renderable: { spriteId: "door", layer: "walls", visible: true },
-    portal: {
-      portalId: "elevator-to-gerai",
-      target: { mapId: "gerai-f2", spawnPointId: "elevator-in" },
-      mode: "walk",
-      label: "Elevador · Geraí 2º",
-    },
-    interactable: {
-      kind: "portal",
-      radiusTiles: 1,
-      enabled: true,
-      label: "Geraí — 2º andar",
-    },
-  },
-};
-
 const GROUND_FLOOR: FloorDef = {
   id: FLOOR_ID,
   name: "Sede OperaIA.lab",
   level: 0,
   size: { cols: MAP_COLS, rows: MAP_ROWS },
   areas: AREAS,
-  entities: [...ambientProps(), FRONT_DOOR, ELEVATOR_TO_GERAI],
+  entities: [...ambientProps(), FRONT_DOOR],
   spawnPoints: buildSpawnPoints(),
 };
 

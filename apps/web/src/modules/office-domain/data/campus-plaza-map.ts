@@ -83,11 +83,20 @@ const TO_RECEPTION = campusPortal({
   interactLabel: "Voltar à Recepção",
 });
 
+/** Um ponto de chegada por Residente, na frente da própria fachada. */
+function residentSpawnPoints(): SpawnPointDef[] {
+  return CAMPUS_RESIDENT_ENTRANCES.map((entry) => ({
+    id: `entrance-${entry.residentId}`,
+    col: FACADE_START_COL + entry.slot * FACADE_STRIDE,
+    row: FACADE_ROW - 2,
+    facing: "n",
+  }));
+}
+
 const SPAWNS: SpawnPointDef[] = [
   { id: "center", col: 11, row: 7, facing: "s" },
   { id: "from-reception", col: 11, row: 2, facing: "s" },
-  { id: "entrance-lab", col: FACADE_START_COL, row: FACADE_ROW - 2, facing: "n" },
-  { id: "entrance-gerai", col: FACADE_START_COL + FACADE_STRIDE, row: FACADE_ROW - 2, facing: "n" },
+  ...residentSpawnPoints(),
 ];
 
 const FLOOR: FloorDef = {
