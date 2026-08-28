@@ -139,7 +139,7 @@ onMounted(async () => {
   border-bottom: 1px solid var(--border);
   background:
     radial-gradient(ellipse at 0% 0%, rgba(59, 130, 246, 0.14), transparent 42%),
-    radial-gradient(ellipse at 100% 0%, rgba(56, 189, 248, 0.06), transparent 36%),
+    radial-gradient(ellipse at 100% 0%, rgba(139, 92, 246, 0.09), transparent 36%),
     linear-gradient(180deg, #0c1424 0%, var(--bg) 100%);
 }
 

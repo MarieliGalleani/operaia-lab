@@ -325,7 +325,8 @@ function badgeFor(item: NavItem): number {
   position: sticky;
   top: 0;
   background:
-    radial-gradient(ellipse at 0% 0%, rgba(59, 130, 246, 0.1), transparent 42%),
+    radial-gradient(ellipse at 0% 0%, rgba(59, 130, 246, 0.12), transparent 42%),
+    radial-gradient(ellipse at 100% 100%, rgba(139, 92, 246, 0.08), transparent 46%),
     linear-gradient(180deg, #070b14 0%, #060a12 100%);
   border-right: 1px solid var(--border);
   display: flex;
@@ -345,7 +346,7 @@ function badgeFor(item: NavItem): number {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  background: linear-gradient(145deg, #3b82f6, #1d4ed8);
+  background: linear-gradient(145deg, #4c8bfa, var(--brand) 45%, var(--violet));
   color: #fff;
   display: flex;
   align-items: center;
@@ -353,8 +354,8 @@ function badgeFor(item: NavItem): number {
   font-weight: 700;
   font-size: 14px;
   box-shadow:
-    0 0 0 4px rgba(59, 130, 246, 0.12),
-    0 8px 20px rgba(37, 99, 235, 0.25);
+    0 0 0 4px rgba(139, 92, 246, 0.14),
+    0 8px 22px rgba(124, 58, 237, 0.3);
   flex-shrink: 0;
 }
 
@@ -489,18 +490,19 @@ function badgeFor(item: NavItem): number {
 .nav-item--active {
   background: linear-gradient(
     90deg,
-    rgba(59, 130, 246, 0.22),
-    rgba(59, 130, 246, 0.06)
+    rgba(139, 92, 246, 0.22),
+    rgba(59, 130, 246, 0.16) 55%,
+    rgba(59, 130, 246, 0.05)
   );
   color: var(--text);
   box-shadow:
-    inset 2.5px 0 0 var(--brand),
-    0 0 20px -6px rgba(59, 130, 246, 0.55);
+    inset 2.5px 0 0 var(--violet),
+    0 0 22px -6px rgba(139, 92, 246, 0.6);
 }
 
 .nav-item--active .nav-item__icon {
-  color: #60a5fa;
-  filter: drop-shadow(0 0 6px rgba(96, 165, 250, 0.5));
+  color: #a78bfa;
+  filter: drop-shadow(0 0 6px rgba(167, 139, 250, 0.55));
 }
 
 .sidebar__account {

@@ -140,7 +140,7 @@ defineExpose({ runtime });
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #0f1020;
+  background: var(--bg, #05080f);
 }
 
 .virtual-world__stage {
@@ -156,9 +156,10 @@ defineExpose({ runtime });
   border-radius: 8px;
   font-size: 12px;
   font-family: ui-monospace, monospace;
-  color: #e6e6f0;
-  background: rgba(20, 22, 44, 0.72);
-  border: 1px solid rgba(108, 92, 231, 0.4);
+  color: var(--text, #f1f5f9);
+  background: rgba(14, 21, 36, 0.78);
+  border: 1px solid var(--violet-line, rgba(139, 92, 246, 0.38));
+  box-shadow: 0 0 20px -8px rgba(139, 92, 246, 0.5);
 }
 
 .virtual-world__badge[data-status="error"] {
@@ -182,11 +183,12 @@ defineExpose({ runtime });
   border-radius: 10px;
   font-size: 18px;
   line-height: 1;
-  color: #f3ead6;
-  background: rgba(20, 22, 44, 0.78);
-  border: 1px solid rgba(255, 209, 102, 0.45);
+  color: var(--text, #f1f5f9);
+  background: rgba(14, 21, 36, 0.78);
+  border: 1px solid var(--border-strong, rgba(148, 163, 184, 0.18));
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.08s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.08s ease,
+    box-shadow 0.15s ease;
 }
 
 .vw-btn:first-child {
@@ -194,7 +196,8 @@ defineExpose({ runtime });
 }
 
 .vw-btn:hover {
-  background: rgba(40, 44, 78, 0.9);
+  background: rgba(30, 41, 59, 0.9);
+  border-color: var(--violet-line, rgba(139, 92, 246, 0.38));
 }
 
 .vw-btn:active {
@@ -210,7 +213,8 @@ defineExpose({ runtime });
 }
 
 .vw-btn--active {
-  background: rgba(181, 98, 60, 0.9);
-  border-color: #ffd166;
+  background: var(--gradient-brand, linear-gradient(135deg, #3b82f6, #8b5cf6));
+  border-color: transparent;
+  box-shadow: 0 0 16px -4px rgba(139, 92, 246, 0.6);
 }
 </style>

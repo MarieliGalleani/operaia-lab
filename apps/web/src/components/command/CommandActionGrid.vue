@@ -78,11 +78,11 @@ const items = [
 .actions__item {
   display: flex;
   align-items: flex-start;
-  padding: 16px;
+  padding: 18px;
   margin-right: 12px;
   margin-bottom: 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: 14px;
   color: inherit;
   background: var(--surface-2);
   transition:
@@ -113,28 +113,32 @@ const items = [
 
 .actions__item:hover,
 .actions__item:focus-visible {
-  border-color: var(--border-strong);
+  border-color: var(--violet-line);
   background: var(--surface-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow);
 }
 
 .actions__item--primary {
-  border-color: var(--brand-line);
-  background: var(--brand-soft);
+  border-color: var(--violet-line);
+  background:
+    radial-gradient(140% 140% at 0% 0%, rgba(139, 92, 246, 0.14), transparent 60%),
+    var(--brand-soft);
 }
 
 .actions__item--primary .actions__icon,
 .actions__item:hover .actions__icon,
 .actions__item:focus-visible .actions__icon {
-  background: var(--brand);
+  background: var(--gradient-brand);
   color: #fff;
 }
 
 .actions__item--primary:hover,
 .actions__item--primary:focus-visible {
-  border-color: var(--brand-line);
-  background: var(--brand-soft);
+  border-color: var(--violet-line);
+  background:
+    radial-gradient(140% 140% at 0% 0%, rgba(139, 92, 246, 0.2), transparent 60%),
+    var(--brand-soft);
   box-shadow: var(--glow-brand);
 }
 

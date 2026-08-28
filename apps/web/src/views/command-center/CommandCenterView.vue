@@ -169,12 +169,24 @@ function formatWhen(iso: string | null | undefined): string {
 .cc__hero {
   position: relative;
   overflow: hidden;
-  padding: 26px 28px;
+  padding: 32px 32px;
   margin-bottom: var(--space-3);
   background:
-    radial-gradient(ellipse 70% 140% at 100% -20%, rgba(59, 130, 246, 0.16), transparent 60%),
+    radial-gradient(ellipse 60% 130% at 100% -20%, rgba(139, 92, 246, 0.22), transparent 60%),
+    radial-gradient(ellipse 55% 120% at -10% 120%, rgba(59, 130, 246, 0.18), transparent 55%),
     var(--surface);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-lg);
+}
+.cc__hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(ellipse 80% 100% at 100% 0%, black, transparent 70%);
+  pointer-events: none;
 }
 .cc__hero--operating {
   border-color: rgba(52, 211, 153, 0.25);
@@ -190,10 +202,15 @@ function formatWhen(iso: string | null | undefined): string {
   color: var(--text-muted);
 }
 .cc__level {
-  margin-top: 8px;
-  font-size: var(--text-2xl);
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  margin-top: 10px;
+  font-size: var(--text-3xl);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  max-width: 22ch;
+  background: var(--gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 .cc__status {
   display: flex;

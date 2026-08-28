@@ -87,8 +87,8 @@ async function submit(): Promise<void> {
   padding: var(--space-3);
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 8%, rgba(59, 130, 246, 0.18), transparent 40%),
-    radial-gradient(circle at 85% 85%, rgba(56, 189, 248, 0.08), transparent 45%),
+    radial-gradient(circle at 50% 8%, rgba(139, 92, 246, 0.16), transparent 40%),
+    radial-gradient(circle at 85% 85%, rgba(59, 130, 246, 0.16), transparent 45%),
     var(--bg);
 }
 
@@ -127,7 +127,7 @@ async function submit(): Promise<void> {
   border-radius: 12px;
   color: #fff;
   font-weight: 700;
-  background: linear-gradient(145deg, #4c8bfa, var(--brand-strong));
+  background: var(--gradient-brand);
   box-shadow: var(--glow-brand);
 }
 
@@ -203,14 +203,15 @@ h1 {
   border-radius: var(--radius-sm);
   color: #fff;
   font-weight: 700;
-  background: linear-gradient(180deg, #4c8bfa, var(--brand) 60%, var(--brand-strong));
+  background: var(--gradient-brand);
   box-shadow: var(--glow-brand);
   transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease);
 }
 
 .login-submit:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 12px 32px -6px rgba(37, 99, 235, 0.45);
+  background: var(--gradient-brand-strong);
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.25), 0 14px 36px -6px rgba(124, 58, 237, 0.5);
 }
 
 .login-submit:disabled {

@@ -28,6 +28,16 @@
   --accent-soft: rgba(56, 189, 248, 0.12);
   --accent-ink: #0c4a6e;
 
+  /* Identidade dupla — azul → violeta, usada em CTAs, hero e destaques */
+  --violet: #8b5cf6;
+  --violet-strong: #7c3aed;
+  --violet-soft: rgba(139, 92, 246, 0.14);
+  --violet-line: rgba(139, 92, 246, 0.38);
+
+  --gradient-brand: linear-gradient(135deg, #4c8bfa 0%, var(--brand) 45%, var(--violet) 100%);
+  --gradient-brand-strong: linear-gradient(135deg, var(--brand-strong) 0%, var(--violet-strong) 100%);
+  --gradient-text: linear-gradient(120deg, #fff 8%, #bcd7ff 42%, #d3c2ff 70%, #fff 100%);
+
   /* Semânticos */
   --success: #34d399;
   --success-soft: rgba(52, 211, 153, 0.12);
@@ -53,7 +63,8 @@
     0 2px 6px rgba(0, 0, 0, 0.3);
   --shadow-lg: 0 1px 0 rgba(255, 255, 255, 0.06) inset,
     0 24px 60px -12px rgba(0, 0, 0, 0.6);
-  --glow-brand: 0 0 0 1px rgba(59, 130, 246, 0.15),
+  --glow-brand: 0 0 0 1px rgba(139, 92, 246, 0.18),
+    0 10px 32px -6px rgba(124, 58, 237, 0.4),
     0 8px 28px -6px rgba(37, 99, 235, 0.35);
 
   --font: "Sora", system-ui, sans-serif;
@@ -66,8 +77,9 @@
   --text-md: 14px;
   --text-lg: 16px;
   --text-xl: 20px;
-  --text-2xl: 28px;
-  --text-3xl: 34px;
+  --text-2xl: 32px;
+  --text-3xl: 40px;
+  --text-4xl: 48px;
 
   /* Spacing 8px */
   --space-1: 8px;
@@ -164,9 +176,10 @@ button {
 
 .page__title {
   font-size: var(--text-2xl);
-  font-weight: 700;
-  letter-spacing: -0.035em;
-  background: linear-gradient(180deg, var(--text), rgba(241, 245, 249, 0.82));
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  background: var(--gradient-text);
+  background-size: 200% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -225,10 +238,11 @@ button {
 /* ---- Card ---- */
 .card {
   background:
-    linear-gradient(165deg, rgba(59, 130, 246, 0.09), transparent 46%),
+    radial-gradient(120% 100% at 100% 0%, rgba(139, 92, 246, 0.1), transparent 50%),
+    linear-gradient(165deg, rgba(59, 130, 246, 0.1), transparent 46%),
     var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 18px;
   box-shadow: var(--shadow-sm);
   transition:
     border-color 0.22s var(--ease),
@@ -240,9 +254,10 @@ button {
 .card--lift:hover,
 a.card:hover,
 button.card:hover {
-  border-color: var(--brand-line);
+  border-color: var(--violet-line);
   background:
-    linear-gradient(165deg, rgba(59, 130, 246, 0.14), transparent 46%),
+    radial-gradient(120% 100% at 100% 0%, rgba(139, 92, 246, 0.16), transparent 50%),
+    linear-gradient(165deg, rgba(59, 130, 246, 0.15), transparent 46%),
     var(--surface-2);
   transform: translateY(-3px);
   box-shadow: var(--shadow);
@@ -251,9 +266,10 @@ button.card:hover {
 /* Painel analytics (idioma do Painel VPS / Olayard) */
 .panel {
   position: relative;
-  border-radius: 16px;
+  border-radius: 18px;
   border: 1px solid var(--border);
   background:
+    radial-gradient(120% 100% at 100% 0%, rgba(139, 92, 246, 0.09), transparent 50%),
     linear-gradient(165deg, rgba(59, 130, 246, 0.1), transparent 46%),
     var(--surface);
   box-shadow: var(--shadow-sm);
@@ -603,15 +619,16 @@ button.card:hover {
 }
 
 .btn--primary {
-  background: linear-gradient(180deg, #4c8bfa, var(--brand) 60%, var(--brand-strong));
+  background: var(--gradient-brand);
   color: #fff;
   box-shadow: var(--glow-brand);
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #5b96fb, var(--brand-strong) 60%, #1d4ed8);
+  background: var(--gradient-brand-strong);
   transform: translateY(-1px);
-  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 12px 32px -6px rgba(37, 99, 235, 0.45);
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.25), 0 14px 36px -6px rgba(124, 58, 237, 0.5),
+    0 10px 28px -6px rgba(37, 99, 235, 0.4);
 }
 
 .btn--primary:active:not(:disabled) {
