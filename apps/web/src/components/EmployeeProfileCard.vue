@@ -15,6 +15,11 @@ const STATUS_CLASS: Record<EmployeeStatus, string> = {
 
 const statusClass = computed(() => STATUS_CLASS[props.employee.status]);
 const projects = computed(() => props.involvedProjects ?? []);
+const CHIP_LIMIT = 4;
+const visibleProjects = computed(() => projects.value.slice(0, CHIP_LIMIT));
+const hiddenProjectsCount = computed(() =>
+  Math.max(0, projects.value.length - CHIP_LIMIT),
+);
 </script>
 
 <template>
@@ -42,8 +47,11 @@ const projects = computed(() => props.involvedProjects ?? []);
     <div class="profile__section">
       <span class="profile__label">Projetos envolvidos</span>
       <div v-if="projects.length" class="profile__chips">
-        <span v-for="name in projects" :key="name" class="profile__chip">
+        <span v-for="name in visibleProjects" :key="name" class="profile__chip">
           {{ name }}
+        </span>
+        <span v-if="hiddenProjectsCount > 0" class="profile__chip profile__chip--more">
+          +{{ hiddenProjectsCount }}
         </span>
       </div>
       <span v-else class="profile__none">Nenhum no momento</span>
@@ -140,6 +148,11 @@ const projects = computed(() => props.involvedProjects ?? []);
   border-radius: var(--radius-full);
   padding: 4px 10px;
   margin: 0 6px 6px 0;
+}
+
+.profile__chip--more {
+  color: var(--text-soft);
+  background: var(--surface-2);
 }
 
 .profile__none {

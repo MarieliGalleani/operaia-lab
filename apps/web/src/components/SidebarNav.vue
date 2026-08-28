@@ -387,6 +387,15 @@ function badgeFor(item: NavItem): number {
 
 .nav-group {
   margin-bottom: 12px;
+  padding-top: 12px;
+}
+
+.nav-group:first-child {
+  padding-top: 0;
+}
+
+.nav-group + .nav-group {
+  border-top: 1px solid rgba(148, 163, 184, 0.06);
 }
 
 .nav-group__title {
@@ -428,13 +437,13 @@ function badgeFor(item: NavItem): number {
   padding: 9px 10px;
   margin-bottom: 2px;
   border-radius: 10px;
-  color: var(--text-soft);
+  color: #7c8ba3;
   font-size: 13px;
   font-weight: 500;
   transition:
-    background 0.15s var(--ease),
-    color 0.15s var(--ease),
-    transform 0.15s var(--ease);
+    background 0.18s var(--ease),
+    color 0.18s var(--ease),
+    transform 0.18s var(--ease);
 }
 
 .nav-item__icon {
@@ -480,21 +489,34 @@ function badgeFor(item: NavItem): number {
 .nav-item--active {
   background: linear-gradient(
     90deg,
-    rgba(59, 130, 246, 0.18),
-    rgba(59, 130, 246, 0.08)
+    rgba(59, 130, 246, 0.22),
+    rgba(59, 130, 246, 0.06)
   );
   color: var(--text);
-  box-shadow: inset 2px 0 0 var(--brand);
+  box-shadow:
+    inset 2.5px 0 0 var(--brand),
+    0 0 20px -6px rgba(59, 130, 246, 0.55);
 }
 
 .nav-item--active .nav-item__icon {
-  color: var(--brand);
+  color: #60a5fa;
+  filter: drop-shadow(0 0 6px rgba(96, 165, 250, 0.5));
 }
 
 .sidebar__account {
   margin-top: auto;
-  padding: 14px 8px 4px;
+  padding: 14px 10px 4px;
   border-top: 1px solid var(--border);
+}
+
+.sidebar__user {
+  padding: 8px;
+  border-radius: 10px;
+  transition: background 0.18s var(--ease);
+}
+
+.sidebar__user:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .sidebar__user {

@@ -79,23 +79,43 @@ async function submit(): Promise<void> {
 
 <style scoped>
 .login-page {
+  position: relative;
   min-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-3);
+  overflow: hidden;
   background:
-    radial-gradient(circle at 50% 10%, rgba(59, 130, 246, 0.14), transparent 38%),
+    radial-gradient(circle at 50% 8%, rgba(59, 130, 246, 0.18), transparent 40%),
+    radial-gradient(circle at 85% 85%, rgba(56, 189, 248, 0.08), transparent 45%),
     var(--bg);
 }
 
+.login-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000, transparent 75%);
+  pointer-events: none;
+}
+
 .login-card {
+  position: relative;
+  z-index: 1;
   width: min(100%, 420px);
   padding: var(--space-4);
   border: 1px solid var(--border-strong);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
+  border-radius: 18px;
+  background:
+    linear-gradient(165deg, rgba(59, 130, 246, 0.1), transparent 46%),
+    var(--surface);
+  box-shadow: var(--shadow-lg);
+  animation: rise-in 0.5s var(--ease) both;
 }
 
 .login-brand {
@@ -107,7 +127,8 @@ async function submit(): Promise<void> {
   border-radius: 12px;
   color: #fff;
   font-weight: 700;
-  background: linear-gradient(145deg, var(--brand), var(--brand-strong));
+  background: linear-gradient(145deg, #4c8bfa, var(--brand-strong));
+  box-shadow: var(--glow-brand);
 }
 
 .login-kicker {
@@ -182,11 +203,14 @@ h1 {
   border-radius: var(--radius-sm);
   color: #fff;
   font-weight: 700;
-  background: var(--brand);
+  background: linear-gradient(180deg, #4c8bfa, var(--brand) 60%, var(--brand-strong));
+  box-shadow: var(--glow-brand);
+  transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease);
 }
 
 .login-submit:hover:not(:disabled) {
-  background: var(--brand-strong);
+  transform: translateY(-1px);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2), 0 12px 32px -6px rgba(37, 99, 235, 0.45);
 }
 
 .login-submit:disabled {

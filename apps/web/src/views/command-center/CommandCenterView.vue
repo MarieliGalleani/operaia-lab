@@ -167,9 +167,14 @@ function formatWhen(iso: string | null | undefined): string {
 
 <style scoped>
 .cc__hero {
-  padding: 22px 24px;
+  position: relative;
+  overflow: hidden;
+  padding: 26px 28px;
   margin-bottom: var(--space-3);
-  background: var(--surface);
+  background:
+    radial-gradient(ellipse 70% 140% at 100% -20%, rgba(59, 130, 246, 0.16), transparent 60%),
+    var(--surface);
+  box-shadow: var(--shadow);
 }
 .cc__hero--operating {
   border-color: rgba(52, 211, 153, 0.25);
@@ -187,11 +192,13 @@ function formatWhen(iso: string | null | undefined): string {
 .cc__level {
   margin-top: 8px;
   font-size: var(--text-2xl);
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 .cc__status {
   display: flex;
   align-items: center;
-  margin-top: 14px;
+  margin-top: 16px;
   font-size: var(--text-sm);
   color: var(--text-muted);
 }

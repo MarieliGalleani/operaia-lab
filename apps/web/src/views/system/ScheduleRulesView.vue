@@ -181,7 +181,7 @@ function formatWhen(iso: string | null): string {
             >
               {{ rule.enabled ? "Pausar" : "Ativar" }}
             </button>
-            <button type="button" class="btn btn--ghost btn--danger" @click="removeRule(rule)">
+            <button type="button" class="btn btn--ghost btn--remove" @click="removeRule(rule)">
               Remover
             </button>
           </div>
@@ -263,8 +263,13 @@ function formatWhen(iso: string | null): string {
   gap: 8px;
   flex-shrink: 0;
 }
-.btn--danger {
-  color: #f87171;
+.btn--remove {
+  color: var(--danger);
+  border-color: rgba(248, 113, 113, 0.25);
+}
+.btn--remove:hover:not(:disabled) {
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 .quiet {
   color: var(--text-soft);
