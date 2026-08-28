@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import AutomationCard from "@/components/command/AutomationCard.vue";
-import PreparationAutomationCard from "@/components/command/PreparationAutomationCard.vue";
-import { PREPARATION_AUTOMATIONS } from "@/data/automation-capabilities";
 import type { AutomationListItem } from "@/data/office-command";
 
 defineProps<{
@@ -27,15 +25,12 @@ defineProps<{
         :item="item"
       />
     </div>
-    <div class="automation-grid">
-      <PreparationAutomationCard
-        v-for="item in PREPARATION_AUTOMATIONS"
-        :key="item.id"
-        :automation="item"
-      />
-    </div>
-    <p v-if="state === 'error'" class="quiet" role="status">
-      O catálogo operacional não está disponível agora. As capacidades em preparação continuam visíveis.
+    <p v-else-if="state === 'error'" class="quiet" role="status">
+      O catálogo operacional não está disponível agora.
+    </p>
+    <p v-else class="quiet" role="status">
+      Nenhuma automação registrada ainda.
+      <router-link to="/app/automations" class="section__link">Ver o que está em preparação</router-link>
     </p>
   </section>
 </template>

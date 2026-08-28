@@ -84,7 +84,9 @@ async function submit(): Promise<void> {
     </label>
 
     <p class="hint">
-      Envio direto para POST /api/v1/missions. Sem classificação extra no frontend.
+      Modo avançado: envia direto para a fila, sem passar pela triagem de risco nem
+      pedir aprovação. Para o caminho normal, use
+      <router-link to="/app/command/new" class="hint__link" @click="emit('closed')">Nova demanda</router-link>.
     </p>
     <p v-if="error" class="error">{{ error }}</p>
 
@@ -153,6 +155,12 @@ async function submit(): Promise<void> {
 .hint {
   font-size: var(--text-xs);
   color: var(--text-soft);
+}
+
+.hint__link {
+  color: var(--brand);
+  font-weight: 600;
+  text-decoration: underline;
 }
 
 .error {

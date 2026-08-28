@@ -186,6 +186,9 @@ function setAutonomy(level: AutonomyLevel) {
       <section v-else-if="step === 'understood' && brief" class="panel demand__panel">
         <p class="eyebrow">Entendi</p>
         <h2 class="section__title">Interpretação</h2>
+        <p class="demand__help">
+          Triagem automática por regras de risco — revise antes de confirmar.
+        </p>
         <dl class="demand__dl">
           <div><dt>Cliente</dt><dd>{{ brief.workspaceName }}</dd></div>
           <div><dt>Objetivo</dt><dd>{{ brief.objective }}</dd></div>

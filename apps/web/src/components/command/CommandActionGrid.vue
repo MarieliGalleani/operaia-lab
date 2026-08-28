@@ -28,6 +28,13 @@ const items = [
     desc: "Veja o que precisa da sua análise.",
     icon: "M12 8v5l3 2 M20 12a8 8 0 1 1-8-8",
   },
+  {
+    to: "/app/system/schedule-rules",
+    primary: false,
+    title: "Gatilhos automáticos",
+    desc: "Configure trabalho recorrente que roda sozinho.",
+    icon: "M12 6v6l4 2 M12 3a9 9 0 1 0 9 9",
+  },
 ] as const;
 </script>
 

@@ -59,8 +59,13 @@ onMounted(() => {
         <button type="button" class="btn btn--ghost" :disabled="loading" @click="refresh">
           Atualizar
         </button>
-        <button type="button" class="btn btn--primary" @click="creating = true">
-          Nova missão
+        <button
+          type="button"
+          class="btn btn--ghost"
+          title="Modo avançado: pula a triagem de risco e a aprovação"
+          @click="creating = true"
+        >
+          Nova missão (avançado)
         </button>
       </div>
     </header>
