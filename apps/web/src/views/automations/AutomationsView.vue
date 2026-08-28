@@ -68,28 +68,12 @@ onMounted(loadAutomations);
           <p>Automatizações registradas aparecem com seu estado real. Capacidades em preparação não iniciam execuções.</p>
         </section>
 
-        <section class="section" aria-labelledby="preparation-title">
+        <section v-if="attention.length" class="section" aria-labelledby="attention-title">
           <div class="section__head">
-            <div>
-              <p class="eyebrow">Em preparação</p>
-              <h2 id="preparation-title" class="section__title">Capacidades que estão sendo construídas</h2>
-            </div>
+            <h2 id="attention-title" class="section__title">Precisam de atenção</h2>
           </div>
           <div class="automations__grid">
-            <PreparationAutomationCard
-              v-for="item in PREPARATION_AUTOMATIONS"
-              :key="item.id"
-              :automation="item"
-            />
-          </div>
-        </section>
-
-        <section v-if="available.length" class="section" aria-labelledby="available-title">
-          <div class="section__head">
-            <h2 id="available-title" class="section__title">Disponíveis</h2>
-          </div>
-          <div class="automations__grid">
-            <AutomationCard v-for="item in available" :key="item.id" :item="item" />
+            <AutomationCard v-for="item in attention" :key="item.id" :item="item" />
           </div>
         </section>
 
@@ -102,12 +86,12 @@ onMounted(loadAutomations);
           </div>
         </section>
 
-        <section v-if="attention.length" class="section" aria-labelledby="attention-title">
+        <section v-if="available.length" class="section" aria-labelledby="available-title">
           <div class="section__head">
-            <h2 id="attention-title" class="section__title">Precisam de atenção</h2>
+            <h2 id="available-title" class="section__title">Disponíveis</h2>
           </div>
           <div class="automations__grid">
-            <AutomationCard v-for="item in attention" :key="item.id" :item="item" />
+            <AutomationCard v-for="item in available" :key="item.id" :item="item" />
           </div>
         </section>
 
@@ -123,10 +107,26 @@ onMounted(loadAutomations);
         <EmptyState
           v-if="!items.length"
           title="Nenhuma automação registrada ainda"
-          body="As capacidades em preparação acima ainda não possuem execução operacional."
+          body="As capacidades em preparação abaixo ainda não possuem execução operacional."
           cta-label="Nova demanda"
           cta-to="/app/command/new"
         />
+
+        <section class="section" aria-labelledby="preparation-title">
+          <div class="section__head">
+            <div>
+              <p class="eyebrow">Ainda não disponível</p>
+              <h2 id="preparation-title" class="section__title">Em preparação</h2>
+            </div>
+          </div>
+          <div class="automations__grid">
+            <PreparationAutomationCard
+              v-for="item in PREPARATION_AUTOMATIONS"
+              :key="item.id"
+              :automation="item"
+            />
+          </div>
+        </section>
       </template>
     </div>
   </div>

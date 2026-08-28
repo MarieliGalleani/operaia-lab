@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { ref } from "vue";
 import type { PreparationAutomation } from "@/data/automation-capabilities";
 
 defineProps<{ automation: PreparationAutomation }>();
-
-const requestOpened = ref(false);
 </script>
 
 <template>
@@ -30,13 +27,8 @@ const requestOpened = ref(false);
       </div>
     </dl>
 
-    <button type="button" class="btn btn--ghost capability__action" @click="requestOpened = true">
-      Solicitar
-    </button>
-
-    <p v-if="requestOpened" class="capability__notice" role="status">
-      Solicitação ainda não disponível. Esta capacidade está sendo preparada pela equipe digital;
-      nenhuma execução foi iniciada.
+    <p class="capability__notice" role="status">
+      Ainda não pode ser solicitada. Nenhuma execução foi iniciada.
     </p>
   </article>
 </template>
@@ -86,10 +78,6 @@ const requestOpened = ref(false);
   font-size: var(--text-sm);
 }
 
-.capability__action {
-  margin-top: 16px;
-}
-
 .capability__notice {
   margin-top: 12px;
   padding: 10px 12px;
@@ -106,10 +94,6 @@ const requestOpened = ref(false);
 
   .capability__head .badge {
     margin-top: 10px;
-  }
-
-  .capability__action {
-    width: 100%;
   }
 }
 </style>
