@@ -14,6 +14,9 @@
  */
 
 import type { ActorKind } from "../../virtual-world/contracts/components";
+import type { TileCoord } from "../../virtual-world/contracts/ids";
+import type { ActorDescriptor } from "../../virtual-world/contracts/providers";
+import type { LiveAgentStatus } from "../live-agent-status";
 
 export interface RealAgentMeta {
   readonly id: string;
@@ -98,3 +101,26 @@ export const REAL_AGENT_ROSTER: readonly RealAgentMeta[] = [
     tags: ["operations"],
   },
 ] as const;
+
+/**
+ * Combina o elenco real com as estações de um andar (sede ou cliente) e o
+ * status ao vivo — ocupado agora fica no posto no estado característico do
+ * agente; livre agora vira "AVAILABLE" (rouba para zonas de descanso).
+ */
+export function buildActorsForStations(
+  stations: Readonly<Record<string, TileCoord>>,
+  liveStatus: ReadonlyMap<string, LiveAgentStatus>,
+): readonly ActorDescriptor[] {
+  return REAL_AGENT_ROSTER.map((agent) => {
+    const live = liveStatus.get(agent.id);
+    return {
+      id: agent.id,
+      name: agent.name,
+      kind: agent.kind,
+      homeTile: stations[agent.id],
+      stateId: live && !live.busy ? "AVAILABLE" : agent.stateId,
+      spriteId: agent.spriteId,
+      tags: agent.tags,
+    };
+  });
+}

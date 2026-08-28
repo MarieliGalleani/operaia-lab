@@ -5,7 +5,7 @@
  * item em client-floors-registry.ts, sem inventar personagem novo.
  */
 
-import type { TileRect } from "../../virtual-world/contracts/ids";
+import type { TileCoord, TileRect } from "../../virtual-world/contracts/ids";
 import type {
   AreaBlueprint,
   AreaEnclosure,
@@ -14,12 +14,10 @@ import type {
   MapManifest,
   SpawnPointDef,
 } from "../../virtual-world/contracts/map";
-import type { ActorDescriptor } from "../../virtual-world/contracts/providers";
 import { CORPORATE_THEME_ID } from "./corporate-theme";
 import { CAMPUS_PLAZA_MAP_ID } from "./campus-ids";
 import { campusPortal } from "./campus-portal";
 import { decorationsForKind, prop, REST_KINDS } from "./office-room-kits";
-import { REAL_AGENT_ROSTER } from "./real-agents";
 
 const CELL_W = 9;
 const CELL_H = 7;
@@ -181,8 +179,8 @@ function ambientProps(): EntityBlueprint[] {
 function buildStations(
   roomBounds: Record<string, TileRect>,
   floorId: string,
-): Record<string, { col: number; row: number; floorId: string }> {
-  function stationOf(roomId: string, dx: number, dy: number) {
+): Record<string, TileCoord> {
+  function stationOf(roomId: string, dx: number, dy: number): TileCoord {
     const b = roomBounds[roomId] ?? cellBounds(0, 0);
     return { col: b.col + dx, row: b.row + dy, floorId };
   }
@@ -200,11 +198,15 @@ function buildStations(
 }
 
 export interface ClientFloorBuild {
+  readonly workspaceId: string;
   readonly entranceMapId: string;
   readonly floorMapId: string;
   readonly entranceMap: MapManifest;
   readonly floorMap: MapManifest;
-  readonly actors: readonly ActorDescriptor[];
+  /** Estações do elenco real neste andar — os ActorDescriptor completos são
+   *  montados em tempo de carregamento (office-entity-provider.ts) para
+   *  incluir o status ao vivo de cada agente. */
+  readonly stations: Readonly<Record<string, TileCoord>>;
 }
 
 /**
@@ -237,15 +239,6 @@ export function buildClientFloor(config: {
   }
 
   const stations = buildStations(roomBounds, floorId);
-  const actors: ActorDescriptor[] = REAL_AGENT_ROSTER.map((agent) => ({
-    id: agent.id,
-    name: agent.name,
-    kind: agent.kind,
-    homeTile: stations[agent.id],
-    stateId: agent.stateId,
-    spriteId: agent.spriteId,
-    tags: agent.tags,
-  }));
 
   function buildFloorSpawnPoints(): SpawnPointDef[] {
     const points: SpawnPointDef[] = [];
@@ -366,5 +359,5 @@ export function buildClientFloor(config: {
     ambient: { musicId: "office-ambient", lightingId: "daylight" },
   };
 
-  return { entranceMapId, floorMapId, entranceMap, floorMap, actors };
+  return { workspaceId, entranceMapId, floorMapId, entranceMap, floorMap, stations };
 }
