@@ -106,6 +106,15 @@ export interface CompletedItem {
   readonly workspaceName?: string;
 }
 
+export interface TeamMemberDto {
+  readonly employeeId: string;
+  readonly name: string;
+  readonly specialization: string;
+  readonly status: string;
+  readonly currentMissionId: string | null;
+  readonly currentObjective: string | null;
+}
+
 export interface CommandCenterDto {
   readonly generatedAt: string;
   readonly source: DataSource;
@@ -114,12 +123,19 @@ export interface CommandCenterDto {
     readonly level: OfficeLevel;
     readonly label: string;
     readonly summary: string;
+    readonly workers: {
+      readonly alive: number;
+      readonly expected: number;
+      readonly busy: number;
+      readonly available: number;
+    };
   };
   readonly attention: readonly AttentionItem[];
   readonly pendingApprovals: number;
   readonly inProgress: readonly WorkProgressItem[];
   readonly decisions: readonly DecisionSummaryItem[];
   readonly completed: readonly CompletedItem[];
+  readonly team: readonly TeamMemberDto[];
   readonly idle: boolean;
   readonly zeroMessage: string;
 }

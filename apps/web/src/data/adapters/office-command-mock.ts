@@ -31,6 +31,7 @@ export function mockCommandCenter(): CommandCenterDto {
       level: "OPERATING",
       label: "OPERANDO",
       summary: "Escritório operacional. Dados de demonstração (mock explícito).",
+      workers: { alive: 6, expected: 6, busy: 1, available: 5 },
     },
     attention: [
       {
@@ -79,6 +80,24 @@ export function mockCommandCenter(): CommandCenterDto {
         kind: "ux_analysis",
         href: "/app/missions",
         workspaceName: "Clínica X",
+      },
+    ],
+    team: [
+      {
+        employeeId: "luna",
+        name: "Luna",
+        specialization: "UX",
+        status: "WORKING",
+        currentMissionId: "work-demo-1",
+        currentObjective: "Automatizar onboarding de novos clientes",
+      },
+      {
+        employeeId: "mercurio",
+        name: "Mercúrio",
+        specialization: "Marketing",
+        status: "IDLE",
+        currentMissionId: null,
+        currentObjective: null,
       },
     ],
     idle: false,

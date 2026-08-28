@@ -37,6 +37,7 @@ import AutomationsView from "@/views/automations/AutomationsView.vue";
 import AutomationDetailView from "@/views/automations/AutomationDetailView.vue";
 import ExecutionsView from "@/views/executions/ExecutionsView.vue";
 import ExecutionDetailView from "@/views/executions/ExecutionDetailView.vue";
+import ScheduleRulesView from "@/views/system/ScheduleRulesView.vue";
 
 const routes: RouteRecordRaw[] = [
   { path: "/", redirect: "/app" },
@@ -161,6 +162,11 @@ const routes: RouteRecordRaw[] = [
         children: [
           { path: "infra", name: "vps-panel", component: VpsPanelView },
           { path: "settings", name: "settings", component: SettingsView },
+          {
+            path: "schedule-rules",
+            name: "schedule-rules",
+            component: ScheduleRulesView,
+          },
         ],
       },
       {

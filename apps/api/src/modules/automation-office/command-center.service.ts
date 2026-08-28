@@ -3,7 +3,11 @@ import type { ContinuousRuntime } from "../runtime/continuous-runtime.js";
 import { ADMIN_OFFICIAL_WORKSPACE_IDS } from "../auth/official-workspace-access.js";
 import { buildOfficeStatus } from "../office/build-office-status.js";
 import { OfficeUnavailableError } from "./automation-office.errors.js";
-import type { AttentionItemDto, CommandCenterDto } from "./automation-office.types.js";
+import type {
+  AttentionItemDto,
+  CommandCenterDto,
+  TeamMemberDto,
+} from "./automation-office.types.js";
 import { countPendingApprovals } from "./approval.service.js";
 import { listDecisionSummaries } from "./decision-trace.service.js";
 import { listInProgressMissions } from "./execution-projection.service.js";
@@ -18,6 +22,43 @@ const SEVERITY_ORDER: Record<string, number> = {
   warning: 2,
   info: 3,
 };
+
+async function buildTeam(
+  runtime: ContinuousRuntime,
+): Promise<readonly TeamMemberDto[]> {
+  let snap: Awaited<ReturnType<ContinuousRuntime["snapshot"]>> | null = null;
+  try {
+    snap = await runtime.snapshot();
+  } catch {
+    return [];
+  }
+
+  const missionIds = snap.workers
+    .map((worker) => worker.currentMissionId)
+    .filter((id): id is string => id !== null);
+
+  const objectiveById = new Map<string, string>();
+  if (missionIds.length > 0) {
+    const missions = await prisma.mission.findMany({
+      where: { id: { in: missionIds } },
+      select: { id: true, objective: true },
+    });
+    for (const mission of missions) {
+      objectiveById.set(mission.id, mission.objective);
+    }
+  }
+
+  return snap.workers.map((worker) => ({
+    employeeId: worker.employeeId,
+    name: worker.name,
+    specialization: worker.specialization,
+    status: worker.status,
+    currentMissionId: worker.currentMissionId,
+    currentObjective: worker.currentMissionId
+      ? (objectiveById.get(worker.currentMissionId) ?? null)
+      : null,
+  }));
+}
 
 function extractDeliveryTitle(objective: string, resultJson: unknown): string {
   if (resultJson && typeof resultJson === "object") {
@@ -53,6 +94,7 @@ export async function buildCommandCenter(
     decisionSummaries,
     inProgress,
     completedMissions,
+    team,
   ] = await Promise.all([
     countPendingApprovals(officialIds),
     prisma.officeApprovalRequest.findMany({
@@ -83,6 +125,7 @@ export async function buildCommandCenter(
         workspaceId: true,
       },
     }),
+    buildTeam(runtime),
   ]);
 
   const attention: AttentionItemDto[] = [];
@@ -165,12 +208,14 @@ export async function buildCommandCenter(
       level: statusPayload.status.level,
       label: statusPayload.status.label,
       summary: statusPayload.status.summary,
+      workers: statusPayload.status.workers,
     },
     attention: attention.slice(0, ATTENTION_TAKE),
     pendingApprovals,
     inProgress,
     decisions: decisionSummaries,
     completed,
+    team,
     idle,
     zeroMessage:
       completed.length === 0

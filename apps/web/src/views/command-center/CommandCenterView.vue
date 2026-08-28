@@ -6,22 +6,14 @@ import CommandTeamSection from "@/components/command/CommandTeamSection.vue";
 import CommandWorkSection from "@/components/command/CommandWorkSection.vue";
 import LoadingState from "@/components/command/LoadingState.vue";
 import { useCommandCenter } from "@/composables/useCommandCenter";
-import { useOffice } from "@/composables/useOffice";
 import { officeCommandClient } from "@/data/adapters/office-client";
 import type { AutomationListItem, OfficeLevel } from "@/data/office-command";
 
 const { data, state, errorMessage, load } = useCommandCenter();
-const { employees, load: loadOffice } = useOffice();
 const automations = ref<readonly AutomationListItem[]>([]);
 const automationsState = ref<"idle" | "loading" | "ready" | "error">("idle");
 
 onMounted(async () => {
-  try {
-    await loadOffice();
-  } catch (error) {
-    console.log("[command-center] equipe indisponível", error);
-  }
-
   automationsState.value = "loading";
   try {
     automations.value = await officeCommandClient.listAutomations();
@@ -31,10 +23,6 @@ onMounted(async () => {
     automationsState.value = "error";
   }
 });
-
-const activeEmployees = computed(() =>
-  employees.value.filter((employee) => employee.active).slice(0, 6),
-);
 
 const levelMeta: Record<
   OfficeLevel,
@@ -66,6 +54,18 @@ const heroLine = computed(() => {
   }
   if (d.idle) return "Tudo em dia.";
   return d.status.summary;
+});
+
+const agentsLine = computed(() => {
+  const workers = data.value?.status.workers;
+  if (!workers) return "";
+  if (workers.alive === 0) return "Nenhum agente ativo no momento.";
+  if (workers.busy === 0) {
+    return `${workers.alive} agente${workers.alive === 1 ? "" : "s"} ativo${
+      workers.alive === 1 ? "" : "s"
+    } agora, todos disponíveis.`;
+  }
+  return `${workers.busy} de ${workers.alive} agentes trabalhando agora.`;
 });
 
 function formatWhen(iso: string | null | undefined): string {
@@ -141,9 +141,13 @@ function formatWhen(iso: string | null | undefined): string {
           Escritório {{ meta.label.toLowerCase() }}
         </p>
         <p class="cc__line">{{ heroLine }}</p>
+        <p class="cc__agents" :class="{ 'cc__agents--idle': data.status.workers.busy === 0 }">
+          <span class="cc__agents-dot" aria-hidden="true"></span>
+          {{ agentsLine }}
+        </p>
         <p class="cc__meta">Atualizado {{ formatWhen(data.generatedAt) }}</p>
         <div class="sr-only" aria-live="polite" aria-atomic="true">
-          Estado: {{ meta.label }}. {{ heroLine }}.
+          Estado: {{ meta.label }}. {{ heroLine }}. {{ agentsLine }}.
           {{ data.pendingApprovals }} aprovações pendentes.
         </div>
       </section>
@@ -156,7 +160,7 @@ function formatWhen(iso: string | null | undefined): string {
       />
 
       <CommandWorkSection :data="data" />
-      <CommandTeamSection :employees="activeEmployees" />
+      <CommandTeamSection :team="data.team" />
     </div>
   </div>
 </template>
@@ -198,6 +202,23 @@ function formatWhen(iso: string | null | undefined): string {
   margin-top: 10px;
   font-size: var(--text-lg);
   color: var(--text);
+}
+.cc__agents {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+  font-size: var(--text-sm);
+  color: #34d399;
+}
+.cc__agents--idle {
+  color: var(--text-muted);
+}
+.cc__agents-dot {
+  width: 8px;
+  height: 8px;
+  margin-right: 8px;
+  border-radius: 50%;
+  background: currentColor;
 }
 .cc__meta {
   margin-top: 10px;

@@ -2,6 +2,8 @@
 export interface HttpClient {
   get<T>(path: string): Promise<T>;
   post<T>(path: string, body: unknown): Promise<T>;
+  patch<T>(path: string, body: unknown): Promise<T>;
+  delete<T>(path: string): Promise<T>;
 }
 
 export interface UnauthorizedResponse {
@@ -80,6 +82,26 @@ export function createHttpClient(
           credentials: "include",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(body),
+        }),
+        notifyUnauthorized,
+      );
+    },
+    async patch<T>(path: string, body: unknown): Promise<T> {
+      return handle<T>(
+        await fetch(`${baseUrl}${path}`, {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        }),
+        notifyUnauthorized,
+      );
+    },
+    async delete<T>(path: string): Promise<T> {
+      return handle<T>(
+        await fetch(`${baseUrl}${path}`, {
+          method: "DELETE",
+          credentials: "include",
         }),
         notifyUnauthorized,
       );

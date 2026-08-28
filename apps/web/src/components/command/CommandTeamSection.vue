@@ -1,7 +1,11 @@
 <script setup lang="ts">
-import type { Employee } from "@/types/office";
+import type { TeamMemberDto } from "@/data/office-command";
 
-defineProps<{ employees: readonly Employee[] }>();
+defineProps<{ team: readonly TeamMemberDto[] }>();
+
+function initial(name: string): string {
+  return name.trim().charAt(0).toUpperCase() || "?";
+}
 </script>
 
 <template>
@@ -9,17 +13,22 @@ defineProps<{ employees: readonly Employee[] }>();
     <div class="section__head">
       <div>
         <p class="eyebrow">Equipe digital</p>
-        <h2 id="cc-team" class="section__title">Quem está no escritório</h2>
+        <h2 id="cc-team" class="section__title">Quem está no escritório agora</h2>
       </div>
       <router-link to="/app/team" class="section__link">Ver equipe</router-link>
     </div>
-    <div v-if="employees.length" class="team">
-      <article v-for="employee in employees" :key="employee.id" class="person panel">
-        <span class="person__avatar">{{ employee.emoji }}</span>
+    <div v-if="team.length" class="team">
+      <article v-for="member in team" :key="member.employeeId" class="person panel">
+        <span class="person__avatar" :class="{ 'person__avatar--busy': member.currentMissionId }">
+          {{ initial(member.name) }}
+        </span>
         <div>
-          <strong>{{ employee.name }}</strong>
-          <span>{{ employee.specialtyLabel }}</span>
-          <small>{{ employee.statusLabel }}</small>
+          <strong>{{ member.name }}</strong>
+          <span>{{ member.specialization }}</span>
+          <small v-if="member.currentObjective">
+            Trabalhando em: {{ member.currentObjective }}
+          </small>
+          <small v-else>Disponível agora</small>
         </div>
       </article>
     </div>
@@ -51,7 +60,14 @@ defineProps<{ employees: readonly Employee[] }>();
   margin-right: 10px;
   border-radius: 50%;
   background: var(--surface-2);
-  font-size: 20px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.person__avatar--busy {
+  background: rgba(52, 211, 153, 0.18);
+  color: #34d399;
+  box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.35);
 }
 
 .person strong,

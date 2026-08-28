@@ -18,6 +18,12 @@ function httpStub(overrides: {
       (async () => {
         throw new Error("post not stubbed");
       })) as HttpClient["post"],
+    patch: (async () => {
+      throw new Error("patch not stubbed");
+    }) as HttpClient["patch"],
+    delete: (async () => {
+      throw new Error("delete not stubbed");
+    }) as HttpClient["delete"],
   };
 }
 

@@ -32,6 +32,12 @@ export const commandCenterResponseSchema = z.object({
     level: z.enum(["OPERATING", "ATTENTION", "PROBLEM"]),
     label: z.string(),
     summary: z.string(),
+    workers: z.object({
+      alive: z.number(),
+      expected: z.number(),
+      busy: z.number(),
+      available: z.number(),
+    }),
   }),
   attention: z.array(
     z.object({
@@ -83,6 +89,14 @@ export const commandCenterResponseSchema = z.object({
     kind: z.string(),
     href: z.string(),
     workspaceName: z.string().optional(),
+  })),
+  team: z.array(z.object({
+    employeeId: z.string(),
+    name: z.string(),
+    specialization: z.string(),
+    status: z.string(),
+    currentMissionId: z.string().nullable(),
+    currentObjective: z.string().nullable(),
   })),
   idle: z.boolean(),
   zeroMessage: z.string(),

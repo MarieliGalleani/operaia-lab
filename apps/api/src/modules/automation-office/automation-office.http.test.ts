@@ -81,6 +81,7 @@ vi.mock("../office/build-office-status.js", () => ({
       summary: "OK",
       healthOk: true,
       readyOk: true,
+      workers: { alive: 0, expected: 0, busy: 0, available: 0 },
     },
     activity: { idle: true },
     attention: { items: [] },

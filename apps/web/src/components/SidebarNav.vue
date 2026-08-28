@@ -45,6 +45,11 @@ const groups: readonly NavGroup[] = [
     title: "Sistema",
     items: [
       { label: "Execuções", icon: "activity", to: "/app/executions" },
+      {
+        label: "Gatilhos automáticos",
+        icon: "clock",
+        to: "/app/system/schedule-rules",
+      },
       { label: "Infraestrutura", icon: "server", to: "/app/system/infra" },
       { label: "Configurações", icon: "settings", to: "/app/system/settings" },
     ],
