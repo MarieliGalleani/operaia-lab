@@ -56,6 +56,7 @@ function createQueueMock() {
     objective: string;
     ownerEmployeeId: string;
     dedupe?: boolean;
+    origin?: string;
   }> = [];
   let shouldCreate = true;
   return {
@@ -69,6 +70,7 @@ function createQueueMock() {
         objective: string;
         ownerEmployeeId: string;
         dedupe?: boolean;
+        origin?: string;
       }) {
         enqueued.push(input);
         return { created: shouldCreate, id: shouldCreate ? `m-${enqueued.length}` : "dup" };
@@ -123,6 +125,7 @@ describe("MissionScheduler.runScheduleRulesCycle", () => {
       objective: "F6.2 due objective",
       ownerEmployeeId: CEO_EMPLOYEE_ID,
       dedupe: true,
+      origin: "SCHEDULE_RULE",
     });
   });
 

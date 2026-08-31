@@ -139,6 +139,7 @@ export async function enqueueSignalCoordinateMission(input: {
     missionKind: MissionKind.COORDINATE,
     ownerEmployeeId: CEO_EMPLOYEE_ID,
     dedupe: true,
+    origin: "SIGNAL_GITHUB",
   });
 
   await gate.bindExecute({

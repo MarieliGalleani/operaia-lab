@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import {
   MissionKind as PrismaMissionKind,
+  MissionOrigin,
   MissionStatus,
   prisma,
   type Mission,
@@ -32,6 +33,14 @@ export interface EnqueueMissionInput {
   readonly readiness?: "READY" | "BLOCKED";
   /** Se true, nao cria se ja existir ativa com mesmo hash (so COORDINATE raiz). */
   readonly dedupe?: boolean;
+  /**
+   * Causa estrutural de criacao (P1.2B) — so tem sentido em missao RAIZ
+   * (sem parentMissionId). Filhas (EXECUTE/CONSOLIDATE/follow-up) devem
+   * omitir: origin fica null e a UI resolve subindo ate a raiz. Nao ha
+   * default nem heuristica aqui — quem chama enqueue() e quem sabe a
+   * causa real, ou nao informa nada.
+   */
+  readonly origin?: MissionOrigin;
 }
 
 /** Erro de contrato ADR-007 (MissionQueue). */
@@ -210,6 +219,7 @@ export class MissionQueue {
         scheduledAt: input.scheduledAt ?? new Date(),
         progress: 0,
         attempt: 0,
+        origin: input.origin,
       },
     });
 

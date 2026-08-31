@@ -404,6 +404,7 @@ export function createRuntimeRoutes(
           priority: request.body.priority,
           ownerEmployeeId: CEO_EMPLOYEE_ID,
           dedupe: true,
+          origin: "HUMAN_ADVANCED",
         });
         return { mission, created };
       },

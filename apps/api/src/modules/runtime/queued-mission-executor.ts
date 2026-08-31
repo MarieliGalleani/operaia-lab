@@ -126,8 +126,9 @@ export async function enqueueTechnicalFollowUpIfEligible(input: {
   const objectiveHash = hashObjective(source.workspaceId, objective);
 
   let parentCoordinateObjective: string | null = null;
+  let parent: Mission | null = null;
   if (source.parentMissionId) {
-    const parent = await queue.get(source.parentMissionId);
+    parent = await queue.get(source.parentMissionId);
     parentCoordinateObjective = parent?.objective ?? null;
   }
 
@@ -159,6 +160,9 @@ export async function enqueueTechnicalFollowUpIfEligible(input: {
       missionKind: MissionKind.COORDINATE,
       ownerEmployeeId: CEO_EMPLOYEE_ID,
       dedupe: true,
+      // P1.2D — origin representa proveniencia do trabalho, nao mecanismo de
+      // criacao: o follow-up herda a origin da raiz que originou a execucao-fonte.
+      origin: parent?.origin ?? undefined,
     });
 
     await queue.appendEvent(

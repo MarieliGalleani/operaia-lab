@@ -1,4 +1,4 @@
-import type { Mission } from "@operaia/database";
+import type { Mission, MissionOrigin } from "@operaia/database";
 import type { MissionQueue } from "../../mission-queue.js";
 import type { MissionQueuePort, MissionView } from "../ports.js";
 
@@ -53,6 +53,7 @@ export class MissionQueueAdapter implements MissionQueuePort {
     readonly ownerEmployeeId: string;
     readonly priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
     readonly dedupe?: boolean;
+    readonly origin?: MissionOrigin;
   }) {
     const result = await this.queue.enqueue({
       workspaceId: input.workspaceId,
@@ -61,6 +62,7 @@ export class MissionQueueAdapter implements MissionQueuePort {
       ownerEmployeeId: input.ownerEmployeeId,
       priority: input.priority,
       dedupe: input.dedupe,
+      origin: input.origin,
     });
     return { created: result.created, id: result.mission.id };
   }

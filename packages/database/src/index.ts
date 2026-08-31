@@ -35,6 +35,7 @@ export {
   OfficeAutomationStatus,
   MissionStatus,
   MissionKind,
+  MissionOrigin,
   MissionReadiness,
   GoalStatus,
   ApprovalStatus,

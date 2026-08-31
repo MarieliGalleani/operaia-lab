@@ -131,7 +131,7 @@ describe("Chat executivo e navegação por salas", () => {
     expect(wrapper.text()).toContain("Opera");
   });
 
-  it("SidebarNav exibe Command Center e IA P0.3B", () => {
+  it("SidebarNav exibe Command Center e IA P0.3B no 1º andar (Desenvolvimento)", () => {
     const wrapper = mount(SidebarNav, {
       global: { plugins: [testRouter()] },
     });
@@ -140,6 +140,8 @@ describe("Chat executivo e navegação por salas", () => {
       text.indexOf("Nova demanda"),
     );
     for (const label of [
+      "1º Andar",
+      "Desenvolvimento",
       "Visão geral",
       "Command Center",
       "Nova demanda",
@@ -147,7 +149,6 @@ describe("Chat executivo e navegação por salas", () => {
       "Trabalho",
       "Missões",
       "Decisões",
-      "Automações",
       "Execuções",
       "Workspaces",
       "Equipe",
@@ -158,6 +159,32 @@ describe("Chat executivo e navegação por salas", () => {
       "Explorar",
     ]) {
       expect(text).toContain(label);
+    }
+    // Automações pertence ao 2º andar — não deve aparecer no 1º.
+    expect(text).not.toContain("Automações");
+  });
+
+  it("SidebarNav exibe as rotas do 2º andar (Automação) e não mistura com o 1º", async () => {
+    const router = testRouter();
+    await router.push("/app/floor/automation/command");
+    const wrapper = mount(SidebarNav, {
+      global: { plugins: [router] },
+    });
+    const text = wrapper.text();
+    for (const label of [
+      "2º Andar",
+      "Automação",
+      "Automações",
+      "Gatilhos automáticos",
+      "Equipe digital",
+      "Sistema",
+      "Explorar",
+    ]) {
+      expect(text).toContain(label);
+    }
+    // Conteúdo de desenvolvimento não pode aparecer no andar de automação.
+    for (const label of ["Missões", "Decisões", "Workspaces", "Nova demanda"]) {
+      expect(text).not.toContain(label);
     }
   });
 });

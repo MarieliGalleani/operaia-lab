@@ -59,7 +59,7 @@ const routes: RouteRecordRaw[] = [
     component: RouterView,
     meta: { requiresAuth: true },
     children: [
-      { path: "", redirect: "/app/command" },
+      { path: "", redirect: "/app/floor/dev/command" },
       {
         path: "campus",
         component: OfficeLayout,
@@ -67,106 +67,132 @@ const routes: RouteRecordRaw[] = [
           { path: "", name: "campus", component: CampusWorldPage },
         ],
       },
+      // ---- 1º andar — Desenvolvimento ------------------------------------
       {
-        path: "command",
+        path: "floor/dev",
         component: OfficeLayout,
         children: [
-          { path: "", name: "command", component: CommandCenterView },
-          { path: "new", name: "command-new", component: NewDemandView },
+          { path: "", redirect: "/app/floor/dev/command" },
           {
-            path: "approvals",
-            name: "command-approvals",
-            component: ApprovalsView,
+            path: "command",
+            component: RouterView,
+            children: [
+              { path: "", name: "command", component: CommandCenterView },
+              { path: "new", name: "command-new", component: NewDemandView },
+              {
+                path: "approvals",
+                name: "command-approvals",
+                component: ApprovalsView,
+              },
+              {
+                path: "approvals/:id",
+                name: "command-approval-detail",
+                component: ApprovalDetailView,
+                props: true,
+              },
+            ],
           },
           {
-            path: "approvals/:id",
-            name: "command-approval-detail",
-            component: ApprovalDetailView,
-            props: true,
+            path: "missions",
+            component: RouterView,
+            children: [
+              { path: "", name: "missions", component: MissionsView },
+              {
+                path: ":id",
+                name: "mission-detail",
+                component: MissionDetailView,
+                props: true,
+              },
+            ],
+          },
+          {
+            path: "decisions",
+            component: RouterView,
+            children: [
+              { path: "", name: "decisions", component: DecisionsView },
+              {
+                path: ":id",
+                name: "decision-detail",
+                component: DecisionDetailView,
+                props: true,
+              },
+            ],
+          },
+          {
+            path: "executions",
+            component: RouterView,
+            children: [
+              { path: "", name: "executions", component: ExecutionsView },
+              {
+                path: ":id",
+                name: "execution-detail",
+                component: ExecutionDetailView,
+                props: true,
+              },
+            ],
+          },
+          {
+            path: "workspaces",
+            component: RouterView,
+            children: [
+              { path: "", name: "workspaces", component: ProjectsView },
+              {
+                path: ":id",
+                name: "workspace",
+                component: WorkspaceRoom,
+                props: true,
+              },
+            ],
+          },
+          {
+            path: "team",
+            children: [{ path: "", name: "team", component: EmployeeRoom }],
           },
         ],
       },
+      // ---- 2º andar — Automação -------------------------------------------
       {
-        path: "missions",
+        path: "floor/automation",
         component: OfficeLayout,
         children: [
-          { path: "", name: "missions", component: MissionsView },
+          { path: "", redirect: "/app/floor/automation/command" },
           {
-            path: ":id",
-            name: "mission-detail",
-            component: MissionDetailView,
-            props: true,
+            path: "command",
+            name: "automation-command",
+            component: CommandCenterView,
+          },
+          {
+            path: "automations",
+            component: RouterView,
+            children: [
+              { path: "", name: "automations", component: AutomationsView },
+              {
+                path: ":id",
+                name: "automation-detail",
+                component: AutomationDetailView,
+                props: true,
+              },
+            ],
+          },
+          {
+            path: "triggers",
+            name: "schedule-rules",
+            component: ScheduleRulesView,
+          },
+          {
+            path: "team",
+            name: "automation-team",
+            component: EmployeeRoom,
           },
         ],
       },
-      {
-        path: "decisions",
-        component: OfficeLayout,
-        children: [
-          { path: "", name: "decisions", component: DecisionsView },
-          {
-            path: ":id",
-            name: "decision-detail",
-            component: DecisionDetailView,
-            props: true,
-          },
-        ],
-      },
-      {
-        path: "automations",
-        component: OfficeLayout,
-        children: [
-          { path: "", name: "automations", component: AutomationsView },
-          {
-            path: ":id",
-            name: "automation-detail",
-            component: AutomationDetailView,
-            props: true,
-          },
-        ],
-      },
-      {
-        path: "executions",
-        component: OfficeLayout,
-        children: [
-          { path: "", name: "executions", component: ExecutionsView },
-          {
-            path: ":id",
-            name: "execution-detail",
-            component: ExecutionDetailView,
-            props: true,
-          },
-        ],
-      },
-      {
-        path: "workspaces",
-        component: OfficeLayout,
-        children: [
-          { path: "", name: "workspaces", component: ProjectsView },
-          {
-            path: ":id",
-            name: "workspace",
-            component: WorkspaceRoom,
-            props: true,
-          },
-        ],
-      },
-      {
-        path: "team",
-        component: OfficeLayout,
-        children: [{ path: "", name: "team", component: EmployeeRoom }],
-      },
+      // ---- Transversal: Sistema, mundo 3D ---------------------------------
       {
         path: "system",
         component: OfficeLayout,
         children: [
           { path: "infra", name: "vps-panel", component: VpsPanelView },
           { path: "settings", name: "settings", component: SettingsView },
-          {
-            path: "schedule-rules",
-            name: "schedule-rules",
-            component: ScheduleRulesView,
-          },
         ],
       },
       {
@@ -176,19 +202,19 @@ const routes: RouteRecordRaw[] = [
           { path: "", name: "office", component: OfficeWorldPage },
           {
             path: "status",
-            redirect: "/app/command",
+            redirect: "/app/floor/dev/command",
           },
           { path: "sala-ceo", name: "ceo-room", component: ExecutiveRoom },
-          { path: "equipe", redirect: "/app/team" },
-          { path: "projetos", redirect: "/app/workspaces" },
+          { path: "equipe", redirect: "/app/floor/dev/team" },
+          { path: "projetos", redirect: "/app/floor/dev/workspaces" },
           {
             path: "projetos/:id",
-            redirect: (to) => `/app/workspaces/${String(to.params.id)}`,
+            redirect: (to) => `/app/floor/dev/workspaces/${String(to.params.id)}`,
           },
-          { path: "missions", redirect: "/app/missions" },
+          { path: "missions", redirect: "/app/floor/dev/missions" },
           {
             path: "missions/:id",
-            redirect: (to) => `/app/missions/${String(to.params.id)}`,
+            redirect: (to) => `/app/floor/dev/missions/${String(to.params.id)}`,
           },
           {
             path: "atividades",
@@ -213,6 +239,49 @@ const routes: RouteRecordRaw[] = [
         path: "virtual-world-test",
         name: "virtual-world-test",
         component: VirtualWorldTest,
+      },
+      // ---- Compatibilidade: rotas antigas -> andar correspondente --------
+      { path: "command", redirect: "/app/floor/dev/command" },
+      { path: "command/new", redirect: "/app/floor/dev/command/new" },
+      {
+        path: "command/approvals",
+        redirect: "/app/floor/dev/command/approvals",
+      },
+      {
+        path: "command/approvals/:id",
+        redirect: (to) =>
+          `/app/floor/dev/command/approvals/${String(to.params.id)}`,
+      },
+      { path: "missions", redirect: "/app/floor/dev/missions" },
+      {
+        path: "missions/:id",
+        redirect: (to) => `/app/floor/dev/missions/${String(to.params.id)}`,
+      },
+      { path: "decisions", redirect: "/app/floor/dev/decisions" },
+      {
+        path: "decisions/:id",
+        redirect: (to) => `/app/floor/dev/decisions/${String(to.params.id)}`,
+      },
+      { path: "executions", redirect: "/app/floor/dev/executions" },
+      {
+        path: "executions/:id",
+        redirect: (to) => `/app/floor/dev/executions/${String(to.params.id)}`,
+      },
+      { path: "workspaces", redirect: "/app/floor/dev/workspaces" },
+      {
+        path: "workspaces/:id",
+        redirect: (to) => `/app/floor/dev/workspaces/${String(to.params.id)}`,
+      },
+      { path: "team", redirect: "/app/floor/dev/team" },
+      { path: "automations", redirect: "/app/floor/automation/automations" },
+      {
+        path: "automations/:id",
+        redirect: (to) =>
+          `/app/floor/automation/automations/${String(to.params.id)}`,
+      },
+      {
+        path: "system/schedule-rules",
+        redirect: "/app/floor/automation/triggers",
       },
     ],
   },

@@ -33,10 +33,10 @@ function mission(
 }
 
 function createQueue(initial: MissionView[] = []): MissionQueuePort & {
-  enqueued: Array<{ objective: string }>;
+  enqueued: Array<{ objective: string; origin?: string }>;
 } {
   const rows = initial.map((row) => ({ ...row }));
-  const enqueued: Array<{ objective: string }> = [];
+  const enqueued: Array<{ objective: string; origin?: string }> = [];
   return {
     enqueued,
     async depths() {
@@ -58,7 +58,7 @@ function createQueue(initial: MissionView[] = []): MissionQueuePort & {
       return 0;
     },
     async enqueue(input) {
-      enqueued.push({ objective: input.objective });
+      enqueued.push({ objective: input.objective, origin: input.origin });
       return { created: true, id: `coord-${enqueued.length}` };
     },
   };
@@ -182,5 +182,29 @@ describe("CoordinationDispatcher — exhausted CONSUMED", () => {
     expect(result.dispatched).toBe(0);
     expect(latches.getForTest(outOfWindow)?.status).toBe("CONSUMED");
     expect(await latches.isConsumed(outOfWindow)).toBe(true);
+  });
+});
+
+describe("CoordinationDispatcher — origin (P1.2B)", () => {
+  it("dispatch real enfileira com origin=SUPERVISOR_AUTO", async () => {
+    const queue = createQueue([mission({ id: "m-new" })]);
+    const latches = new InMemoryCoordinationLatchStore();
+
+    const dispatcher = new CoordinationDispatcher(
+      queue,
+      { emit: () => {} },
+      latches,
+    );
+    const result = await dispatcher.dispatch({
+      workspaces: emptyWorkspaces,
+      missions: failedScan({ missionId: "m-new", needsCoordination: true }),
+      queue: emptyQueue,
+      recovery: emptyRecovery,
+      healthOk: true,
+    });
+
+    expect(result.dispatched).toBe(1);
+    expect(queue.enqueued).toHaveLength(1);
+    expect(queue.enqueued[0]?.origin).toBe("SUPERVISOR_AUTO");
   });
 });

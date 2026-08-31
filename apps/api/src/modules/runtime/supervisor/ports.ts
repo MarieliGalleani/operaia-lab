@@ -2,6 +2,7 @@
  * Ports do Operational Supervisor v2 — somente interfaces (DI).
  * Supervisor nunca acessa Prisma diretamente.
  */
+import type { MissionOrigin } from "@operaia/database";
 import type {
   HealthReport,
   MissionScanReport,
@@ -105,6 +106,7 @@ export interface MissionQueuePort {
     readonly ownerEmployeeId: string;
     readonly priority?: "LOW" | "MEDIUM" | "HIGH" | "URGENT";
     readonly dedupe?: boolean;
+    readonly origin?: MissionOrigin;
   }): Promise<{ readonly created: boolean; readonly id?: string }>;
   /**
    * Busca missao por objectiveHash (recovery de latch PENDING orfao).

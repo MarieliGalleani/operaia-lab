@@ -199,6 +199,7 @@ export class MissionScheduler implements ScheduleRuleTickPort {
             ownerEmployeeId: CEO_EMPLOYEE_ID,
             priority: mapPriority(anchor.priority),
             dedupe: true,
+            origin: "SUPERVISOR_AUTO",
           });
           if (created) {
             enqueued += 1;
@@ -227,6 +228,7 @@ export class MissionScheduler implements ScheduleRuleTickPort {
             ownerEmployeeId: CEO_EMPLOYEE_ID,
             priority: mapPriority(project.priority),
             dedupe: true,
+            origin: "SUPERVISOR_AUTO",
           });
           if (created) {
             enqueued += 1;
@@ -304,6 +306,7 @@ export class MissionScheduler implements ScheduleRuleTickPort {
           objective,
           ownerEmployeeId: CEO_EMPLOYEE_ID,
           dedupe: true,
+          origin: "SCHEDULE_RULE",
         });
         await this.options.scheduleRules.markEnqueued(rule.id, now);
         if (created) {

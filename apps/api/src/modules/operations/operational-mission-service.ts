@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { MissionOrigin } from "@operaia/database";
 import type { RecordingLLMObserver } from "@operaia/ai-core";
 import type { MemoryStore } from "@operaia/memory";
 import {
@@ -75,6 +76,7 @@ export interface AssistedMissionQueuePort {
     readonly objective: string;
     readonly ownerEmployeeId?: string;
     readonly dedupe?: boolean;
+    readonly origin?: MissionOrigin;
   }): Promise<{ mission: { id: string }; created: boolean }>;
   get(id: string): Promise<QueueMissionNode | null>;
   listChildren(parentMissionId: string): Promise<readonly QueueMissionNode[]>;
@@ -302,6 +304,7 @@ export class OperationalMissionService {
           objective: input.objective,
           ownerEmployeeId: CEO_EMPLOYEE_ID,
           dedupe: false,
+          origin: "CEO_SALA",
         });
         missionId = mission.id;
         await gate.bindExecute({
@@ -316,6 +319,7 @@ export class OperationalMissionService {
         objective: input.objective,
         ownerEmployeeId: CEO_EMPLOYEE_ID,
         dedupe: false,
+        origin: "CEO_SALA",
       });
       missionId = mission.id;
     }

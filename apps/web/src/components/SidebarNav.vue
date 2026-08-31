@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuth } from "@/composables/useAuth";
 import { usePendingApprovalsBadge } from "@/composables/usePendingApprovalsBadge";
+import FloorSwitcher from "@/components/FloorSwitcher.vue";
 
 interface NavItem {
   readonly label: string;
@@ -17,39 +18,61 @@ interface NavGroup {
   readonly collapsible?: boolean;
 }
 
-const groups: readonly NavGroup[] = [
+/**
+ * 1º andar (desenvolvimento) e 2º andar (automação) — grupos "Trabalho"/
+ * "Equipe" trocam por andar; "Sistema" e "Explorar" são transversais
+ * (não pertencem a nenhum andar), por decisão de produto da Fase 1.
+ * Execuções fica no 1º andar por ora: é projeção de Mission, e a origem
+ * estrutural (Mission.origin) que distinguiria automação de
+ * desenvolvimento ainda não existe — ver Fase 2.
+ */
+const devGroups: readonly NavGroup[] = [
   {
     title: "Trabalho",
     items: [
-      { label: "Visão geral", icon: "status", to: "/app/command" },
-      { label: "Nova demanda", icon: "plus", to: "/app/command/new" },
-      { label: "Automações", icon: "auto", to: "/app/automations" },
-      { label: "Missões", icon: "missions", to: "/app/missions" },
-      { label: "Workspaces", icon: "folder", to: "/app/workspaces" },
+      { label: "Visão geral", icon: "status", to: "/app/floor/dev/command" },
+      { label: "Nova demanda", icon: "plus", to: "/app/floor/dev/command/new" },
+      { label: "Missões", icon: "missions", to: "/app/floor/dev/missions" },
+      { label: "Execuções", icon: "activity", to: "/app/floor/dev/executions" },
+      { label: "Workspaces", icon: "folder", to: "/app/floor/dev/workspaces" },
     ],
   },
   {
     title: "Equipe",
     items: [
-      { label: "Equipe digital", icon: "users", to: "/app/team" },
-      { label: "Decisões", icon: "decision", to: "/app/decisions" },
+      { label: "Equipe digital", icon: "users", to: "/app/floor/dev/team" },
+      { label: "Decisões", icon: "decision", to: "/app/floor/dev/decisions" },
       {
         label: "Aprovações",
         icon: "shield",
-        to: "/app/command/approvals",
+        to: "/app/floor/dev/command/approvals",
         badgeKey: "approvals",
       },
     ],
   },
+];
+
+const automationGroups: readonly NavGroup[] = [
+  {
+    title: "Automação",
+    items: [
+      { label: "Visão geral", icon: "status", to: "/app/floor/automation/command" },
+      { label: "Automações", icon: "auto", to: "/app/floor/automation/automations" },
+      { label: "Gatilhos automáticos", icon: "clock", to: "/app/floor/automation/triggers" },
+    ],
+  },
+  {
+    title: "Equipe",
+    items: [
+      { label: "Equipe digital", icon: "users", to: "/app/floor/automation/team" },
+    ],
+  },
+];
+
+const sharedGroups: readonly NavGroup[] = [
   {
     title: "Sistema",
     items: [
-      { label: "Execuções", icon: "activity", to: "/app/executions" },
-      {
-        label: "Gatilhos automáticos",
-        icon: "clock",
-        to: "/app/system/schedule-rules",
-      },
       { label: "Infraestrutura", icon: "server", to: "/app/system/infra" },
       { label: "Configurações", icon: "settings", to: "/app/system/settings" },
     ],
@@ -65,16 +88,28 @@ const groups: readonly NavGroup[] = [
   },
 ];
 
-const experienceOpen = ref(false);
-const flatItems = computed(() => groups.flatMap((g) => g.items));
 const route = useRoute();
+
+/** Rotas fora de /app/floor/* (Sistema, mundo 3D) usam o 1º andar como padrão visual. */
+const isAutomationFloor = computed(() =>
+  route.path.startsWith("/app/floor/automation"),
+);
+
+const groups = computed<readonly NavGroup[]>(() => [
+  ...(isAutomationFloor.value ? automationGroups : devGroups),
+  ...sharedGroups,
+]);
+
+const experienceOpen = ref(false);
+const flatItems = computed(() => groups.value.flatMap((g) => g.items));
 const router = useRouter();
 const auth = useAuth();
 const { pendingApprovals } = usePendingApprovalsBadge();
 
 function isActive(to: string): boolean {
   if (
-    to === "/app/command" ||
+    to === "/app/floor/dev/command" ||
+    to === "/app/floor/automation/command" ||
     to === "/app/campus" ||
     to === "/app/office"
   ) {
@@ -110,6 +145,8 @@ function badgeFor(item: NavItem): number {
         <span class="sidebar__hint">Command Center</span>
       </div>
     </div>
+
+    <FloorSwitcher />
 
     <nav class="sidebar__nav">
       <div v-for="group in groups" :key="group.title" class="nav-group">

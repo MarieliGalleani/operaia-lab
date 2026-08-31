@@ -167,6 +167,21 @@ enum MissionKind {
   CONSOLIDATE
 }
 
+/// Causa estrutural de criacao de uma Mission RAIZ (P1.2B). So a raiz
+/// carrega origin — filhas (EXECUTE/CONSOLIDATE/follow-up) resolvem via
+/// parentMissionId, nunca duplicam o campo. Nullable de proposito: nao
+/// existe classificacao heuristica de missoes legadas (ver ADR/nota em
+/// mission-origin.ts) — origin=NULL significa "legado nao classificado",
+/// nunca "desenvolvimento" por padrao.
+enum MissionOrigin {
+  HUMAN_DEMAND
+  HUMAN_ADVANCED
+  CEO_SALA
+  SCHEDULE_RULE
+  SUPERVISOR_AUTO
+  SIGNAL_GITHUB
+}
+
 /// Missao persistente — fonte de verdade da fila (sobrevive a restart).
 model Mission {
   id                     String           @id @default(uuid())
@@ -181,6 +196,9 @@ model Mission {
   readiness              MissionReadiness @default(READY)
   ownerEmployeeId        String
   requiredSpecialization String?
+  /// Preenchido somente em missoes RAIZ (parentMissionId=null) pelo
+  /// produtor que causou a criacao. Null em filhas e em missoes legadas.
+  origin                 MissionOrigin?
   parentMissionId        String?
   progress               Int              @default(0)
   attempt                Int              @default(0)

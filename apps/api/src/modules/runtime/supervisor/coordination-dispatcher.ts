@@ -119,6 +119,7 @@ export class CoordinationDispatcher {
           objective,
           ownerEmployeeId: CEO_EMPLOYEE_ID,
           dedupe: true,
+          origin: "SUPERVISOR_AUTO",
         });
 
         if (!result.id) {

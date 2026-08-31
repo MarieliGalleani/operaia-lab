@@ -76,6 +76,7 @@ export async function submitDemandToCore(
       objective: input.objective,
       ownerEmployeeId: CEO_EMPLOYEE_ID,
       dedupe: false,
+      origin: "HUMAN_DEMAND",
     });
 
     await gate.bindExecute({
@@ -96,6 +97,7 @@ export async function submitDemandToCore(
     objective: input.objective,
     ownerEmployeeId: CEO_EMPLOYEE_ID,
     dedupe: false,
+    origin: "HUMAN_DEMAND",
   });
 
   return {

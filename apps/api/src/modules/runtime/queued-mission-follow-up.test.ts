@@ -1,13 +1,18 @@
 /**
  * P0 — gate/idempotencia do producer de follow-up tecnico.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { Mission } from "@operaia/database";
 import {
   buildTechnicalFollowUpObjective,
+  enqueueTechnicalFollowUpIfEligible,
   FOLLOW_UP_DELEGATE_MARKER,
   shouldEnqueueTechnicalFollowUp,
 } from "./queued-mission-executor.js";
 import { hashObjective } from "./mission-queue.js";
+import type { MissionQueue } from "./mission-queue.js";
+import type { EmployeeWorkerLogger } from "./employee-worker.js";
+import type { ExecutePhaseResult } from "./mission-result-store.js";
 
 function delivery(
   overrides: Partial<{
@@ -146,5 +151,165 @@ describe("P0 technical follow-up producer", () => {
         followUpMissionAlreadyExists: false,
       }),
     ).toBe(false);
+  });
+});
+
+/**
+ * P1.2D — follow-up herda a origin da raiz-fonte (queue.get(parentMissionId)),
+ * nunca fabrica classificacao. origin = proveniencia, nao mecanismo.
+ */
+describe("enqueueTechnicalFollowUpIfEligible — origin inheritance (P1.2D)", () => {
+  const noopLogger: EmployeeWorkerLogger = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  };
+
+  function sourceMission(overrides: Partial<Mission> = {}): Mission {
+    return {
+      id: "exec-a",
+      workspaceId: "nexo",
+      projectId: null,
+      parentMissionId: "root-1",
+      ...overrides,
+    } as unknown as Mission;
+  }
+
+  function mockQueue(parent: Partial<Mission> | null) {
+    const enqueue = vi.fn().mockResolvedValue({
+      mission: { id: "followup-1" },
+      created: true,
+    });
+    const queue = {
+      get: vi.fn().mockResolvedValue(parent),
+      hasEvent: vi.fn().mockResolvedValue(false),
+      findByObjectiveHash: vi.fn().mockResolvedValue(null),
+      enqueue,
+      appendEvent: vi.fn().mockResolvedValue(undefined),
+    } as unknown as MissionQueue;
+    return { queue, enqueue };
+  }
+
+  const deliveredAnalysis: NonNullable<ExecutePhaseResult["delivery"]> = {
+    type: "technical_analysis",
+    status: "DELIVERED",
+    missionId: "exec-a",
+    employeeId: "cto-mag",
+    objective: "Analise",
+    summary: "Repo TypeScript",
+    findings: ["Raiz com monorepo"],
+    evidence: [{ source: "listDirectory", data: { entryCount: 11 } }],
+    recommendations: ["Revisar acoplamento"],
+    deliveredAt: "2026-08-13T00:00:00.000Z",
+  };
+
+  it("Caso 1 — HUMAN_DEMAND: follow-up herda origin da raiz-fonte", async () => {
+    const { queue, enqueue } = mockQueue({
+      objective: "[COORDINATE/backlog] nexo",
+      origin: "HUMAN_DEMAND",
+    });
+
+    const result = await enqueueTechnicalFollowUpIfEligible({
+      queue,
+      logger: noopLogger,
+      source: sourceMission(),
+      delivery: deliveredAnalysis,
+    });
+
+    expect(result?.created).toBe(true);
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ origin: "HUMAN_DEMAND" }),
+    );
+  });
+
+  it("Caso 2 — SCHEDULE_RULE: follow-up herda origin da raiz-fonte (estrutural, mesmo sem ocorrencia observada em producao)", async () => {
+    const { queue, enqueue } = mockQueue({
+      objective: "[COORDINATE/SCHEDULE] revisar workspace",
+      origin: "SCHEDULE_RULE",
+    });
+
+    const result = await enqueueTechnicalFollowUpIfEligible({
+      queue,
+      logger: noopLogger,
+      source: sourceMission(),
+      delivery: deliveredAnalysis,
+    });
+
+    expect(result?.created).toBe(true);
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ origin: "SCHEDULE_RULE" }),
+    );
+  });
+
+  it("Caso 3 — SIGNAL_GITHUB: follow-up herda origin da raiz-fonte", async () => {
+    const { queue, enqueue } = mockQueue({
+      objective: "[COORDINATE/SIGNAL] github.pr.opened",
+      origin: "SIGNAL_GITHUB",
+    });
+
+    const result = await enqueueTechnicalFollowUpIfEligible({
+      queue,
+      logger: noopLogger,
+      source: sourceMission(),
+      delivery: deliveredAnalysis,
+    });
+
+    expect(result?.created).toBe(true);
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ origin: "SIGNAL_GITHUB" }),
+    );
+  });
+
+  it("Caso 4 — origin desconhecida: parent.origin = null nao fabrica classificacao", async () => {
+    const { queue, enqueue } = mockQueue({
+      objective: "[COORDINATE/backlog] nexo",
+      origin: null,
+    });
+
+    const result = await enqueueTechnicalFollowUpIfEligible({
+      queue,
+      logger: noopLogger,
+      source: sourceMission(),
+      delivery: deliveredAnalysis,
+    });
+
+    expect(result?.created).toBe(true);
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ origin: undefined }),
+    );
+  });
+
+  it("Caso 4b — sem parentMissionId: nao consulta origin de lugar nenhum, follow-up fica sem origin", async () => {
+    const { queue, enqueue } = mockQueue(null);
+
+    const result = await enqueueTechnicalFollowUpIfEligible({
+      queue,
+      logger: noopLogger,
+      source: sourceMission({ parentMissionId: null }),
+      delivery: deliveredAnalysis,
+    });
+
+    expect(result?.created).toBe(true);
+    expect(queue.get).not.toHaveBeenCalled();
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ origin: undefined }),
+    );
+  });
+
+  it("Caso 5 — nao cria cadeia follow-up -> follow-up mesmo com origin conhecida na raiz", async () => {
+    const { queue, enqueue } = mockQueue({
+      objective: buildTechnicalFollowUpObjective("some-other-exec"),
+      origin: "HUMAN_DEMAND",
+    });
+
+    const result = await enqueueTechnicalFollowUpIfEligible({
+      queue,
+      logger: noopLogger,
+      source: sourceMission(),
+      delivery: deliveredAnalysis,
+    });
+
+    expect(result).toBeNull();
+    expect(enqueue).not.toHaveBeenCalled();
   });
 });
