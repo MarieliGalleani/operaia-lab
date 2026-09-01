@@ -16,6 +16,7 @@ import { createEmployeeRoutes } from "./modules/employees/employees.routes.js";
 import { healthRoutes } from "./modules/health/health.routes.js";
 import { publicStatusRoutes } from "./modules/health/public-status.routes.js";
 import { infraRoutes } from "./modules/infra/vps.routes.js";
+import { knowledgeRoutes } from "./modules/knowledge/knowledge.routes.js";
 import { createOfficeStatusRoutes } from "./modules/office/office-status.routes.js";
 import { createAutomationOfficeRoutes } from "./modules/automation-office/index.js";
 import { scheduleRuleRoutes } from "./modules/schedule-rules/schedule-rules.routes.js";
@@ -82,6 +83,7 @@ export function buildApp(): AppBundle {
     registerAuthenticatedApiHooks(protectedApi);
     protectedApi.register(infraRoutes, { prefix: "/api/v1/infra" });
     protectedApi.register(projectRoutes, { prefix: "/api/v1/projects" });
+    protectedApi.register(knowledgeRoutes, { prefix: "/api/v1/knowledge" });
     protectedApi.register(taskRoutes, { prefix: "/api/v1/tasks" });
     protectedApi.register(agentRoutes, { prefix: "/api/v1/agents" });
     protectedApi.register(createEmployeeRoutes(lab.team), {

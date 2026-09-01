@@ -7,6 +7,9 @@ export interface CreateProjectInput {
   status?: ProjectStatus;
   priority?: Priority;
   goalId?: string | null;
+  objective?: string | null;
+  context?: string | null;
+  constraints?: string | null;
 }
 
 export interface UpdateProjectInput {
@@ -15,6 +18,9 @@ export interface UpdateProjectInput {
   status?: ProjectStatus;
   priority?: Priority;
   goalId?: string | null;
+  objective?: string | null;
+  context?: string | null;
+  constraints?: string | null;
 }
 
 /**

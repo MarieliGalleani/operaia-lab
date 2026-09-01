@@ -4,6 +4,7 @@ import CommandActionGrid from "@/components/command/CommandActionGrid.vue";
 import CommandAutomationSection from "@/components/command/CommandAutomationSection.vue";
 import CommandTeamSection from "@/components/command/CommandTeamSection.vue";
 import CommandWorkSection from "@/components/command/CommandWorkSection.vue";
+import GlobalAttentionPanel from "@/components/command/GlobalAttentionPanel.vue";
 import LoadingState from "@/components/command/LoadingState.vue";
 import { useCommandCenter } from "@/composables/useCommandCenter";
 import { officeCommandClient } from "@/data/adapters/office-client";
@@ -151,6 +152,8 @@ function formatWhen(iso: string | null | undefined): string {
           {{ data.pendingApprovals }} aprovações pendentes.
         </div>
       </section>
+
+      <GlobalAttentionPanel :items="data.attention" />
 
       <CommandActionGrid />
 

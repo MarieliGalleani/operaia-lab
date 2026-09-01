@@ -10,9 +10,19 @@ import TaskBoard from "@/components/TaskBoard.vue";
 import WorkflowViewer from "@/components/WorkflowViewer.vue";
 import WorkspaceView from "@/components/WorkspaceView.vue";
 import { useOffice } from "@/composables/useOffice";
+import { createMissionsClient } from "@/data/adapters/missions-client";
 import { officeCommandClient } from "@/data/adapters/office-client";
+import type {
+  ApprovalListItem,
+  AutomationListItem,
+  DecisionTraceDto,
+  ExecutionListItem,
+} from "@/data/office-command";
+import type { MissionTreeNodeDTO } from "@/data/mission-contracts";
 import type { WorkspaceContextDto } from "@/data/office-command";
 import type { Workflow } from "@/types/office";
+
+const missionsClient = createMissionsClient();
 
 const props = defineProps<{ id: string }>();
 
@@ -49,8 +59,44 @@ const officeContext = ref<WorkspaceContextDto | null>(null);
 const contextState = ref<"idle" | "loading" | "ready" | "error">("idle");
 const contextError = ref("Não foi possível carregar o contexto oficial do Office.");
 
+/**
+ * Trabalho do projeto (P1.14A / Parte A — Project Hub).
+ * Reaproveita os endpoints já existentes com filtro ?workspaceId=,
+ * confirmado disponível em /missions, /office/executions, /office/decisions,
+ * /office/approvals e /office/automations (P1.13A). Nenhum endpoint novo.
+ */
+const projectMissions = ref<readonly MissionTreeNodeDTO[]>([]);
+const projectExecutions = ref<readonly ExecutionListItem[]>([]);
+const projectDecisions = ref<readonly DecisionTraceDto[]>([]);
+const projectApprovals = ref<readonly ApprovalListItem[]>([]);
+const projectAutomations = ref<readonly AutomationListItem[]>([]);
+const workState = ref<"idle" | "loading" | "ready" | "error">("idle");
+
 async function loadWorkflow(id: string): Promise<void> {
   workflow.value = await fetchWorkflow(id);
+}
+
+async function loadProjectWork(id: string): Promise<void> {
+  workState.value = "loading";
+  try {
+    const [missions, executions, decisions, approvals, automations] =
+      await Promise.all([
+        missionsClient.listTree(20, id),
+        officeCommandClient.listExecutions(id),
+        officeCommandClient.listDecisions(id),
+        officeCommandClient.listApprovals(id),
+        officeCommandClient.listAutomations(id),
+      ]);
+    projectMissions.value = missions;
+    projectExecutions.value = executions;
+    projectDecisions.value = decisions;
+    projectApprovals.value = approvals;
+    projectAutomations.value = automations;
+    workState.value = "ready";
+  } catch (error) {
+    console.log("[workspace] trabalho do projeto indisponível", error);
+    workState.value = "error";
+  }
 }
 
 async function loadOfficeContext(id: string, fallbackName?: string): Promise<void> {
@@ -72,7 +118,7 @@ async function loadOfficeContext(id: string, fallbackName?: string): Promise<voi
 async function loadWorkspace(id: string): Promise<void> {
   await loadWorkflow(id);
   const name = projects.value.find((p) => p.id === id)?.name;
-  await loadOfficeContext(id, name);
+  await Promise.all([loadOfficeContext(id, name), loadProjectWork(id)]);
 }
 
 onMounted(() => loadWorkspace(props.id));
@@ -229,6 +275,133 @@ watch(
           </p>
         </div>
       </section>
+
+      <section class="project-context panel" aria-label="Contexto do projeto">
+        <header class="project-context__head">
+          <p class="eyebrow">Contexto</p>
+          <h2>O que a OperaIA sabe sobre este projeto</h2>
+        </header>
+        <div class="project-context__grid">
+          <article>
+            <h3>Objetivo</h3>
+            <p v-if="project.projectObjective">{{ project.projectObjective }}</p>
+            <p v-else class="project-context__empty">
+              Nenhum objetivo definido ainda.
+            </p>
+          </article>
+          <article>
+            <h3>Contexto</h3>
+            <p v-if="project.projectContext">{{ project.projectContext }}</p>
+            <p v-else class="project-context__empty">
+              Nenhum contexto registrado ainda.
+            </p>
+          </article>
+          <article>
+            <h3>Restrições</h3>
+            <p v-if="project.projectConstraints">{{ project.projectConstraints }}</p>
+            <p v-else class="project-context__empty">
+              Nenhuma restrição registrada ainda.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="project-work panel" aria-label="Trabalho do projeto">
+        <header class="project-work__head">
+          <p class="eyebrow">Trabalho</p>
+          <h2>O que está acontecendo neste projeto</h2>
+        </header>
+        <LoadingState v-if="workState === 'loading'" label="Carregando trabalho do projeto" />
+        <p v-else-if="workState === 'error'" class="project-work__error" role="alert">
+          Não foi possível carregar o trabalho deste projeto agora.
+        </p>
+        <div v-else class="project-work__grid">
+          <article class="pw-card">
+            <header><h3>Demandas</h3></header>
+            <p class="pw-card__unavailable">
+              Ainda não é possível listar demandas por projeto — essa
+              capacidade não existe hoje no backend (P1.13B).
+            </p>
+          </article>
+
+          <article class="pw-card">
+            <header>
+              <h3>Missões</h3>
+              <span class="pw-card__count">{{ projectMissions.length }}</span>
+            </header>
+            <ul v-if="projectMissions.length" class="pw-card__list">
+              <li v-for="m in projectMissions.slice(0, 5)" :key="m.id">
+                <router-link :to="`/app/floor/dev/missions/${m.id}`">
+                  {{ m.objective.slice(0, 60) }}
+                </router-link>
+              </li>
+            </ul>
+            <p v-else class="pw-card__empty">Nenhuma missão neste projeto ainda.</p>
+            <router-link to="/app/floor/dev/missions" class="pw-card__more">Ver todas as missões →</router-link>
+          </article>
+
+          <article class="pw-card">
+            <header>
+              <h3>Execuções</h3>
+              <span class="pw-card__count">{{ projectExecutions.length }}</span>
+            </header>
+            <ul v-if="projectExecutions.length" class="pw-card__list">
+              <li v-for="e in projectExecutions.slice(0, 5)" :key="e.id">
+                <router-link :to="`/app/floor/dev/executions/${e.id}`">
+                  {{ e.automationName }} · {{ e.status }}
+                </router-link>
+              </li>
+            </ul>
+            <p v-else class="pw-card__empty">Nenhuma execução neste projeto ainda.</p>
+          </article>
+
+          <article class="pw-card">
+            <header>
+              <h3>Decisões</h3>
+              <span class="pw-card__count">{{ projectDecisions.length }}</span>
+            </header>
+            <ul v-if="projectDecisions.length" class="pw-card__list">
+              <li v-for="d in projectDecisions.slice(0, 5)" :key="d.decisionId">
+                <router-link :to="`/app/floor/dev/decisions/${d.decisionId}`">
+                  {{ d.objective.slice(0, 60) }}
+                </router-link>
+              </li>
+            </ul>
+            <p v-else class="pw-card__empty">Nenhuma decisão neste projeto ainda.</p>
+          </article>
+
+          <article class="pw-card">
+            <header>
+              <h3>Aprovações</h3>
+              <span class="pw-card__count">{{ projectApprovals.length }}</span>
+            </header>
+            <ul v-if="projectApprovals.length" class="pw-card__list">
+              <li v-for="a in projectApprovals.slice(0, 5)" :key="a.id">
+                <router-link :to="`/app/floor/dev/command/approvals/${a.id}`">
+                  {{ a.title.slice(0, 60) }} · {{ a.status }}
+                </router-link>
+              </li>
+            </ul>
+            <p v-else class="pw-card__empty">Nenhuma aprovação neste projeto.</p>
+          </article>
+
+          <article class="pw-card">
+            <header>
+              <h3>Automações</h3>
+              <span class="pw-card__count">{{ projectAutomations.length }}</span>
+            </header>
+            <ul v-if="projectAutomations.length" class="pw-card__list">
+              <li v-for="a in projectAutomations.slice(0, 5)" :key="a.id">
+                <router-link :to="`/app/floor/automation/automations/${a.id}`">
+                  {{ a.name }}
+                </router-link>
+              </li>
+            </ul>
+            <p v-else class="pw-card__empty">Nenhuma automação neste projeto.</p>
+          </article>
+        </div>
+      </section>
+
       <section class="kpi-strip">
         <article class="kpi-card panel card-motion" style="--d: 1">
           <p class="kpi-card__label">Progresso</p>
@@ -494,6 +667,149 @@ watch(
 
 .crew__face:first-child {
   margin-left: 0;
+}
+
+.project-context,
+.project-work {
+  margin: 12px 20px 0;
+  padding: 16px 18px;
+}
+
+.project-context__head h2 {
+  margin-top: 4px;
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.project-context__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-gap: 12px;
+  margin-top: 14px;
+}
+
+.project-context__grid article {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.project-context__grid h3 {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-soft);
+}
+
+.project-context__grid p {
+  margin-top: 8px;
+  font-size: var(--text-sm);
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.project-context__empty {
+  color: var(--text-soft) !important;
+  font-style: italic;
+}
+
+@media (max-width: 900px) {
+  .project-context {
+    margin: 12px 14px 0;
+  }
+  .project-context__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.project-work__head h2 {
+  margin-top: 4px;
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+
+.project-work__error {
+  margin-top: 12px;
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
+
+.project-work__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-gap: 12px;
+  margin-top: 14px;
+}
+
+.pw-card {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.pw-card header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pw-card h3 {
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.pw-card__count {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--brand);
+  background: var(--brand-soft);
+  border-radius: var(--radius-full);
+  padding: 2px 8px;
+}
+
+.pw-card__list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.pw-card__list li {
+  margin-bottom: 6px;
+  font-size: var(--text-xs);
+}
+
+.pw-card__list a {
+  color: var(--text);
+}
+
+.pw-card__list a:hover {
+  color: var(--brand);
+}
+
+.pw-card__empty,
+.pw-card__unavailable {
+  margin-top: 10px;
+  font-size: var(--text-xs);
+  color: var(--text-soft);
+}
+
+.pw-card__more {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--brand);
+}
+
+@media (max-width: 900px) {
+  .project-work {
+    margin: 12px 14px 0;
+  }
+  .project-work__grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .kpi-strip {

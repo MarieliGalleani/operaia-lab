@@ -93,6 +93,9 @@ export function buildOfficeWorkspace(
     progress: computeProgress(tasks),
     teamIds,
     tasks: employeeTasks,
+    projectObjective: project.objective ?? null,
+    projectContext: project.context ?? null,
+    projectConstraints: project.constraints ?? null,
   };
 }
 

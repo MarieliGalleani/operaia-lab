@@ -23,6 +23,9 @@ export const projects: readonly Project[] = [
         date: "2026-07-21T02:44:00-03:00",
       },
     ],
+    projectObjective: null,
+    projectContext: null,
+    projectConstraints: null,
   },
   {
     id: "menuflow",
@@ -39,6 +42,9 @@ export const projects: readonly Project[] = [
         date: "2026-07-20T18:10:00-03:00",
       },
     ],
+    projectObjective: null,
+    projectContext: null,
+    projectConstraints: null,
   },
   {
     id: "plataforma",
@@ -48,6 +54,9 @@ export const projects: readonly Project[] = [
     progress: 10,
     teamIds: ["operaia-ceo"],
     decisions: [],
+    projectObjective: null,
+    projectContext: null,
+    projectConstraints: null,
   },
 ];
 

@@ -31,6 +31,9 @@ class FakeProjectRepository implements ProjectRepository {
       status: input.status ?? ProjectStatus.PLANNED,
       priority: input.priority ?? Priority.MEDIUM,
       goalId: input.goalId ?? null,
+      objective: input.objective ?? null,
+      context: input.context ?? null,
+      constraints: input.constraints ?? null,
       createdAt: now,
       updatedAt: now,
     };

@@ -193,7 +193,16 @@ const team = computed(() => {
                 </div>
                 <div>
                   <dt>Workspace</dt>
-                  <dd>{{ workspaceName }}</dd>
+                  <dd>
+                    <router-link
+                      v-if="mission.workspaceId"
+                      :to="`/app/floor/dev/workspaces/${mission.workspaceId}`"
+                      class="workspace-link"
+                    >
+                      {{ workspaceName }}
+                    </router-link>
+                    <template v-else>{{ workspaceName }}</template>
+                  </dd>
                 </div>
                 <div>
                   <dt>Responsável</dt>
@@ -331,6 +340,11 @@ const team = computed(() => {
   font-size: var(--text-xs);
   color: var(--text-soft);
   white-space: pre-wrap;
+}
+
+.workspace-link {
+  color: var(--brand);
+  font-weight: 600;
 }
 
 .facts {

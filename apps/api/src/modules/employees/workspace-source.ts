@@ -15,6 +15,14 @@ export interface OfficeWorkspaceRecord {
   readonly progress: number;
   readonly teamIds: readonly string[];
   readonly tasks: readonly EmployeeTask[];
+  /**
+   * Contexto operacional real do Project (P1.14B) — distinto do `objective`
+   * acima, que e sintetizado a partir de `description`. Null quando ainda
+   * nao preenchido; nunca inventado.
+   */
+  readonly projectObjective: string | null;
+  readonly projectContext: string | null;
+  readonly projectConstraints: string | null;
 }
 
 /**

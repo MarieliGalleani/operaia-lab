@@ -32,6 +32,9 @@ class FakeProjectRepository implements ProjectRepository {
       status: input.status ?? ProjectStatus.PLANNED,
       priority: input.priority ?? Priority.MEDIUM,
       goalId: input.goalId ?? null,
+      objective: input.objective ?? null,
+      context: input.context ?? null,
+      constraints: input.constraints ?? null,
       createdAt: now,
       updatedAt: now,
     };
@@ -94,6 +97,9 @@ describe("ensureOperationalWorkspaces — multi-workspace", () => {
       status: ProjectStatus.PAUSED,
       priority: Priority.HIGH,
       goalId: null,
+      objective: null,
+      context: null,
+      constraints: null,
       createdAt: now,
       updatedAt: now,
     });
@@ -132,6 +138,9 @@ describe("WorkspaceScanner — multi-workspace isolation", () => {
             urgency: 3,
           },
         ],
+        projectObjective: null,
+        projectContext: null,
+        projectConstraints: null,
       },
       {
         id: "beta",
@@ -142,6 +151,9 @@ describe("WorkspaceScanner — multi-workspace isolation", () => {
         progress: 0,
         teamIds: ["operaia-ceo"],
         tasks: [],
+        projectObjective: null,
+        projectContext: null,
+        projectConstraints: null,
       },
     ];
     const workspaces = new InMemoryWorkspaceSource(catalog);

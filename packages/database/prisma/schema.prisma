@@ -104,12 +104,48 @@ model Project {
   goalId      String?
   goal        OrganizationalGoal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
   tasks       Task[]
+  /// O que este projeto precisa alcancar (P1.14B). Nullable de proposito:
+  /// nao ha backfill de projetos existentes nesta migration.
+  objective   String?
+  /// Informacoes importantes para entender este projeto (P1.14B).
+  context     String?
+  /// Limites, regras ou condicoes que devem ser respeitados (P1.14B).
+  constraints String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
   @@index([status])
   @@index([goalId])
   @@map("projects")
+}
+
+/// Conhecimento minimo de um projeto (P1.14B) — NOTE e o unico tipo com UI
+/// funcional nesta fase; DOCUMENT/LINK existem no enum para o modelo nao
+/// precisar de migration nova quando ingestao de arquivo/link for construida
+/// (fileRef ja reservado, mas sem storage por tras nesta rodada).
+enum KnowledgeItemType {
+  NOTE
+  DOCUMENT
+  LINK
+}
+
+/// Item de conhecimento pertencente a um projeto, via workspaceId — mesmo
+/// padrao ja usado por Mission/OfficeDemand/OfficeApprovalRequest/etc.
+/// Isolamento entre projetos e sempre por workspaceId (P1.14B/Parte 17).
+model KnowledgeItem {
+  id          String            @id @default(uuid())
+  workspaceId String
+  type        KnowledgeItemType @default(NOTE)
+  title       String
+  content     String?
+  /// Reservado para evolucao futura (upload/storage) — nao usado nesta
+  /// rodada, nenhum storage existe por tras deste campo ainda.
+  fileRef     String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([workspaceId])
+  @@map("knowledge_items")
 }
 
 /// Unidade de trabalho pertencente a um projeto, opcionalmente atribuida a um agente.

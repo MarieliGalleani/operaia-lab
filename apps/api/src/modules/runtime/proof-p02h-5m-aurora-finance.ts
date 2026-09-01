@@ -112,6 +112,9 @@ function buildProofWorkspace(): OfficeWorkspaceRecord {
     progress: 0,
     teamIds: ["aurora"],
     tasks,
+    projectObjective: null,
+    projectContext: null,
+    projectConstraints: null,
   };
 }
 

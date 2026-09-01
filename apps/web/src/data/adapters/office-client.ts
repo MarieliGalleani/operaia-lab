@@ -47,17 +47,17 @@ export interface OfficeCommandClient {
     demandId: string,
     autonomy: AutonomyLevel,
   ): Promise<ExecuteDemandResponse>;
-  listApprovals(): Promise<readonly ApprovalListItem[]>;
+  listApprovals(workspaceId?: string): Promise<readonly ApprovalListItem[]>;
   getApproval(id: string): Promise<ApprovalDetailDto | null>;
   actOnApproval(
     id: string,
     action: "approve" | "reject" | "modify",
   ): Promise<ApprovalActionResponse>;
-  listDecisions(): Promise<readonly DecisionTraceDto[]>;
+  listDecisions(workspaceId?: string): Promise<readonly DecisionTraceDto[]>;
   getDecision(id: string): Promise<DecisionTraceDto | null>;
-  listAutomations(): Promise<readonly AutomationListItem[]>;
+  listAutomations(workspaceId?: string): Promise<readonly AutomationListItem[]>;
   getAutomation(id: string): Promise<AutomationDto | null>;
-  listExecutions(): Promise<readonly ExecutionListItem[]>;
+  listExecutions(workspaceId?: string): Promise<readonly ExecutionListItem[]>;
   getExecution(id: string): Promise<ExecutionDto | null>;
   getWorkspaceContext(
     workspaceId: string,
@@ -117,9 +117,10 @@ export function createOfficeCommandClient(
       return { ...res, source: "api", backendDependency: false };
     },
 
-    async listApprovals() {
+    async listApprovals(workspaceId) {
       if (useMock) return mockApprovals();
-      return http.get<readonly ApprovalListItem[]>("/office/approvals");
+      const qs = workspaceId ? `?workspaceId=${encodeURIComponent(workspaceId)}` : "";
+      return http.get<readonly ApprovalListItem[]>(`/office/approvals${qs}`);
     },
 
     async getApproval(id) {
@@ -149,9 +150,10 @@ export function createOfficeCommandClient(
       );
     },
 
-    async listDecisions() {
+    async listDecisions(workspaceId) {
       if (useMock) return mockDecisions();
-      return http.get<readonly DecisionTraceDto[]>("/office/decisions");
+      const qs = workspaceId ? `?workspaceId=${encodeURIComponent(workspaceId)}` : "";
+      return http.get<readonly DecisionTraceDto[]>(`/office/decisions${qs}`);
     },
 
     async getDecision(id) {
@@ -161,9 +163,10 @@ export function createOfficeCommandClient(
       return http.get<DecisionTraceDto>(`/office/decisions/${id}`);
     },
 
-    async listAutomations() {
+    async listAutomations(workspaceId) {
       if (useMock) return mockAutomations();
-      return http.get<readonly AutomationListItem[]>("/office/automations");
+      const qs = workspaceId ? `?workspaceId=${encodeURIComponent(workspaceId)}` : "";
+      return http.get<readonly AutomationListItem[]>(`/office/automations${qs}`);
     },
 
     async getAutomation(id) {
@@ -171,9 +174,10 @@ export function createOfficeCommandClient(
       return http.get<AutomationDto>(`/office/automations/${id}`);
     },
 
-    async listExecutions() {
+    async listExecutions(workspaceId) {
       if (useMock) return mockExecutions();
-      return http.get<readonly ExecutionListItem[]>("/office/executions");
+      const qs = workspaceId ? `?workspaceId=${encodeURIComponent(workspaceId)}` : "";
+      return http.get<readonly ExecutionListItem[]>(`/office/executions${qs}`);
     },
 
     async getExecution(id) {

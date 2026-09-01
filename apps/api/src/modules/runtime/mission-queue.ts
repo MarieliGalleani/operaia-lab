@@ -630,6 +630,7 @@ export class MissionQueue {
   async list(filters?: {
     readonly status?: MissionStatus;
     readonly workspaceId?: string;
+    readonly ownerEmployeeId?: string;
     readonly take?: number;
   }) {
     return prisma.mission.findMany({
@@ -637,6 +638,9 @@ export class MissionQueue {
         ...(filters?.status ? { status: filters.status } : {}),
         ...(filters?.workspaceId
           ? { workspaceId: filters.workspaceId }
+          : {}),
+        ...(filters?.ownerEmployeeId
+          ? { ownerEmployeeId: filters.ownerEmployeeId }
           : {}),
       },
       orderBy: { createdAt: "desc" },

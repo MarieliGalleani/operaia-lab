@@ -37,6 +37,7 @@ const byStatus = computed(() => ({
 
       <div class="topbar__right">
         <span class="hint">{{ summary?.pendingTasks ?? 0 }} tarefas abertas</span>
+        <router-link to="/app/floor/dev/workspaces/new" class="btn btn--ghost">Novo projeto</router-link>
         <router-link to="/app/command/new" class="btn btn--primary">Nova demanda</router-link>
       </div>
     </header>
@@ -77,6 +78,10 @@ const byStatus = computed(() => ({
   margin-right: 14px;
   font-size: 12px;
   color: var(--text-soft);
+}
+
+.topbar__right .btn + .btn {
+  margin-left: 8px;
 }
 
 @media (max-width: 900px) {

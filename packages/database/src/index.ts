@@ -5,6 +5,7 @@ export type { Database } from "./client.js";
 export {
   type Project,
   type Task,
+  type KnowledgeItem,
   type Agent,
   type User,
   type Session,

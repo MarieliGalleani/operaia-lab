@@ -15,6 +15,9 @@ function toDomain(row: PrismaProject): Project {
     status: row.status,
     priority: row.priority,
     goalId: row.goalId ?? null,
+    objective: row.objective ?? null,
+    context: row.context ?? null,
+    constraints: row.constraints ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

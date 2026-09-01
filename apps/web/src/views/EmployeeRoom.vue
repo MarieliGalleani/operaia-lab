@@ -51,13 +51,18 @@ function involvedProjects(employeeId: string): readonly string[] {
           <router-link to="/app/workspaces" class="section__link">Workspaces</router-link>
         </div>
         <div class="grid grid--cards">
-          <EmployeeProfileCard
+          <router-link
             v-for="(employee, i) in hired"
             :key="employee.id"
-            :employee="employee"
-            :involved-projects="involvedProjects(employee.id)"
-            :style="{ '--d': i + 1 }"
-          />
+            :to="`/app/floor/dev/team/${employee.id}`"
+            class="profile-link"
+          >
+            <EmployeeProfileCard
+              :employee="employee"
+              :involved-projects="involvedProjects(employee.id)"
+              :style="{ '--d': i + 1 }"
+            />
+          </router-link>
         </div>
         <div v-if="hired.length === 0" class="empty-state">
           <p class="empty-state__title">Ninguém contratado ainda</p>
@@ -108,6 +113,10 @@ function involvedProjects(employeeId: string): readonly string[] {
 
 .block + .block {
   margin-top: 36px;
+}
+
+.profile-link {
+  display: contents;
 }
 
 .block__head {

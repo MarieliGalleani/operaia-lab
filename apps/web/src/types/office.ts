@@ -57,6 +57,13 @@ export interface Project {
   readonly progress: number;
   readonly teamIds: readonly string[];
   readonly decisions: readonly ProjectDecision[];
+  /**
+   * Contexto operacional real (P1.14B) — distinto de `objective` acima, que
+   * e sintetizado a partir de description. Null quando nao preenchido.
+   */
+  readonly projectObjective: string | null;
+  readonly projectContext: string | null;
+  readonly projectConstraints: string | null;
 }
 
 export type TaskStatus = "BACKLOG" | "IN_PROGRESS" | "DONE";

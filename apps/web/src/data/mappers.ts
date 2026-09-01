@@ -53,6 +53,9 @@ export function toProject(dto: WorkspaceDTO): Project {
       authorId: decision.authorId,
       date: decision.date,
     })),
+    projectObjective: dto.projectObjective ?? null,
+    projectContext: dto.projectContext ?? null,
+    projectConstraints: dto.projectConstraints ?? null,
   };
 }
 

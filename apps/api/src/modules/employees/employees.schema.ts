@@ -91,6 +91,10 @@ export const workspaceSchema = z.object({
       date: z.string(),
     }),
   ),
+  /// P1.14B — contexto operacional real do Project (distinto de `objective`).
+  projectObjective: z.string().nullable(),
+  projectContext: z.string().nullable(),
+  projectConstraints: z.string().nullable(),
 });
 
 export const workspaceTaskSchema = z.object({

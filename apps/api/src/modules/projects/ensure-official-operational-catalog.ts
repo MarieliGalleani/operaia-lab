@@ -105,6 +105,9 @@ export function assertOfficialSlugConsistency(): void {
       status: ProjectStatus.ACTIVE,
       priority: Priority.MEDIUM,
       goalId: null,
+      objective: null,
+      context: null,
+      constraints: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     } as const;

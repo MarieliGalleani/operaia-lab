@@ -1,34 +1,119 @@
 <script setup lang="ts">
-const docs = [
-  {
-    title: "Visão do produto",
-    desc: "Diretrizes, objetivos e o papel do Opera Campus na OperaIA.",
-    tag: "Produto",
-    to: "/app/campus",
-    cta: "Ver o Campus",
-  },
-  {
-    title: "Arquitetura",
-    desc: "Como engine, Residentes, missões e o lab se conectam sem se misturar.",
-    tag: "Sistema",
-    to: "/app/office/vps",
-    cta: "Saúde da infra",
-  },
-  {
-    title: "Operação com a Opera",
-    desc: "Peça planos, riscos e próximas ações direto na Sala da CEO.",
-    tag: "Executivo",
-    to: "/app/office/sala-ceo",
-    cta: "Falar com Opera",
-  },
-  {
-    title: "Workspaces",
-    desc: "Projetos vivos, progresso e equipe envolvida em cada missão.",
-    tag: "Entrega",
-    to: "/app/office/projetos",
-    cta: "Abrir projetos",
-  },
-];
+/**
+ * Conhecimento (P1.14B / Parte 12) — CRUD real de NOTE por projeto.
+ * DOCUMENT/LINK existem no modelo mas não têm UI nesta rodada (sem
+ * storage/upload — ver Parte 13, NÃO implementado).
+ * Isolamento sempre por workspaceId (Parte 17) — nenhuma nota aparece
+ * fora do projeto selecionado.
+ */
+import { computed, onMounted, ref, watch } from "vue";
+import { useOffice } from "@/composables/useOffice";
+import {
+  createKnowledgeClient,
+  type KnowledgeItemDto,
+} from "@/data/adapters/knowledge-client";
+
+const { projects, loaded, load } = useOffice();
+const client = createKnowledgeClient();
+
+const selectedWorkspaceId = ref("");
+const notes = ref<readonly KnowledgeItemDto[]>([]);
+const state = ref<"idle" | "loading" | "ready" | "error">("idle");
+
+const newTitle = ref("");
+const newContent = ref("");
+const creating = ref(false);
+
+const editingId = ref<string | null>(null);
+const editTitle = ref("");
+const editContent = ref("");
+
+async function loadNotes(workspaceId: string): Promise<void> {
+  if (!workspaceId) {
+    notes.value = [];
+    return;
+  }
+  state.value = "loading";
+  try {
+    notes.value = await client.listByWorkspace(workspaceId);
+    state.value = "ready";
+  } catch (error) {
+    console.log("[knowledge] falha ao listar notas", error);
+    state.value = "error";
+  }
+}
+
+onMounted(async () => {
+  if (!loaded.value) {
+    await load();
+  }
+  if (projects.value.length > 0) {
+    selectedWorkspaceId.value = projects.value[0]!.id;
+  }
+});
+
+watch(selectedWorkspaceId, (id) => loadNotes(id));
+
+async function createNote(): Promise<void> {
+  if (!newTitle.value.trim() || !selectedWorkspaceId.value) {
+    return;
+  }
+  creating.value = true;
+  try {
+    await client.create({
+      workspaceId: selectedWorkspaceId.value,
+      type: "NOTE",
+      title: newTitle.value.trim(),
+      content: newContent.value.trim() || null,
+    });
+    newTitle.value = "";
+    newContent.value = "";
+    await loadNotes(selectedWorkspaceId.value);
+  } catch (error) {
+    console.log("[knowledge] falha ao criar nota", error);
+  } finally {
+    creating.value = false;
+  }
+}
+
+function startEdit(note: KnowledgeItemDto): void {
+  editingId.value = note.id;
+  editTitle.value = note.title;
+  editContent.value = note.content ?? "";
+}
+
+function cancelEdit(): void {
+  editingId.value = null;
+}
+
+async function saveEdit(id: string): Promise<void> {
+  if (!editTitle.value.trim()) {
+    return;
+  }
+  try {
+    await client.update(id, {
+      title: editTitle.value.trim(),
+      content: editContent.value.trim() || null,
+    });
+    editingId.value = null;
+    await loadNotes(selectedWorkspaceId.value);
+  } catch (error) {
+    console.log("[knowledge] falha ao editar nota", error);
+  }
+}
+
+async function removeNote(id: string): Promise<void> {
+  try {
+    await client.remove(id);
+    await loadNotes(selectedWorkspaceId.value);
+  } catch (error) {
+    console.log("[knowledge] falha ao remover nota", error);
+  }
+}
+
+const selectedProjectName = computed(
+  () => projects.value.find((p) => p.id === selectedWorkspaceId.value)?.name,
+);
 </script>
 
 <template>
@@ -39,42 +124,71 @@ const docs = [
         <h1 class="page__title">Conhecimento</h1>
       </div>
       <div class="topbar__right">
-        <router-link to="/app/office/atividades" class="btn btn--ghost">Atividades</router-link>
-        <router-link to="/app/office/sala-ceo" class="btn btn--primary">Perguntar à Opera</router-link>
+        <router-link to="/app/office/sala-ceo" class="btn btn--ghost">Perguntar à Opera</router-link>
       </div>
     </header>
 
     <div class="studio__stage">
-      <section class="hero panel card-motion" style="--d: 1">
-        <div>
-          <p class="eyebrow">Sugestão do lab</p>
-          <h2 class="hero__title">Comece pelo Status do Escritório</h2>
-          <p class="hero__body">
-            Em cerca de 30 segundos você entende se está tudo bem, o que está
-            acontecendo e se a OperaIA precisa de você. O Campus continua aqui
-            para explorar — a Sala da CEO, para decidir.
-          </p>
-        </div>
-        <div class="hero__actions">
-          <router-link to="/app/office/status" class="btn btn--primary">Abrir Status</router-link>
-          <router-link to="/app/campus" class="btn btn--ghost">Entrar no Campus</router-link>
-        </div>
+      <section class="panel picker">
+        <label for="knowledge-project">Projeto</label>
+        <select id="knowledge-project" v-model="selectedWorkspaceId">
+          <option v-if="projects.length === 0" value="">Nenhum projeto disponível</option>
+          <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+        </select>
       </section>
 
-      <div class="grid grid--cards docs">
-        <router-link
-          v-for="(doc, i) in docs"
-          :key="doc.title"
-          :to="doc.to"
-          class="panel doc card-motion"
-          :style="{ '--d': i + 2 }"
-        >
-          <span class="chip chip--ok">{{ doc.tag }}</span>
-          <h3 class="doc__title">{{ doc.title }}</h3>
-          <p class="doc__desc">{{ doc.desc }}</p>
-          <span class="doc__cta">{{ doc.cta }} →</span>
-        </router-link>
-      </div>
+      <section v-if="selectedWorkspaceId" class="panel notes">
+        <header class="notes__head">
+          <p class="eyebrow">Notas</p>
+          <h2>Conhecimento de {{ selectedProjectName }}</h2>
+        </header>
+
+        <form class="notes__new" @submit.prevent="createNote">
+          <input
+            v-model="newTitle"
+            type="text"
+            placeholder="Título da nota"
+            required
+          />
+          <textarea
+            v-model="newContent"
+            rows="3"
+            placeholder="Conteúdo (opcional)"
+          />
+          <button type="submit" class="btn btn--primary" :disabled="creating || !newTitle.trim()">
+            {{ creating ? "Salvando…" : "Criar nota" }}
+          </button>
+        </form>
+
+        <p v-if="state === 'loading'" class="notes__state">Carregando…</p>
+        <p v-else-if="state === 'error'" class="notes__state notes__state--error" role="alert">
+          Não foi possível carregar as notas agora.
+        </p>
+        <p v-else-if="notes.length === 0" class="notes__empty">
+          Nenhuma nota registrada para este projeto ainda.
+        </p>
+
+        <ul v-else class="notes__list">
+          <li v-for="note in notes" :key="note.id" class="note">
+            <template v-if="editingId === note.id">
+              <input v-model="editTitle" type="text" />
+              <textarea v-model="editContent" rows="3" />
+              <div class="note__actions">
+                <button type="button" class="btn btn--primary" @click="saveEdit(note.id)">Salvar</button>
+                <button type="button" class="btn btn--ghost" @click="cancelEdit">Cancelar</button>
+              </div>
+            </template>
+            <template v-else>
+              <h3>{{ note.title }}</h3>
+              <p v-if="note.content" class="note__content">{{ note.content }}</p>
+              <div class="note__actions">
+                <button type="button" class="btn btn--ghost" @click="startEdit(note)">Editar</button>
+                <button type="button" class="btn btn--ghost note__delete" @click="removeNote(note.id)">Excluir</button>
+              </div>
+            </template>
+          </li>
+        </ul>
+      </section>
     </div>
   </div>
 </template>
@@ -90,93 +204,123 @@ const docs = [
   margin-left: auto;
 }
 
-.topbar__right .btn + .btn {
-  margin-left: 8px;
-}
-
-.hero {
+.picker {
+  padding: 16px 18px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 24px 26px;
-  border-color: var(--brand-line);
-  background:
-    radial-gradient(ellipse at 0% 0%, rgba(59, 130, 246, 0.18), transparent 50%),
-    linear-gradient(165deg, rgba(30, 48, 80, 0.45), transparent 42%),
-    var(--surface);
 }
 
-.hero__title {
-  margin-top: 8px;
-  font-size: 24px;
+.picker label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-soft);
+  margin-right: 12px;
+}
+
+.picker select {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--text-sm);
+  min-width: 220px;
+}
+
+.notes {
+  margin-top: 12px;
+  padding: 18px;
+}
+
+.notes__head h2 {
+  margin-top: 4px;
+  font-size: var(--text-lg);
   font-weight: 700;
-  letter-spacing: -0.02em;
 }
 
-.hero__body {
-  margin-top: 10px;
-  max-width: 56ch;
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
-.hero__actions {
+.notes__new {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
   display: flex;
   flex-direction: column;
-  margin-left: 24px;
-  flex-shrink: 0;
 }
 
-.hero__actions .btn + .btn {
-  margin-top: 8px;
+.notes__new input,
+.notes__new textarea,
+.note input,
+.note textarea {
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  margin-bottom: 10px;
+  resize: vertical;
 }
 
-.docs {
+.notes__new .btn {
+  align-self: flex-start;
+}
+
+.notes__state,
+.notes__empty {
   margin-top: 16px;
+  font-size: var(--text-sm);
+  color: var(--text-soft);
 }
 
-.doc {
-  display: block;
-  padding: 18px;
-  transition: border-color 0.2s var(--ease), transform 0.2s var(--ease);
+.notes__state--error {
+  color: var(--danger);
 }
 
-.doc:hover {
-  border-color: var(--brand-line);
-  transform: translateY(-2px);
+.notes__list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
 }
 
-.doc__title {
-  margin-top: 12px;
-  font-size: 16px;
-  font-weight: 600;
+.note {
+  padding: 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  margin-bottom: 10px;
 }
 
-.doc__desc {
-  margin-top: 8px;
-  font-size: 13px;
+.note h3 {
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.note__content {
+  margin-top: 6px;
+  font-size: var(--text-sm);
   color: var(--text-muted);
-  line-height: 1.45;
+  white-space: pre-wrap;
 }
 
-.doc__cta {
-  display: inline-block;
-  margin-top: 14px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--brand);
+.note__actions {
+  display: flex;
+  margin-top: 10px;
+}
+
+.note__actions .btn {
+  margin-right: 8px;
+  font-size: var(--text-xs);
+  padding: 6px 10px;
+}
+
+.note__delete {
+  color: var(--danger);
 }
 
 @media (max-width: 900px) {
-  .hero {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  .hero__actions {
-    margin-left: 0;
-    margin-top: 16px;
-    width: 100%;
-  }
   .studio__topbar {
     flex-wrap: wrap;
   }
@@ -184,6 +328,13 @@ const docs = [
     width: 100%;
     margin-left: 0;
     margin-top: 12px;
+  }
+  .picker {
+    flex-wrap: wrap;
+  }
+  .picker select {
+    width: 100%;
+    margin-top: 8px;
   }
 }
 </style>

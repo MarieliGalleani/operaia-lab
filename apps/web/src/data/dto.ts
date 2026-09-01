@@ -63,6 +63,10 @@ export interface WorkspaceDTO {
   readonly progress: number;
   readonly teamIds: readonly string[];
   readonly decisions: readonly WorkspaceDecisionDTO[];
+  /** P1.14B — contexto operacional real do Project (distinto de `objective`). */
+  readonly projectObjective: string | null;
+  readonly projectContext: string | null;
+  readonly projectConstraints: string | null;
 }
 
 export interface WorkspaceTaskDTO {

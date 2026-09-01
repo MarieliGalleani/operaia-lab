@@ -9,6 +9,10 @@ export const createProjectSchema = z.object({
   description: z.string().max(2000).nullish(),
   status: projectStatusSchema.optional(),
   priority: prioritySchema.optional(),
+  /// P1.14B — contexto operacional, todos opcionais, sem valor ficticio.
+  objective: z.string().max(2000).nullish(),
+  context: z.string().max(4000).nullish(),
+  constraints: z.string().max(2000).nullish(),
 });
 
 export const updateProjectSchema = createProjectSchema.partial();
@@ -28,6 +32,9 @@ export const projectResponseSchema = z.object({
   description: z.string().nullable(),
   status: projectStatusSchema,
   priority: prioritySchema,
+  objective: z.string().nullable(),
+  context: z.string().nullable(),
+  constraints: z.string().nullable(),
   createdAt: z.date(),
   updatedAt: z.date(),
 });

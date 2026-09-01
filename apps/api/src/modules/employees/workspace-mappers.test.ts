@@ -19,6 +19,9 @@ describe("Etapa 4 — workspace-mappers", () => {
       status: ProjectStatus.ACTIVE,
       priority: Priority.HIGH,
       goalId: null,
+      objective: null,
+      context: null,
+      constraints: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -68,6 +71,9 @@ describe("Etapa 4 — workspace-mappers", () => {
       status: ProjectStatus.ACTIVE,
       priority: Priority.MEDIUM,
       goalId: null,
+      objective: null,
+      context: null,
+      constraints: null,
       createdAt: now,
       updatedAt: now,
     };

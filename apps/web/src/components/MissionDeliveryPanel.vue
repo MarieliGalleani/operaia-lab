@@ -134,6 +134,14 @@ function specialistEmoji(id: string | undefined, specialization: string): string
         </p>
       </article>
     </div>
+
+    <router-link
+      v-if="mission.workspaceId"
+      :to="`/app/floor/dev/workspaces/${mission.workspaceId}`"
+      class="delivery__back-to-project"
+    >
+      ← Voltar ao projeto
+    </router-link>
   </section>
 </template>
 
@@ -224,5 +232,13 @@ function specialistEmoji(id: string | undefined, specialization: string): string
   border: 1px solid var(--border);
   background: var(--surface-2);
   font-size: var(--text-sm);
+}
+
+.delivery__back-to-project {
+  display: inline-block;
+  margin-top: 18px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--brand);
 }
 </style>

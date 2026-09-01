@@ -70,6 +70,9 @@ export interface WorkspacePayload {
     authorId: string;
     date: string;
   }>;
+  readonly projectObjective: string | null;
+  readonly projectContext: string | null;
+  readonly projectConstraints: string | null;
 }
 
 export interface WorkspaceTaskPayload {
@@ -292,6 +295,9 @@ function toWorkspaceDto(workspace: OfficeWorkspaceRecord): WorkspacePayload {
     progress: workspace.progress,
     teamIds: [...workspace.teamIds],
     decisions: [],
+    projectObjective: workspace.projectObjective,
+    projectContext: workspace.projectContext,
+    projectConstraints: workspace.projectConstraints,
   };
 }
 

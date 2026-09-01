@@ -6,11 +6,17 @@ import type {
   MissionDetailDTO,
   MissionTreeNodeDTO,
 } from "@/data/mission-contracts";
+import type { MissionListItemDTO } from "@/data/dto";
 
 export interface MissionsClient {
-  listTree(take?: number): Promise<readonly MissionTreeNodeDTO[]>;
+  listTree(
+    take?: number,
+    workspaceId?: string,
+  ): Promise<readonly MissionTreeNodeDTO[]>;
   getById(id: string): Promise<MissionDetailDTO>;
   create(body: CreateMissionBody): Promise<CreateMissionResponse>;
+  /** Missões (formato flat) de um employee — usa ownerEmployeeId (P1.14A/E). */
+  listByOwner(ownerEmployeeId: string): Promise<readonly MissionListItemDTO[]>;
 }
 
 /**
@@ -21,9 +27,15 @@ export function createMissionsClient(
   client: HttpClient = createHttpClient(),
 ): MissionsClient {
   return {
-    async listTree(take = 50): Promise<readonly MissionTreeNodeDTO[]> {
+    async listTree(
+      take = 50,
+      workspaceId?: string,
+    ): Promise<readonly MissionTreeNodeDTO[]> {
+      const qs = workspaceId
+        ? `&workspaceId=${encodeURIComponent(workspaceId)}`
+        : "";
       const payload = await client.get<{ tree: MissionTreeNodeDTO[] }>(
-        `/missions?format=tree&take=${take}`,
+        `/missions?format=tree&take=${take}${qs}`,
       );
       return payload.tree ?? [];
     },
@@ -37,6 +49,15 @@ export function createMissionsClient(
         workspaceId: body.workspaceId,
         objective: body.objective,
       });
+    },
+
+    async listByOwner(
+      ownerEmployeeId: string,
+    ): Promise<readonly MissionListItemDTO[]> {
+      const payload = await client.get<{ missions: MissionListItemDTO[] }>(
+        `/missions?format=flat&take=50&ownerEmployeeId=${encodeURIComponent(ownerEmployeeId)}`,
+      );
+      return payload.missions ?? [];
     },
   };
 }

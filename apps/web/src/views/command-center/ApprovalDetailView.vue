@@ -26,14 +26,16 @@ onMounted(async () => {
 });
 
 async function act(action: "approve" | "reject" | "modify") {
-  if (action === "modify") {
-    await router.push("/app/command/new");
-    return;
-  }
   const res = await officeCommandClient.actOnApproval(id, action);
   feedback.value = res.message;
   if (detail.value) {
     detail.value = { ...detail.value, status: res.status };
+  }
+  if (action === "modify") {
+    await router.push({
+      path: "/app/command/new",
+      query: { workspace: detail.value?.workspaceId },
+    });
   }
 }
 </script>

@@ -8,4 +8,8 @@ export interface Project extends Timestamps {
   readonly status: ProjectStatus;
   readonly priority: Priority;
   readonly goalId: UUID | null;
+  /** P1.14B — contexto operacional; null quando ainda nao preenchido. */
+  readonly objective: string | null;
+  readonly context: string | null;
+  readonly constraints: string | null;
 }

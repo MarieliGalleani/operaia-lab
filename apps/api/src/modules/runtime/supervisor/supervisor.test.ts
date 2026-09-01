@@ -546,6 +546,9 @@ describe("Operational Supervisor v2 — missao permanente", () => {
         progress: 100,
         teamIds: ["operaia-ceo"],
         tasks: [],
+        projectObjective: null,
+        projectContext: null,
+        projectConstraints: null,
       },
     ]);
 

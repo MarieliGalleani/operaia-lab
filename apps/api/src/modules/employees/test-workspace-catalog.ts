@@ -37,6 +37,9 @@ export function buildTestWorkspaceCatalog(): readonly OfficeWorkspaceRecord[] {
       progress: 33,
       teamIds: ["operaia-ceo", "cto-mag"],
       tasks: nexoTasks,
+      projectObjective: null,
+      projectContext: null,
+      projectConstraints: null,
     },
     {
       id: "menuflow",
@@ -55,6 +58,9 @@ export function buildTestWorkspaceCatalog(): readonly OfficeWorkspaceRecord[] {
           urgency: 4,
         },
       ],
+      projectObjective: null,
+      projectContext: null,
+      projectConstraints: null,
     },
     {
       id: "plataforma",
@@ -73,6 +79,9 @@ export function buildTestWorkspaceCatalog(): readonly OfficeWorkspaceRecord[] {
           urgency: 1,
         },
       ],
+      projectObjective: null,
+      projectContext: null,
+      projectConstraints: null,
     },
   ];
 }

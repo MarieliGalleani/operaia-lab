@@ -18,7 +18,9 @@ import OfficeWorldPage from "@/views/OfficeWorldPage.vue";
 import ExecutiveRoom from "@/views/ExecutiveRoom.vue";
 import ProjectsView from "@/views/ProjectsView.vue";
 import WorkspaceRoom from "@/views/WorkspaceRoom.vue";
+import NewProjectView from "@/views/NewProjectView.vue";
 import EmployeeRoom from "@/views/EmployeeRoom.vue";
+import EmployeeDetailView from "@/views/EmployeeDetailView.vue";
 import ActivityCenter from "@/views/ActivityCenter.vue";
 import KnowledgeView from "@/views/KnowledgeView.vue";
 import SettingsView from "@/views/SettingsView.vue";
@@ -27,6 +29,7 @@ import MissionsView from "@/views/MissionsView.vue";
 import MissionDetailView from "@/views/MissionDetailView.vue";
 import OfficeStatusView from "@/views/OfficeStatusView.vue";
 import VirtualWorldTest from "@/views/VirtualWorldTest.vue";
+import NotFoundView from "@/views/NotFoundView.vue";
 import CommandCenterView from "@/views/command-center/CommandCenterView.vue";
 import NewDemandView from "@/views/command-center/NewDemandView.vue";
 import ApprovalsView from "@/views/command-center/ApprovalsView.vue";
@@ -136,6 +139,7 @@ const routes: RouteRecordRaw[] = [
             component: RouterView,
             children: [
               { path: "", name: "workspaces", component: ProjectsView },
+              { path: "new", name: "workspace-new", component: NewProjectView },
               {
                 path: ":id",
                 name: "workspace",
@@ -146,7 +150,16 @@ const routes: RouteRecordRaw[] = [
           },
           {
             path: "team",
-            children: [{ path: "", name: "team", component: EmployeeRoom }],
+            component: RouterView,
+            children: [
+              { path: "", name: "team", component: EmployeeRoom },
+              {
+                path: ":employeeId",
+                name: "employee-detail",
+                component: EmployeeDetailView,
+                props: true,
+              },
+            ],
           },
         ],
       },
@@ -283,6 +296,16 @@ const routes: RouteRecordRaw[] = [
         path: "system/schedule-rules",
         redirect: "/app/floor/automation/triggers",
       },
+      // ---- P1.14A: rotas antigas sem capacidade real correspondente ------
+      { path: "tasks", redirect: "/app/floor/dev/workspaces" },
+      { path: "vault", redirect: "/app/office/conhecimento" },
+      { path: "calendar", component: OfficeLayout, children: [{ path: "", component: NotFoundView }] },
+      { path: "maps", component: OfficeLayout, children: [{ path: "", component: NotFoundView }] },
+      { path: "map/:id", component: OfficeLayout, children: [{ path: "", component: NotFoundView }] },
+      { path: "notes", component: OfficeLayout, children: [{ path: "", component: NotFoundView }] },
+      // Catch-all dentro de /app: qualquer rota não mapeada cai aqui,
+      // nunca em tela branca silenciosa.
+      { path: ":pathMatch(.*)*", component: OfficeLayout, children: [{ path: "", component: NotFoundView }] },
     ],
   },
   { path: "/campus", redirect: "/app/campus" },

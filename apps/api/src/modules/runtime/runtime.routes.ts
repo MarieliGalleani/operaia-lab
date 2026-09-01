@@ -44,6 +44,7 @@ export function createRuntimeRoutes(
           querystring: z.object({
             status: z.nativeEnum(MissionStatus).optional(),
             workspaceId: z.string().optional(),
+            ownerEmployeeId: z.string().optional(),
             take: z.coerce.number().int().positive().max(200).default(50),
             format: z.enum(["tree", "flat"]).default("tree"),
           }),
@@ -54,6 +55,7 @@ export function createRuntimeRoutes(
           const missions = await runtime.queue.list({
             status: request.query.status,
             workspaceId: request.query.workspaceId,
+            ownerEmployeeId: request.query.ownerEmployeeId,
             take: request.query.take,
           });
           return {
