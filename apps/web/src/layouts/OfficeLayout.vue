@@ -67,6 +67,11 @@ onMounted(() => {
   background: linear-gradient(180deg, rgba(12, 20, 36, 0.35), transparent 180px);
 }
 
+/* Tema claro: o glow escuro do topo virava uma mancha sobre o conteúdo. */
+:global(html[data-theme="light"]) .office__glow {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.05), transparent 180px);
+}
+
 .office__page {
   position: relative;
   z-index: 1;
