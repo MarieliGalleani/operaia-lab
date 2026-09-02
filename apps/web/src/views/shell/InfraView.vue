@@ -108,7 +108,7 @@ const occupancy = computed(() =>
         <section>
           <h3 class="op-section-title">Serviços do prédio</h3>
           <div v-for="c in vps.checks" :key="c.id" class="op-service-row">
-            <span class="op-dot" :class="c.status === 'up' ? 'is-on' : 'is-off'" />
+            <span class="op-dot" :class="['up', 'ready'].includes(c.status) ? 'is-on' : 'is-off'" />
             <span class="op-service-row__label">{{ c.label }}</span>
             <span class="op-mono op-service-row__detail">{{ c.detail }}</span>
           </div>
