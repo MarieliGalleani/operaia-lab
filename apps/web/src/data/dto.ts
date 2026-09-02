@@ -114,6 +114,14 @@ export interface MissionListItemDTO {
   readonly ownerEmployeeId: string;
   readonly createdAt: string;
   readonly finishedAt?: string | null;
+  /**
+   * Presentes no payload real (Prisma retorna todas as colunas sem
+   * select explicito em MissionQueue.list) mas ausentes do contrato
+   * antigo. origin so e preenchido em missoes RAIZ (P1.2B).
+   */
+  readonly origin?: string | null;
+  readonly parentMissionId?: string | null;
+  readonly progress?: number;
 }
 
 /** Employee Runtime — fluxo de trabalho/delegacao de um Workspace. */

@@ -12,6 +12,10 @@ import {
   type AuthSession,
 } from "@/modules/auth/auth-session";
 import OfficeLayout from "@/layouts/OfficeLayout.vue";
+import OperationalShellLayout from "@/layouts/OperationalShellLayout.vue";
+import TodayView from "@/views/shell/TodayView.vue";
+import SignalsView from "@/views/shell/SignalsView.vue";
+import MarketingWorkView from "@/views/shell/MarketingWorkView.vue";
 import LoginView from "@/views/LoginView.vue";
 import CampusWorldPage from "@/views/CampusWorldPage.vue";
 import OfficeWorldPage from "@/views/OfficeWorldPage.vue";
@@ -30,7 +34,6 @@ import MissionDetailView from "@/views/MissionDetailView.vue";
 import OfficeStatusView from "@/views/OfficeStatusView.vue";
 import VirtualWorldTest from "@/views/VirtualWorldTest.vue";
 import NotFoundView from "@/views/NotFoundView.vue";
-import CommandCenterView from "@/views/command-center/CommandCenterView.vue";
 import NewDemandView from "@/views/command-center/NewDemandView.vue";
 import ApprovalsView from "@/views/command-center/ApprovalsView.vue";
 import ApprovalDetailView from "@/views/command-center/ApprovalDetailView.vue";
@@ -73,14 +76,14 @@ const routes: RouteRecordRaw[] = [
       // ---- 1º andar — Desenvolvimento ------------------------------------
       {
         path: "floor/dev",
-        component: OfficeLayout,
+        component: OperationalShellLayout,
         children: [
           { path: "", redirect: "/app/floor/dev/command" },
           {
             path: "command",
             component: RouterView,
             children: [
-              { path: "", name: "command", component: CommandCenterView },
+              { path: "", name: "command", component: TodayView },
               { path: "new", name: "command-new", component: NewDemandView },
               {
                 path: "approvals",
@@ -95,6 +98,7 @@ const routes: RouteRecordRaw[] = [
               },
             ],
           },
+          { path: "signals", name: "signals", component: SignalsView },
           {
             path: "missions",
             component: RouterView,
@@ -166,13 +170,18 @@ const routes: RouteRecordRaw[] = [
       // ---- 2º andar — Automação -------------------------------------------
       {
         path: "floor/automation",
-        component: OfficeLayout,
+        component: OperationalShellLayout,
         children: [
           { path: "", redirect: "/app/floor/automation/command" },
           {
             path: "command",
             name: "automation-command",
-            component: CommandCenterView,
+            component: TodayView,
+          },
+          {
+            path: "signals",
+            name: "automation-signals",
+            component: SignalsView,
           },
           {
             path: "automations",
@@ -199,10 +208,38 @@ const routes: RouteRecordRaw[] = [
           },
         ],
       },
+      // ---- 3º andar — Marketing (P1.21: existe na nav, sem dado real) ----
+      {
+        path: "floor/marketing",
+        component: OperationalShellLayout,
+        children: [
+          { path: "", redirect: "/app/floor/marketing/command" },
+          {
+            path: "command",
+            name: "marketing-command",
+            component: TodayView,
+          },
+          {
+            path: "work",
+            name: "marketing-work",
+            component: MarketingWorkView,
+          },
+          {
+            path: "team",
+            name: "marketing-team",
+            component: EmployeeRoom,
+          },
+          {
+            path: "signals",
+            name: "marketing-signals",
+            component: SignalsView,
+          },
+        ],
+      },
       // ---- Transversal: Sistema, mundo 3D ---------------------------------
       {
         path: "system",
-        component: OfficeLayout,
+        component: OperationalShellLayout,
         children: [
           { path: "infra", name: "vps-panel", component: VpsPanelView },
           { path: "settings", name: "settings", component: SettingsView },

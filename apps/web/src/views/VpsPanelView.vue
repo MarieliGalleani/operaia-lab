@@ -1032,7 +1032,7 @@ onUnmounted(() => {
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: rgba(8, 14, 26, 0.35);
+  background: var(--glass);
   transition: transform 0.2s var(--ease), border-color 0.2s var(--ease);
 }
 

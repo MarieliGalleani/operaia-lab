@@ -104,6 +104,142 @@
   --autonomy-controlled: var(--brand);
   --autonomy-auto: var(--success);
   --autonomy-human: var(--warning);
+
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --office-glow: linear-gradient(180deg, rgba(12, 20, 36, 0.35), transparent 180px);
+  --glass: rgba(8, 14, 26, 0.45);
+  --glass-strong: rgba(10, 16, 28, 0.78);
+  --glass-sheen: linear-gradient(165deg, rgba(30, 48, 80, 0.4), transparent 50%);
+
+  /**
+   * Escritorio Operacional (P1.21) — tokens do handoff de design,
+   * nomes identicos ao .dc.html de origem para conferencia direta.
+   * Coexistem com os tokens acima (paginas legadas nao mudam).
+   */
+  --op-bg: #08090c;
+  --op-panel: #0b0c10;
+  --op-panel-2: #090a0e;
+  --op-hover: #0d0f14;
+  --op-raise: #101218;
+  --op-sel: #14161c;
+  --op-line: #17191f;
+  --op-line-soft: #14161c;
+  --op-line-strong: #262a33;
+  --op-bd-btn: #23262e;
+  --op-bd-btn-h: #333743;
+  --op-bd-sel: #2a3040;
+  --op-bd-chip: #2a2e38;
+  --op-bd-chip-h: #3d434f;
+  --op-dash: #1d2027;
+  --op-track: #1a1d24;
+  --op-ink: #f7f8fa;
+  --op-ink-2: #f4f5f7;
+  --op-ink-3: #e6e8ec;
+  --op-ink-4: #dfe3ea;
+  --op-ink-5: #c3c9d4;
+  --op-muted: #a2a9b6;
+  --op-muted-2: #8b93a1;
+  --op-muted-3: #7d8493;
+  --op-muted-4: #6b7280;
+  --op-muted-5: #565c68;
+  --op-muted-6: #4b5160;
+  --op-scroll: #23262e;
+  --op-scroll-h: #333743;
+  --op-cta: #2f6fed;
+  --op-cta-h: #3f7cf5;
+  --op-green: #4ade80;
+  --op-blue: #60a5fa;
+  --op-amber: #fbbf24;
+  --op-red: #f87171;
+  --op-violet: #a78bfa;
+  --op-cyan: #22d3ee;
+  --op-halo: rgba(74, 222, 128, 0.14);
+  --op-font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+[data-theme="light"] {
+  --op-bg: #f4f6f9;
+  --op-panel: #ffffff;
+  --op-panel-2: #f7f9fb;
+  --op-hover: #f5f7fa;
+  --op-raise: #eef1f6;
+  --op-sel: #edf1f7;
+  --op-line: #e2e6ec;
+  --op-line-soft: #edf0f4;
+  --op-line-strong: #cdd4de;
+  --op-bd-btn: #d9dee6;
+  --op-bd-btn-h: #b6bfcc;
+  --op-bd-sel: #c3cddd;
+  --op-bd-chip: #d9dee6;
+  --op-bd-chip-h: #b6bfcc;
+  --op-dash: #dce1e8;
+  --op-track: #e6eaf0;
+  --op-ink: #10131a;
+  --op-ink-2: #171b23;
+  --op-ink-3: #222731;
+  --op-ink-4: #2c323d;
+  --op-ink-5: #454c59;
+  --op-muted: #5a616e;
+  --op-muted-2: #656d7a;
+  --op-muted-3: #6c7480;
+  --op-muted-4: #78808d;
+  --op-muted-5: #878f9c;
+  --op-muted-6: #99a1ae;
+  --op-scroll: #cfd6e0;
+  --op-scroll-h: #b6bfcc;
+  --op-cta: #2563eb;
+  --op-cta-h: #1d4ed8;
+  --op-green: #15803d;
+  --op-blue: #1d4ed8;
+  --op-amber: #a16207;
+  --op-red: #b91c1c;
+  --op-violet: #6d28d9;
+  --op-cyan: #0e7490;
+  --op-halo: rgba(21, 128, 61, 0.14);
+
+  --bg: #f4f6f9;
+  --bg-elevated: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f7f9fb;
+  --surface-hover: #eef1f6;
+  --border: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.16);
+
+  --text: #0f1420;
+  --text-muted: #56606f;
+  --text-soft: #8791a1;
+
+  --brand: #2563eb;
+  --brand-strong: #1d4ed8;
+  --brand-soft: rgba(37, 99, 235, 0.08);
+  --brand-line: rgba(37, 99, 235, 0.28);
+
+  --accent: #0284c7;
+  --accent-soft: rgba(2, 132, 199, 0.08);
+  --accent-ink: #f0f9ff;
+
+  --violet: #7c3aed;
+  --violet-strong: #6d28d9;
+  --violet-soft: rgba(124, 58, 237, 0.08);
+  --violet-line: rgba(124, 58, 237, 0.28);
+
+  --success: #15803d;
+  --success-soft: rgba(21, 128, 61, 0.1);
+  --warning: #a16207;
+  --warning-soft: rgba(161, 98, 7, 0.1);
+  --info: #1d4ed8;
+  --info-soft: rgba(29, 78, 216, 0.1);
+  --danger: #b91c1c;
+  --danger-soft: rgba(185, 28, 28, 0.1);
+
+  --sidebar-bg: #ffffff;
+
+  --office-glow: linear-gradient(180deg, rgba(15, 23, 42, 0.04), transparent 180px);
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-strong: rgba(255, 255, 255, 0.88);
+  --glass-sheen: linear-gradient(165deg, rgba(255, 255, 255, 0.55), transparent 50%);
+
+  --gradient-text: linear-gradient(120deg, #0f1420 8%, #1d4ed8 42%, #6d28d9 70%, #0f1420 100%);
 }
 
 * {
@@ -467,7 +603,7 @@ button.card:hover {
   background:
     radial-gradient(ellipse 60% 100% at 0% 0%, rgba(59, 130, 246, 0.16), transparent 55%),
     radial-gradient(ellipse 50% 100% at 100% 0%, rgba(56, 189, 248, 0.08), transparent 46%),
-    linear-gradient(180deg, #0d1526 0%, var(--bg) 100%);
+    linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);
 }
 
 .studio__stage {
@@ -489,9 +625,7 @@ button.card:hover {
   padding: 8px 12px;
   border-radius: 12px;
   border: 1px solid var(--border);
-  background:
-    linear-gradient(165deg, rgba(30, 48, 80, 0.4), transparent 50%),
-    rgba(14, 21, 36, 0.72);
+  background: var(--glass-sheen), var(--glass-strong);
   font-size: var(--text-sm);
   color: var(--text-muted);
 }

@@ -364,7 +364,7 @@ function badgeFor(item: NavItem): number {
   background:
     radial-gradient(ellipse at 0% 0%, rgba(59, 130, 246, 0.12), transparent 42%),
     radial-gradient(ellipse at 100% 100%, rgba(139, 92, 246, 0.08), transparent 46%),
-    linear-gradient(180deg, #070b14 0%, #060a12 100%);
+    linear-gradient(180deg, var(--sidebar-bg) 0%, var(--surface-2) 100%);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;

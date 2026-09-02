@@ -64,7 +64,7 @@ onMounted(() => {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background: linear-gradient(180deg, rgba(12, 20, 36, 0.35), transparent 180px);
+  background: var(--office-glow);
 }
 
 .office__page {
