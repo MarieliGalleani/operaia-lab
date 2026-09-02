@@ -24,7 +24,7 @@ import EmployeeDetailView from "@/views/EmployeeDetailView.vue";
 import ActivityCenter from "@/views/ActivityCenter.vue";
 import KnowledgeView from "@/views/KnowledgeView.vue";
 import SettingsView from "@/views/SettingsView.vue";
-import VpsPanelView from "@/views/VpsPanelView.vue";
+import OperationalOfficeView from "@/views/OperationalOfficeView.vue";
 import MissionsView from "@/views/MissionsView.vue";
 import MissionDetailView from "@/views/MissionDetailView.vue";
 import OfficeStatusView from "@/views/OfficeStatusView.vue";
@@ -204,9 +204,15 @@ const routes: RouteRecordRaw[] = [
         path: "system",
         component: OfficeLayout,
         children: [
-          { path: "infra", name: "vps-panel", component: VpsPanelView },
           { path: "settings", name: "settings", component: SettingsView },
         ],
+      },
+      // Escritorio Operacional (P1.19) tem rail proprio — fora de OfficeLayout
+      // de proposito, senao o sidebar global intercepta cliques por cima.
+      {
+        path: "system/infra",
+        name: "vps-panel",
+        component: OperationalOfficeView,
       },
       {
         path: "office",
