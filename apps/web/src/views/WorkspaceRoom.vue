@@ -590,7 +590,9 @@ watch(
   align-items: center;
   padding: 8px 12px;
   border-radius: 12px;
-  background: var(--glass-sheen), var(--glass-strong);
+  background:
+    linear-gradient(165deg, rgba(30, 48, 80, 0.4), transparent 50%),
+    rgba(14, 21, 36, 0.72);
   border: 1px solid var(--border);
   margin-right: 12px;
 }
@@ -624,7 +626,9 @@ watch(
   padding: 7px 11px;
   border-radius: 12px;
   border: 1px solid var(--border);
-  background: var(--glass-sheen), var(--glass-strong);
+  background:
+    linear-gradient(165deg, rgba(30, 48, 80, 0.4), transparent 50%),
+    rgba(14, 21, 36, 0.72);
   font-size: 12px;
   color: var(--text-muted);
 }

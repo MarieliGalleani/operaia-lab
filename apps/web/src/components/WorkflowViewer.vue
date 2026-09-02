@@ -186,7 +186,7 @@ const steps = computed(() => props.workflow.steps);
   width: 36px;
   height: 36px;
   border-radius: 12px;
-  background: var(--glass-strong);
+  background: rgba(16, 24, 32, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;

@@ -109,7 +109,9 @@ const hasTasks = computed(() => props.tasks.length > 0);
   padding: 12px;
   border-radius: 14px;
   border: 1px solid var(--border);
-  background: var(--glass-sheen), var(--glass);
+  background:
+    linear-gradient(180deg, rgba(12, 20, 36, 0.55), transparent 40%),
+    rgba(8, 14, 26, 0.45);
 }
 
 .board__col-head {
