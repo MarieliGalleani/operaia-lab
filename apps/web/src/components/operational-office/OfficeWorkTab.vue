@@ -66,7 +66,7 @@ const KIND_LABEL: Record<string, string> = {
 <style scoped>
 .oo-loading,
 .oo-empty {
-  color: var(--text-soft);
+  color: var(--oo-muted-3);
   font-size: 13px;
 }
 
@@ -81,7 +81,7 @@ const KIND_LABEL: Record<string, string> = {
   display: block;
   padding: 16px 16px 16px 20px;
   text-decoration: none;
-  color: var(--text);
+  color: var(--oo-ink);
   overflow: hidden;
 }
 
@@ -91,20 +91,20 @@ const KIND_LABEL: Record<string, string> = {
   top: 0;
   bottom: 0;
   width: 3px;
-  background: var(--text-soft);
+  background: var(--oo-muted-4);
 }
 
 .oo-work-card.is-running .oo-work-card__bar {
-  background: var(--info);
+  background: var(--oo-blue);
 }
 .oo-work-card.is-completed .oo-work-card__bar {
-  background: var(--success);
+  background: var(--oo-green);
 }
 .oo-work-card.is-failed .oo-work-card__bar {
-  background: var(--danger);
+  background: var(--oo-red);
 }
 .oo-work-card.is-queued .oo-work-card__bar {
-  background: var(--warning);
+  background: var(--oo-amber);
 }
 
 .oo-work-card__head {
@@ -116,8 +116,8 @@ const KIND_LABEL: Record<string, string> = {
 
 .oo-tag {
   font-size: 10px;
-  font-family: var(--font-mono);
-  color: var(--text-soft);
+  font-family: var(--oo-mono);
+  color: var(--oo-muted-3);
   text-transform: uppercase;
 }
 
@@ -125,8 +125,8 @@ const KIND_LABEL: Record<string, string> = {
   font-size: 10.5px;
   padding: 3px 8px;
   border-radius: 6px;
-  background: var(--surface-hover);
-  color: var(--text-muted);
+  background: var(--oo-raise);
+  color: var(--oo-muted-2);
 }
 
 .oo-work-card__objective {
@@ -141,6 +141,6 @@ const KIND_LABEL: Record<string, string> = {
 
 .oo-work-card__owner {
   font-size: 11px;
-  color: var(--text-soft);
+  color: var(--oo-muted-3);
 }
 </style>

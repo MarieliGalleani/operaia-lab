@@ -204,9 +204,15 @@ const routes: RouteRecordRaw[] = [
         path: "system",
         component: OfficeLayout,
         children: [
-          { path: "infra", name: "vps-panel", component: OperationalOfficeView },
           { path: "settings", name: "settings", component: SettingsView },
         ],
+      },
+      // Escritorio Operacional (P1.19) tem rail proprio — fora de OfficeLayout
+      // de proposito, senao o sidebar global intercepta cliques por cima.
+      {
+        path: "system/infra",
+        name: "vps-panel",
+        component: OperationalOfficeView,
       },
       {
         path: "office",

@@ -115,7 +115,7 @@ const occupancy = computed(() =>
 
 <style scoped>
 .oo-loading {
-  color: var(--text-soft);
+  color: var(--oo-muted-3);
   font-size: 13px;
 }
 
@@ -170,7 +170,7 @@ const occupancy = computed(() =>
 }
 
 .oo-service__detail {
-  color: var(--text-soft);
+  color: var(--oo-muted-3);
   font-size: 11px;
 }
 
@@ -178,18 +178,18 @@ const occupancy = computed(() =>
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  background: var(--surface-2);
+  background: var(--oo-dash);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 9px;
   font-weight: 700;
-  font-family: var(--font-mono);
+  font-family: var(--oo-mono);
 }
 
 .oo-occupancy__count {
   margin-left: auto;
-  color: var(--text-soft);
+  color: var(--oo-muted-3);
 }
 
 .oo-gov {
@@ -207,7 +207,7 @@ const occupancy = computed(() =>
   text-align: center;
   padding: 10px 4px;
   border-radius: 8px;
-  background: var(--surface-hover);
+  background: var(--oo-raise);
 }
 
 .oo-gov-item p {
@@ -217,7 +217,7 @@ const occupancy = computed(() =>
 
 .oo-gov-item span {
   font-size: 10px;
-  color: var(--text-soft);
+  color: var(--oo-muted-3);
   text-transform: uppercase;
 }
 

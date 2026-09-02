@@ -131,7 +131,7 @@ const levelLabel = computed(() => {
 <style scoped>
 .oo-loading,
 .oo-empty {
-  color: var(--text-soft);
+  color: var(--oo-muted-3);
   font-size: 13px;
   padding: 8px 2px;
 }
@@ -140,14 +140,14 @@ const levelLabel = computed(() => {
   display: grid;
   grid-template-columns: 1.55fr 1fr;
   gap: 1px;
-  background: var(--border);
+  background: var(--oo-line);
   padding: 0;
   overflow: hidden;
 }
 
 .oo-strip__answer,
 .oo-strip__asks {
-  background: var(--surface);
+  background: var(--oo-panel);
   padding: 20px;
 }
 
@@ -160,18 +160,18 @@ const levelLabel = computed(() => {
 
 .oo-strip__body {
   font-size: 13.5px;
-  color: var(--text-muted);
+  color: var(--oo-muted);
   margin-bottom: 16px;
 }
 
 .oo-eyebrow.is-ok {
-  color: var(--success);
+  color: var(--oo-green);
 }
 .oo-eyebrow.is-warn {
-  color: var(--warning);
+  color: var(--oo-amber);
 }
 .oo-eyebrow.is-bad {
-  color: var(--danger);
+  color: var(--oo-red);
 }
 
 .oo-pulse-row {
@@ -179,7 +179,7 @@ const levelLabel = computed(() => {
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   padding-top: 14px;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--oo-line-soft);
 }
 
 .oo-pulse-value {
@@ -189,7 +189,7 @@ const levelLabel = computed(() => {
 
 .oo-pulse-label {
   font-size: 10.5px;
-  color: var(--text-soft);
+  color: var(--oo-muted-3);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -209,7 +209,7 @@ const levelLabel = computed(() => {
   gap: 6px;
   padding: 10px;
   border-radius: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--oo-line);
   font-size: 12.5px;
 }
 
@@ -218,14 +218,14 @@ const levelLabel = computed(() => {
   font-size: 10px;
   padding: 2px 6px;
   border-radius: 5px;
-  background: var(--surface-2);
-  color: var(--text-muted);
+  background: var(--oo-dash);
+  color: var(--oo-muted-2);
 }
 
 .oo-ask-empty {
   margin-top: 12px;
   font-size: 13px;
-  color: var(--text-soft);
+  color: var(--oo-muted-3);
 }
 
 .oo-btn--sm {
@@ -250,13 +250,13 @@ const levelLabel = computed(() => {
 }
 
 .oo-running a {
-  color: var(--text);
+  color: var(--oo-ink);
   text-decoration: none;
   font-size: 13px;
 }
 
 .oo-running a:hover {
-  color: var(--brand);
+  color: var(--oo-cta);
 }
 
 .oo-delivered {
@@ -287,7 +287,7 @@ const levelLabel = computed(() => {
   text-align: center;
   padding: 10px 4px;
   border-radius: 8px;
-  background: var(--surface-hover);
+  background: var(--oo-raise);
 }
 
 .oo-gov-item p {
@@ -297,7 +297,7 @@ const levelLabel = computed(() => {
 
 .oo-gov-item span {
   font-size: 10px;
-  color: var(--text-soft);
+  color: var(--oo-muted-3);
   text-transform: uppercase;
 }
 
