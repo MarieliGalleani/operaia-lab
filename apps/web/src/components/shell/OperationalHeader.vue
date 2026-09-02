@@ -3,14 +3,30 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { OFFICE_FLOORS, type OfficeFloorDef } from "@/data/office-floors";
 
-const props = defineProps<{
-  floor: OfficeFloorDef;
-  scopeLine: string;
-  title: string;
-  lede: string;
-  refreshing?: boolean;
-  showCta?: boolean;
-}>();
+/**
+ * P1.X-FIX: withDefaults e obrigatorio aqui. Prop opcional tipada como
+ * boolean, quando NAO passada, o Vue 3 "casta" pra false (nao
+ * undefined) — sem isso, `showRefresh !== false` dava false sempre que
+ * a tela nao passava a prop explicitamente, escondendo o botao
+ * Atualizar/CTA em toda tela que so queria o padrao (mostrar). Foi
+ * assim que o fix do REG-03/04 (botao morto) virou "botao sumido" —
+ * pego numa verificacao visual real antes do deploy.
+ */
+const props = withDefaults(
+  defineProps<{
+    floor: OfficeFloorDef;
+    scopeLine: string;
+    title: string;
+    lede: string;
+    refreshing?: boolean;
+    showCta?: boolean;
+    showRefresh?: boolean;
+  }>(),
+  {
+    showCta: true,
+    showRefresh: true,
+  },
+);
 
 const emit = defineEmits<{
   (e: "refresh"): void;
@@ -60,7 +76,14 @@ function goNewWork(): void {
       <p class="op-lede">{{ lede }}</p>
     </div>
     <div class="op-header__right">
-      <button type="button" class="op-btn" :disabled="refreshing" @click="emit('refresh')">
+      <slot name="extra" />
+      <button
+        v-if="showRefresh !== false"
+        type="button"
+        class="op-btn"
+        :disabled="refreshing"
+        @click="emit('refresh')"
+      >
         {{ refreshing ? "Atualizando…" : "Atualizar" }}
       </button>
       <button v-if="showCta !== false" type="button" class="op-btn op-btn--cta" @click="goNewWork">
@@ -97,7 +120,7 @@ function goNewWork(): void {
   gap: 8px;
   padding: 3px 4px 3px 3px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--op-radius-xs);
   background: transparent;
   cursor: pointer;
   font-family: inherit;
@@ -113,7 +136,7 @@ function goNewWork(): void {
   font-weight: 600;
   letter-spacing: 0.1em;
   padding: 3px 7px;
-  border-radius: 5px;
+  border-radius: var(--op-radius-xs);
   background: var(--op-raise);
   color: var(--op-muted-2);
 }
@@ -140,7 +163,7 @@ function goNewWork(): void {
   width: 240px;
   padding: 6px;
   border: 1px solid var(--op-line-strong);
-  border-radius: 10px;
+  border-radius: var(--op-radius-sm);
   background: var(--op-panel);
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
 }
@@ -153,7 +176,7 @@ function goNewWork(): void {
   padding: 9px;
   margin-bottom: 2px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--op-radius-sm);
   background: transparent;
   color: inherit;
   font-family: inherit;
@@ -215,7 +238,7 @@ function goNewWork(): void {
 .op-btn {
   padding: 9px 15px;
   border: 1px solid var(--op-bd-btn);
-  border-radius: 8px;
+  border-radius: var(--op-radius-sm);
   background: transparent;
   color: var(--op-muted);
   font-family: "Sora", sans-serif;

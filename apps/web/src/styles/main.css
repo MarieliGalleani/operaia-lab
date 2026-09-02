@@ -112,6 +112,21 @@
   --glass-sheen: linear-gradient(165deg, rgba(30, 48, 80, 0.4), transparent 50%);
 
   /**
+   * P1.X-FIX (DES-01): o shell novo (Escritorio Operacional) tinha
+   * valores de raio literais espalhados (12px/7px/9px/5px/6px/8px) em
+   * vez de tokens, divergindo de --radius/--radius-sm/--radius-xs do
+   * resto do app. Em vez de forcar os componentes novos a usar os
+   * tokens antigos (valores um pouco diferentes, quebraria a fidelidade
+   * pixel-a-pixel ja aprovada do handoff), estes tokens --op-radius-*
+   * fixam os MESMOS valores que ja estavam em uso — um so lugar pra
+   * ajustar, sem duas fontes de verdade divergentes por arquivo.
+   */
+  --op-radius: 12px;
+  --op-radius-sm: 8px;
+  --op-radius-xs: 6px;
+  --op-radius-full: 99px;
+
+  /**
    * Escritorio Operacional (P1.21) — tokens do handoff de design,
    * nomes identicos ao .dc.html de origem para conferencia direta.
    * Coexistem com os tokens acima (paginas legadas nao mudam).

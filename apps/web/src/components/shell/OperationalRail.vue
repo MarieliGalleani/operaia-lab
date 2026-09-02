@@ -100,10 +100,16 @@ const NAV_ICONS: Record<string, string> = {
           </span>
         </button>
       </div>
-      <button v-else type="button" class="op-floor-collapsed">
+      <button
+        v-else
+        type="button"
+        class="op-floor-collapsed"
+        :aria-label="`Andar atual: ${activeFloor.name}. Trocar andar`"
+        @click="railFloorOpen = true"
+      >
         <span class="op-floor-badge">{{ activeFloor.code }}</span>
         <span class="op-floor-name" style="flex: 1">{{ activeFloor.name }}</span>
-        <span class="op-floor-switch" aria-label="Trocar andar" @click.stop="railFloorOpen = true">
+        <span class="op-floor-switch" aria-hidden="true">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></svg>
         </span>
       </button>
@@ -112,37 +118,37 @@ const NAV_ICONS: Record<string, string> = {
     <div class="op-rail__nav">
       <p class="op-eyebrow">{{ activeFloor.name }}</p>
 
-      <router-link :to="activeFloor.todayRoute" class="op-nav-item" :class="{ 'is-active': isActive(activeFloor.todayRoute) }">
+      <router-link :to="activeFloor.todayRoute" class="op-nav-item" aria-label="Hoje" :class="{ 'is-active': isActive(activeFloor.todayRoute) }">
         <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path :d="NAV_ICONS.today" /></svg>
         <span class="op-nav-label">Hoje</span>
         <span class="op-nav-count">{{ props.todayCount ?? "" }}</span>
       </router-link>
 
-      <router-link :to="activeFloor.workRoute" class="op-nav-item" :class="{ 'is-active': isActive(activeFloor.workRoute) }">
+      <router-link :to="activeFloor.workRoute" class="op-nav-item" aria-label="Trabalhos" :class="{ 'is-active': isActive(activeFloor.workRoute) }">
         <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></svg>
         <span class="op-nav-label">Trabalhos</span>
         <span class="op-nav-count">{{ props.workCount ?? "" }}</span>
       </router-link>
 
-      <router-link :to="activeFloor.teamRoute" class="op-nav-item" :class="{ 'is-active': isActive(activeFloor.teamRoute) }">
+      <router-link :to="activeFloor.teamRoute" class="op-nav-item" aria-label="Equipe" :class="{ 'is-active': isActive(activeFloor.teamRoute) }">
         <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
         <span class="op-nav-label">Equipe</span>
         <span class="op-nav-count">{{ props.teamCount ?? "" }}</span>
       </router-link>
 
-      <router-link :to="activeFloor.signalsRoute" class="op-nav-item" :class="{ 'is-active': isActive(activeFloor.signalsRoute) }">
+      <router-link :to="activeFloor.signalsRoute" class="op-nav-item" aria-label="Sinais" :class="{ 'is-active': isActive(activeFloor.signalsRoute) }">
         <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l3 8 4-16 3 8h4" /></svg>
         <span class="op-nav-label">Sinais</span>
         <span class="op-nav-count"></span>
       </router-link>
 
-      <p class="op-eyebrow" style="margin-top: 18px">Prédio</p>
-      <router-link to="/app/system/infra" class="op-nav-item" :class="{ 'is-active': isActive('/app/system/infra') }">
+      <p class="op-eyebrow op-eyebrow--building">Prédio</p>
+      <router-link to="/app/system/infra" class="op-nav-item" aria-label="Infraestrutura" :class="{ 'is-active': isActive('/app/system/infra') }">
         <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="14" width="6" height="7" /><rect x="9" y="8" width="6" height="13" /><rect x="16" y="3" width="6" height="18" /></svg>
         <span class="op-nav-label">Infraestrutura</span>
         <span class="op-nav-count"></span>
       </router-link>
-      <router-link to="/app/system/settings" class="op-nav-item" :class="{ 'is-active': isActive('/app/system/settings') }">
+      <router-link to="/app/system/settings" class="op-nav-item" aria-label="Configurações" :class="{ 'is-active': isActive('/app/system/settings') }">
         <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" /></svg>
         <span class="op-nav-label">Configurações</span>
         <span class="op-nav-count"></span>
@@ -150,7 +156,7 @@ const NAV_ICONS: Record<string, string> = {
     </div>
 
     <div class="op-rail__account">
-      <span class="op-avatar">{{ adminLogin.slice(0, 1).toUpperCase() }}</span>
+      <span class="op-avatar" :title="adminLogin">{{ adminLogin.slice(0, 1).toUpperCase() }}</span>
       <div class="op-account-copy">
         <p class="op-account-name">{{ adminLogin }}</p>
         <p class="op-account-role">Administradora</p>
@@ -171,7 +177,7 @@ const NAV_ICONS: Record<string, string> = {
   height: 100vh;
   background: var(--op-panel);
   border-right: 1px solid var(--op-line);
-  overflow: hidden;
+  overflow: visible;
   font-family: "Sora", sans-serif;
   color: var(--op-ink-3);
 }
@@ -189,7 +195,7 @@ const NAV_ICONS: Record<string, string> = {
 .op-rail__dot {
   width: 7px;
   height: 7px;
-  border-radius: 99px;
+  border-radius: var(--op-radius-full);
   background: var(--op-green);
   box-shadow: 0 0 0 3px var(--op-halo);
   animation: op-breathe 3s ease-in-out infinite;
@@ -208,7 +214,7 @@ const NAV_ICONS: Record<string, string> = {
   padding: 2px;
   margin-left: auto;
   border: 1px solid var(--op-bd-btn);
-  border-radius: 7px;
+  border-radius: var(--op-radius-sm);
 }
 
 .op-theme-btn {
@@ -217,7 +223,7 @@ const NAV_ICONS: Record<string, string> = {
   display: grid;
   place-items: center;
   border: 0;
-  border-radius: 5px;
+  border-radius: var(--op-radius-xs);
   background: transparent;
   color: var(--op-muted-4);
   cursor: pointer;
@@ -237,6 +243,10 @@ const NAV_ICONS: Record<string, string> = {
   text-transform: uppercase;
 }
 
+.op-eyebrow--building {
+  margin-top: 18px;
+}
+
 .op-rail__floor {
   padding: 0 12px 14px;
   border-bottom: 1px solid var(--op-line);
@@ -250,7 +260,7 @@ const NAV_ICONS: Record<string, string> = {
   width: 100%;
   padding: 9px 10px;
   border: 1px solid var(--op-bd-sel);
-  border-radius: 9px;
+  border-radius: var(--op-radius-sm);
   background: var(--op-sel);
   color: inherit;
   font-family: inherit;
@@ -277,7 +287,7 @@ const NAV_ICONS: Record<string, string> = {
 .op-floor-badge {
   width: 26px;
   height: 26px;
-  border-radius: 7px;
+  border-radius: var(--op-radius-sm);
   background: var(--op-raise);
   display: grid;
   place-items: center;
@@ -321,7 +331,7 @@ const NAV_ICONS: Record<string, string> = {
   width: 26px;
   height: 26px;
   border: 1px solid var(--op-bd-btn);
-  border-radius: 6px;
+  border-radius: var(--op-radius-xs);
   color: var(--op-muted-2);
   flex-shrink: 0;
 }
@@ -340,7 +350,7 @@ const NAV_ICONS: Record<string, string> = {
   padding: 9px 10px;
   margin-bottom: 2px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--op-radius-sm);
   background: transparent;
   color: var(--op-muted-2);
   font-family: inherit;
@@ -386,7 +396,7 @@ const NAV_ICONS: Record<string, string> = {
 .op-avatar {
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: var(--op-radius-sm);
   background: var(--op-cta);
   display: grid;
   place-items: center;
@@ -422,7 +432,7 @@ const NAV_ICONS: Record<string, string> = {
   width: 26px;
   height: 26px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--op-radius-xs);
   background: transparent;
   color: var(--op-muted-4);
   cursor: pointer;
@@ -437,5 +447,92 @@ const NAV_ICONS: Record<string, string> = {
 @keyframes op-breathe {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
+}
+
+/**
+ * P1.X-FIX (REG-06): equivalente ao colapso que o SidebarNav.vue antigo
+ * ja tinha em 768px (rail vira coluna so-icone de 64px) — o rail novo
+ * nao tinha nenhum comportamento mobile. Nenhuma acao e removida, so o
+ * texto; todo item mantem aria-label e continua clicavel/navegavel.
+ * O seletor de andar expandido vira um popover flutuante nessa largura
+ * (em vez de empurrar o rail inteiro), pra caber nome+meta legivel.
+ */
+@media (max-width: 768px) {
+  .op-rail {
+    width: 64px;
+    min-width: 64px;
+  }
+
+  .op-rail__brand {
+    padding: 16px 8px 12px;
+  }
+
+  .op-rail__brand-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .op-rail__product {
+    display: none;
+  }
+
+  .op-rail__theme {
+    margin-left: 0;
+  }
+
+  .op-eyebrow {
+    display: none;
+  }
+
+  .op-rail__floor {
+    padding: 0 8px 12px;
+    position: relative;
+  }
+
+  .op-floor-collapsed {
+    justify-content: center;
+    padding: 8px;
+  }
+
+  .op-floor-name,
+  .op-floor-switch {
+    display: none;
+  }
+
+  .op-floor-list {
+    position: absolute;
+    top: 0;
+    left: calc(100% + 8px);
+    z-index: 30;
+    width: 220px;
+    padding: 6px;
+    border: 1px solid var(--op-line-strong);
+    border-radius: var(--op-radius-sm);
+    background: var(--op-panel);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+  }
+
+  .op-floor-option {
+    padding: 9px 10px;
+  }
+
+  .op-nav-item {
+    justify-content: center;
+    padding: 10px 0;
+  }
+
+  .op-nav-label,
+  .op-nav-count {
+    display: none;
+  }
+
+  .op-rail__account {
+    padding: 12px 8px 14px;
+    justify-content: center;
+  }
+
+  .op-account-copy {
+    display: none;
+  }
 }
 </style>

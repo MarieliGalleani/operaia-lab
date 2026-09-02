@@ -26,7 +26,7 @@ const floor = computed(() => findFloor(floorIdFromPath(route.path)));
     title="Sinais"
     lede="Acontecimentos das fontes deste andar convertidos em sinais, com a decisão que o gate tomou."
     :show-cta="false"
-    @refresh="() => {}"
+    :show-refresh="false"
   />
   <div class="op-content">
     <div class="op-empty-card">
@@ -53,7 +53,7 @@ const floor = computed(() => findFloor(floorIdFromPath(route.path)));
   max-width: 480px;
   padding: 28px;
   border: 1px solid var(--op-line);
-  border-radius: 14px;
+  border-radius: var(--op-radius);
   background: var(--op-panel);
 }
 

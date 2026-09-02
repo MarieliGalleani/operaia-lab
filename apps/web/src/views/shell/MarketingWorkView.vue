@@ -21,7 +21,7 @@ const floor = computed(() => findFloor(floorIdFromPath(route.path)));
     title="Trabalhos"
     lede="Cada campanha ou entrega desta unidade, com seu estado real."
     :show-cta="false"
-    @refresh="() => {}"
+    :show-refresh="false"
   />
   <div class="op-content">
     <div class="op-empty-card">
@@ -48,7 +48,7 @@ const floor = computed(() => findFloor(floorIdFromPath(route.path)));
   max-width: 520px;
   padding: 28px;
   border: 1px solid var(--op-line);
-  border-radius: 14px;
+  border-radius: var(--op-radius);
   background: var(--op-panel);
 }
 
@@ -70,6 +70,6 @@ const floor = computed(() => findFloor(floorIdFromPath(route.path)));
   font-size: 12px;
   background: var(--op-raise);
   padding: 1px 5px;
-  border-radius: 4px;
+  border-radius: var(--op-radius-xs);
 }
 </style>
