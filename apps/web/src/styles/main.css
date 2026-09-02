@@ -51,6 +51,11 @@
   --sidebar-bg: #0a101c;
   --sidebar-width: 232px;
 
+  /* "Vidro" translucido usado em chips/cards sobre o fundo (P1.20) */
+  --glass: rgba(8, 14, 26, 0.45);
+  --glass-strong: rgba(10, 16, 28, 0.78);
+  --glass-sheen: linear-gradient(165deg, rgba(30, 48, 80, 0.4), transparent 50%);
+
   --radius: 14px;
   --radius-sm: 9px;
   --radius-xs: 6px;
@@ -106,6 +111,8 @@
   --autonomy-human: var(--warning);
 
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --office-glow: linear-gradient(180deg, rgba(12, 20, 36, 0.35), transparent 180px);
 }
 
 /**
@@ -151,6 +158,12 @@
   --danger-soft: rgba(185, 28, 28, 0.1);
 
   --sidebar-bg: #ffffff;
+
+  --office-glow: linear-gradient(180deg, rgba(15, 23, 42, 0.04), transparent 180px);
+
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-strong: rgba(255, 255, 255, 0.88);
+  --glass-sheen: linear-gradient(165deg, rgba(255, 255, 255, 0.55), transparent 50%);
 }
 
 * {
