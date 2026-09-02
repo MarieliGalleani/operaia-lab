@@ -16,19 +16,19 @@ import OperationalShellLayout from "@/layouts/OperationalShellLayout.vue";
 import TodayView from "@/views/shell/TodayView.vue";
 import SignalsView from "@/views/shell/SignalsView.vue";
 import MarketingWorkView from "@/views/shell/MarketingWorkView.vue";
+import WorkView from "@/views/shell/WorkView.vue";
+import TeamView from "@/views/shell/TeamView.vue";
+import InfraView from "@/views/shell/InfraView.vue";
 import LoginView from "@/views/LoginView.vue";
 import CampusWorldPage from "@/views/CampusWorldPage.vue";
 import OfficeWorldPage from "@/views/OfficeWorldPage.vue";
 import ExecutiveRoom from "@/views/ExecutiveRoom.vue";
-import ProjectsView from "@/views/ProjectsView.vue";
 import WorkspaceRoom from "@/views/WorkspaceRoom.vue";
 import NewProjectView from "@/views/NewProjectView.vue";
-import EmployeeRoom from "@/views/EmployeeRoom.vue";
 import EmployeeDetailView from "@/views/EmployeeDetailView.vue";
 import ActivityCenter from "@/views/ActivityCenter.vue";
 import KnowledgeView from "@/views/KnowledgeView.vue";
 import SettingsView from "@/views/SettingsView.vue";
-import VpsPanelView from "@/views/VpsPanelView.vue";
 import MissionsView from "@/views/MissionsView.vue";
 import MissionDetailView from "@/views/MissionDetailView.vue";
 import OfficeStatusView from "@/views/OfficeStatusView.vue";
@@ -39,7 +39,6 @@ import ApprovalsView from "@/views/command-center/ApprovalsView.vue";
 import ApprovalDetailView from "@/views/command-center/ApprovalDetailView.vue";
 import DecisionsView from "@/views/decisions/DecisionsView.vue";
 import DecisionDetailView from "@/views/decisions/DecisionDetailView.vue";
-import AutomationsView from "@/views/automations/AutomationsView.vue";
 import AutomationDetailView from "@/views/automations/AutomationDetailView.vue";
 import ExecutionsView from "@/views/executions/ExecutionsView.vue";
 import ExecutionDetailView from "@/views/executions/ExecutionDetailView.vue";
@@ -142,7 +141,7 @@ const routes: RouteRecordRaw[] = [
             path: "workspaces",
             component: RouterView,
             children: [
-              { path: "", name: "workspaces", component: ProjectsView },
+              { path: "", name: "workspaces", component: WorkView },
               { path: "new", name: "workspace-new", component: NewProjectView },
               {
                 path: ":id",
@@ -156,7 +155,7 @@ const routes: RouteRecordRaw[] = [
             path: "team",
             component: RouterView,
             children: [
-              { path: "", name: "team", component: EmployeeRoom },
+              { path: "", name: "team", component: TeamView },
               {
                 path: ":employeeId",
                 name: "employee-detail",
@@ -187,7 +186,7 @@ const routes: RouteRecordRaw[] = [
             path: "automations",
             component: RouterView,
             children: [
-              { path: "", name: "automations", component: AutomationsView },
+              { path: "", name: "automations", component: WorkView },
               {
                 path: ":id",
                 name: "automation-detail",
@@ -204,7 +203,7 @@ const routes: RouteRecordRaw[] = [
           {
             path: "team",
             name: "automation-team",
-            component: EmployeeRoom,
+            component: TeamView,
           },
         ],
       },
@@ -227,7 +226,7 @@ const routes: RouteRecordRaw[] = [
           {
             path: "team",
             name: "marketing-team",
-            component: EmployeeRoom,
+            component: TeamView,
           },
           {
             path: "signals",
@@ -241,7 +240,7 @@ const routes: RouteRecordRaw[] = [
         path: "system",
         component: OperationalShellLayout,
         children: [
-          { path: "infra", name: "vps-panel", component: VpsPanelView },
+          { path: "infra", name: "vps-panel", component: InfraView },
           { path: "settings", name: "settings", component: SettingsView },
         ],
       },
