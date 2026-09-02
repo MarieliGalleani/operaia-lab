@@ -40,7 +40,7 @@
 
 .oo-signals-empty__body {
   font-size: 13px;
-  color: var(--oo-muted);
+  color: var(--text-muted);
   line-height: 1.6;
 }
 </style>

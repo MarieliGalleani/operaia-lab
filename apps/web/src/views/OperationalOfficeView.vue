@@ -1,31 +1,30 @@
 <script setup lang="ts">
 /**
- * Escritorio Operacional (P1.19) — substitui VpsPanelView.vue na rota
- * /app/system/infra. Ver auditoria em memoria de conversa (P1.19) para
- * o que foi cortado de escopo (3o andar "Marketing", Hoje/Equipe/Sinais
- * por andar) e por que — tudo documentado inline nos componentes das
- * abas correspondentes.
+ * Escritorio Operacional (P1.19/P1.20) — substitui VpsPanelView.vue na
+ * rota /app/system/infra. Vive dentro do OfficeLayout normal (P1.20):
+ * a v1 (P1.19) tinha rail/tema proprios porque o pedido original era
+ * so essa pagina; quando o pedido virou "a casca do app inteiro", o
+ * rail global (SidebarNav.vue) passou a cobrir isso e o rail local foi
+ * removido — so sobrou a faixa de abas, que e especifica desta pagina.
  *
- * VpsPanelView.vue nao foi apagado: so deixou de ser roteado. Segue no
- * repo, sem outros consumidores, caso seja preciso reverter.
+ * Ver auditoria em memoria de conversa (P1.19) para o que foi cortado
+ * de escopo (3o andar "Marketing", Hoje/Equipe/Sinais por andar) e por
+ * que — tudo documentado inline nos componentes das abas.
+ *
+ * VpsPanelView.vue nao foi apagado: so deixou de ser roteado.
  */
 import { computed, onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
-import OfficeRail from "@/components/operational-office/OfficeRail.vue";
 import OfficeHeader from "@/components/operational-office/OfficeHeader.vue";
 import OfficeTodayTab from "@/components/operational-office/OfficeTodayTab.vue";
 import OfficeWorkTab from "@/components/operational-office/OfficeWorkTab.vue";
 import OfficeTeamTab from "@/components/operational-office/OfficeTeamTab.vue";
 import OfficeSignalsTab from "@/components/operational-office/OfficeSignalsTab.vue";
 import OfficeInfraTab from "@/components/operational-office/OfficeInfraTab.vue";
-import { useOfficeTheme } from "@/composables/useOfficeTheme";
-import { useAuth } from "@/composables/useAuth";
 import { useOffice } from "@/composables/useOffice";
 import { OFFICE_FLOORS, findFloor } from "@/data/office-floors";
 import { createOfficeStatusClient, type OfficeStatusDto } from "@/data/adapters/office-status-client";
 import { createHttpClient } from "@/data/adapters/http-client";
 import type { MissionListItemDTO } from "@/data/dto";
-import "@/styles/operational-office-theme.css";
 
 interface VpsSnapshotLite {
   readonly healthScore: number;
@@ -39,9 +38,6 @@ interface VpsSnapshotLite {
   }[];
 }
 
-const router = useRouter();
-const { theme, toggle: toggleTheme } = useOfficeTheme();
-const auth = useAuth();
 const office = useOffice();
 
 const floorId = ref<string>("dev");
@@ -122,10 +118,13 @@ function onFloorChange(id: string): void {
   floorId.value = id;
 }
 
-async function onLogout(): Promise<void> {
-  await auth.logout();
-  router.push("/login");
-}
+const TABS = [
+  { id: "today", label: "Hoje" },
+  { id: "work", label: "Trabalhos" },
+  { id: "team", label: "Equipe" },
+  { id: "signals", label: "Sinais" },
+  { id: "infra", label: "Infraestrutura" },
+] as const;
 
 const TAB_META: Record<
   string,
@@ -169,95 +168,89 @@ const headerMeta = computed(() => {
 </script>
 
 <template>
-  <div class="operational-office" :data-theme="theme">
-    <div class="oo-shell">
-      <OfficeRail
-        :floors="OFFICE_FLOORS"
-        :active-floor-id="floorId"
-        :active-tab="tab"
-        :theme="theme"
-        :supervisor-running="status?.status.supervisor.running ?? null"
-        :supervisor-cycle="status?.status.supervisor.cycle ?? null"
-        :user-login="auth.user.value?.login ?? null"
-        @floor-change="onFloorChange"
-        @tab-change="(id) => (tab = id as typeof tab)"
-        @theme-toggle="toggleTheme"
-        @logout="onLogout"
+  <div class="operational-office">
+    <OfficeHeader
+      :floors="OFFICE_FLOORS"
+      :active-floor-id="floorId"
+      :title="headerMeta.title"
+      :description="headerMeta.description"
+      :breadcrumb="headerMeta.breadcrumb"
+      :refreshing="refreshing"
+      @floor-change="onFloorChange"
+      @refresh="refresh"
+    />
+
+    <nav class="oo-tabstrip">
+      <button
+        v-for="t in TABS"
+        :key="t.id"
+        type="button"
+        class="oo-tabstrip__item"
+        :class="{ 'is-active': tab === t.id }"
+        @click="tab = t.id"
+      >
+        {{ t.label }}
+      </button>
+    </nav>
+
+    <div class="oo-content">
+      <OfficeTodayTab v-if="tab === 'today'" :status="status" :loading="statusLoading" />
+      <OfficeWorkTab
+        v-else-if="tab === 'work'"
+        :missions="missions"
+        :loading="missionsLoading"
+        :floor-value="activeFloor.missionFloor"
       />
-      <div class="oo-main">
-        <OfficeHeader
-          :floors="OFFICE_FLOORS"
-          :active-floor-id="floorId"
-          :title="headerMeta.title"
-          :description="headerMeta.description"
-          :breadcrumb="headerMeta.breadcrumb"
-          :refreshing="refreshing"
-          @floor-change="onFloorChange"
-          @refresh="refresh"
-        />
-        <div class="oo-content">
-          <OfficeTodayTab v-if="tab === 'today'" :status="status" :loading="statusLoading" />
-          <OfficeWorkTab
-            v-else-if="tab === 'work'"
-            :missions="missions"
-            :loading="missionsLoading"
-            :floor-value="activeFloor.missionFloor"
-          />
-          <OfficeTeamTab
-            v-else-if="tab === 'team'"
-            :employees="office.employees.value"
-            :loading="office.loading.value"
-          />
-          <OfficeSignalsTab v-else-if="tab === 'signals'" />
-          <OfficeInfraTab
-            v-else-if="tab === 'infra'"
-            :vps="vps"
-            :loading="vpsLoading"
-            :floors="OFFICE_FLOORS"
-            :missions="missions"
-            :governance="status ? status.governance.gate : null"
-          />
-        </div>
-      </div>
+      <OfficeTeamTab
+        v-else-if="tab === 'team'"
+        :employees="office.employees.value"
+        :loading="office.loading.value"
+      />
+      <OfficeSignalsTab v-else-if="tab === 'signals'" />
+      <OfficeInfraTab
+        v-else-if="tab === 'infra'"
+        :vps="vps"
+        :loading="vpsLoading"
+        :floors="OFFICE_FLOORS"
+        :missions="missions"
+        :governance="status ? status.governance.gate : null"
+      />
     </div>
   </div>
 </template>
 
 <style scoped>
-.operational-office {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  overflow: hidden;
+.oo-tabstrip {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
 }
 
-.oo-shell {
-  display: flex;
-  height: 100%;
+.oo-tabstrip__item {
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-soft);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
 }
 
-.oo-main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  height: 100%;
+.oo-tabstrip__item:hover {
+  color: var(--text);
+}
+
+.oo-tabstrip__item.is-active {
+  color: var(--text);
+  border-bottom-color: var(--brand);
 }
 
 .oo-content {
-  flex: 1;
-  overflow-y: auto;
   padding: 20px 24px 40px;
-}
-
-@media (max-width: 900px) {
-  .operational-office {
-    position: static;
-    min-height: 100vh;
-  }
-  .oo-shell {
-    flex-direction: column;
-    height: auto;
-  }
 }
 </style>

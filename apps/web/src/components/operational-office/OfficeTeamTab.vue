@@ -135,13 +135,13 @@ const STATUS_LABEL: Record<string, string> = {
 
 <style scoped>
 .oo-loading {
-  color: var(--oo-muted-3);
+  color: var(--text-soft);
   font-size: 13px;
 }
 
 .oo-team__note {
   font-size: 12px;
-  color: var(--oo-muted-3);
+  color: var(--text-soft);
   margin-bottom: 14px;
 }
 
@@ -178,8 +178,8 @@ const STATUS_LABEL: Record<string, string> = {
 .oo-mockup__label {
   position: absolute;
   transform: translate(-50%, -100%);
-  background: var(--oo-panel);
-  border: 1px solid var(--oo-line);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 3px 8px;
   font-size: 10.5px;
@@ -200,9 +200,9 @@ const STATUS_LABEL: Record<string, string> = {
   width: 28px;
   height: 28px;
   border-radius: 7px;
-  border: 1px solid var(--oo-bd-btn);
-  background: var(--oo-panel);
-  color: var(--oo-ink);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
   cursor: pointer;
   font-size: 14px;
 }
@@ -228,23 +228,23 @@ const STATUS_LABEL: Record<string, string> = {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--oo-raise);
+  background: var(--surface-hover);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 16px;
   flex-shrink: 0;
-  border: 2px solid var(--oo-muted-4);
+  border: 2px solid var(--text-soft);
 }
 
 .oo-avatar-circle.is-working {
-  border-color: var(--oo-blue);
+  border-color: var(--info);
 }
 .oo-avatar-circle.is-available {
-  border-color: var(--oo-green);
+  border-color: var(--success);
 }
 .oo-avatar-circle.is-hiring {
-  border-color: var(--oo-muted-4);
+  border-color: var(--text-soft);
   opacity: 0.6;
 }
 
@@ -255,7 +255,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 .oo-employee-card__role {
   font-size: 11px;
-  color: var(--oo-muted-3);
+  color: var(--text-soft);
 }
 
 .oo-employee-card__state {
@@ -263,11 +263,11 @@ const STATUS_LABEL: Record<string, string> = {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: var(--oo-muted);
+  color: var(--text-muted);
 }
 
 .oo-employee-card__mission {
-  color: var(--oo-muted-3);
+  color: var(--text-soft);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

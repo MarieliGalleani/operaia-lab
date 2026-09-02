@@ -3,7 +3,10 @@ import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuth } from "@/composables/useAuth";
 import { usePendingApprovalsBadge } from "@/composables/usePendingApprovalsBadge";
+import { useAppTheme } from "@/composables/useAppTheme";
 import FloorSwitcher from "@/components/FloorSwitcher.vue";
+
+const { theme, toggle: toggleTheme } = useAppTheme();
 
 interface NavItem {
   readonly label: string;
@@ -143,6 +146,26 @@ function badgeFor(item: NavItem): number {
       <div class="sidebar__brand-copy">
         <span class="sidebar__product">OperaIA</span>
         <span class="sidebar__hint">Command Center</span>
+      </div>
+      <div class="sidebar__theme-toggle">
+        <button
+          type="button"
+          class="theme-btn"
+          :class="{ 'theme-btn--active': theme === 'dark' }"
+          title="Tema escuro"
+          @click="toggleTheme"
+        >
+          🌙
+        </button>
+        <button
+          type="button"
+          class="theme-btn"
+          :class="{ 'theme-btn--active': theme === 'light' }"
+          title="Tema claro"
+          @click="toggleTheme"
+        >
+          ☀️
+        </button>
       </div>
     </div>
 
@@ -379,6 +402,29 @@ function badgeFor(item: NavItem): number {
   padding: 4px 8px 20px;
 }
 
+.sidebar__theme-toggle {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.theme-btn {
+  width: 24px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.45;
+  line-height: 1;
+}
+
+.theme-btn--active {
+  opacity: 1;
+  border-color: var(--brand-line);
+}
+
 .sidebar__mark {
   width: 34px;
   height: 34px;
@@ -511,6 +557,7 @@ function badgeFor(item: NavItem): number {
   border-radius: 999px;
   background: var(--danger);
   color: #1a0505;
+  font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
   display: inline-flex;
@@ -628,6 +675,7 @@ function badgeFor(item: NavItem): number {
   }
 
   .sidebar__brand-copy,
+  .sidebar__theme-toggle,
   .nav-group__title,
   .nav-item__label,
   .sidebar__user-copy,

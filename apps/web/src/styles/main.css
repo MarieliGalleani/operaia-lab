@@ -104,6 +104,53 @@
   --autonomy-controlled: var(--brand);
   --autonomy-auto: var(--success);
   --autonomy-human: var(--warning);
+
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+
+/**
+ * Tema claro (P1.20 — redesign do rail/casca do app). Toggle explicito,
+ * persistido em localStorage — ver useAppTheme.ts. Sem deteccao
+ * automatica de prefers-color-scheme: o handoff de design pede so os
+ * dois botoes explicitos.
+ */
+[data-theme="light"] {
+  --bg: #f4f6f9;
+  --bg-elevated: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f7f9fb;
+  --surface-hover: #eef1f6;
+  --border: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.16);
+
+  --text: #0f1420;
+  --text-muted: #56606f;
+  --text-soft: #8791a1;
+
+  --brand: #2563eb;
+  --brand-strong: #1d4ed8;
+  --brand-soft: rgba(37, 99, 235, 0.08);
+  --brand-line: rgba(37, 99, 235, 0.28);
+
+  --accent: #0284c7;
+  --accent-soft: rgba(2, 132, 199, 0.08);
+  --accent-ink: #f0f9ff;
+
+  --violet: #7c3aed;
+  --violet-strong: #6d28d9;
+  --violet-soft: rgba(124, 58, 237, 0.08);
+  --violet-line: rgba(124, 58, 237, 0.28);
+
+  --success: #15803d;
+  --success-soft: rgba(21, 128, 61, 0.1);
+  --warning: #a16207;
+  --warning-soft: rgba(161, 98, 7, 0.1);
+  --info: #1d4ed8;
+  --info-soft: rgba(29, 78, 216, 0.1);
+  --danger: #b91c1c;
+  --danger-soft: rgba(185, 28, 28, 0.1);
+
+  --sidebar-bg: #ffffff;
 }
 
 * {

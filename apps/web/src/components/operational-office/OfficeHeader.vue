@@ -79,7 +79,7 @@ function goToNewWork(): void {
   justify-content: space-between;
   gap: 16px;
   padding: 18px 24px;
-  border-bottom: 1px solid var(--oo-line);
+  border-bottom: 1px solid var(--border);
   flex-wrap: wrap;
 }
 
@@ -99,10 +99,10 @@ function goToNewWork(): void {
   gap: 7px;
   padding: 5px 10px 5px 5px;
   border-radius: 8px;
-  border: 1px solid var(--oo-bd-btn);
-  background: var(--oo-raise);
-  color: var(--oo-ink);
-  font-family: var(--oo-font);
+  border: 1px solid var(--border);
+  background: var(--surface-hover);
+  color: var(--text);
+  font-family: var(--font);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -112,18 +112,18 @@ function goToNewWork(): void {
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  background: var(--oo-dash);
+  background: var(--surface-2);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 9px;
   font-weight: 700;
-  font-family: var(--oo-mono);
+  font-family: var(--font-mono);
   flex-shrink: 0;
 }
 
 .oo-caret {
-  color: var(--oo-muted-3);
+  color: var(--text-soft);
   font-size: 10px;
 }
 
@@ -133,8 +133,8 @@ function goToNewWork(): void {
   left: 0;
   z-index: 20;
   min-width: 200px;
-  background: var(--oo-panel);
-  border: 1px solid var(--oo-line);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 6px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
@@ -149,8 +149,8 @@ function goToNewWork(): void {
   border-radius: 7px;
   border: none;
   background: transparent;
-  color: var(--oo-ink);
-  font-family: var(--oo-font);
+  color: var(--text);
+  font-family: var(--font);
   font-size: 12.5px;
   cursor: pointer;
   text-align: left;
@@ -158,14 +158,14 @@ function goToNewWork(): void {
 
 .oo-floor-dropdown__item:hover,
 .oo-floor-dropdown__item.is-active {
-  background: var(--oo-sel);
+  background: var(--brand-soft);
 }
 
 .oo-breadcrumb {
   font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: var(--oo-muted-3);
+  color: var(--text-soft);
   margin-bottom: 6px;
 }
 
@@ -178,7 +178,7 @@ function goToNewWork(): void {
 
 .oo-description {
   font-size: 13px;
-  color: var(--oo-muted);
+  color: var(--text-muted);
   max-width: 560px;
 }
 
