@@ -1,7 +1,13 @@
 <script setup lang="ts">
 /**
- * Aba Equipe (P1.21 + P1.X-FIX). Maquete isometrica fiel ao handoff
- * aprovado (inalterada). Employee nao tem floorId no dominio
+ * Aba Equipe (P1.21 + P1.X-FIX + vivo). A maquete usa o mesmo motor ao
+ * vivo (Pixi/ECS) ja em producao em /app/office — identidade e status
+ * (ocupado/objetivo) reais, vindos do Command Center via
+ * live-agent-status.ts; so o deslocamento visual dos avatares e
+ * decorativo. Antes disso a aba usava uma imagem estatica com
+ * etiquetas de nome paradas (fiel ao handoff, mas sem ninguem andando)
+ * — trocado a pedido explicito da usuaria ("meus agentes nao estao
+ * andando na maquete"). Employee nao tem floorId no dominio
  * (confirmado) — mostra o roster inteiro em todo andar, rotulado
  * honestamente como tal.
  *
@@ -13,17 +19,19 @@
  * - REG-12: cards recuperam especialidade, atividade atual, projetos
  *   envolvidos e ultima acao (mesma informacao que EmployeeRoom.vue
  *   mostrava, so que na linguagem visual nova).
- * - REG-16: aria-label nos controles de zoom (so-icone).
  */
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import OperationalHeader from "@/components/shell/OperationalHeader.vue";
 import { findFloor, floorIdFromPath } from "@/data/office-floors";
+import { createOfficeWorldProvider } from "@/modules/office-domain/office-world-data-provider";
+import VirtualWorld from "@/modules/virtual-world/vue/VirtualWorld.vue";
 import { useOffice } from "@/composables/useOffice";
 
 const route = useRoute();
 const floor = computed(() => findFloor(floorIdFromPath(route.path)));
 const office = useOffice();
+const worldProvider = createOfficeWorldProvider();
 
 async function load(force = false): Promise<void> {
   await office.load(force);
@@ -37,60 +45,6 @@ onMounted(() => {
 
 async function refresh(): Promise<void> {
   await load(true);
-}
-
-const DESK_POSITIONS = [
-  { top: "28%", left: "22%" },
-  { top: "24%", left: "46%" },
-  { top: "30%", left: "70%" },
-  { top: "48%", left: "15%" },
-  { top: "50%", left: "38%" },
-  { top: "46%", left: "62%" },
-  { top: "68%", left: "24%" },
-  { top: "72%", left: "50%" },
-  { top: "66%", left: "76%" },
-] as const;
-
-const zoom = ref(1);
-const ZOOM_MIN = 0.6;
-const ZOOM_MAX = 2;
-const ZOOM_STEP = 0.15;
-
-function zoomIn(): void {
-  zoom.value = Math.min(ZOOM_MAX, Math.round((zoom.value + ZOOM_STEP) * 100) / 100);
-}
-function zoomOut(): void {
-  zoom.value = Math.max(ZOOM_MIN, Math.round((zoom.value - ZOOM_STEP) * 100) / 100);
-}
-function zoomReset(): void {
-  zoom.value = 1;
-}
-
-let pinchStartDistance = 0;
-let pinchStartZoom = 1;
-
-function touchDistance(touches: TouchList): number {
-  const [a, b] = [touches[0]!, touches[1]!];
-  return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-}
-
-function onTouchStart(event: TouchEvent): void {
-  if (event.touches.length === 2) {
-    pinchStartDistance = touchDistance(event.touches);
-    pinchStartZoom = zoom.value;
-  }
-}
-
-function onTouchMove(event: TouchEvent): void {
-  if (event.touches.length === 2 && pinchStartDistance > 0) {
-    event.preventDefault();
-    const ratio = touchDistance(event.touches) / pinchStartDistance;
-    zoom.value = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, pinchStartZoom * ratio));
-  }
-}
-
-function onTouchEnd(): void {
-  pinchStartDistance = 0;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -138,28 +92,13 @@ const viewState = computed<"loading" | "error" | "empty" | "ready">(() => {
 
     <template v-else>
       <div class="op-mockup">
-        <div
-          class="op-mockup__viewport"
-          @touchstart="onTouchStart"
-          @touchmove="onTouchMove"
-          @touchend="onTouchEnd"
-        >
-          <div class="op-mockup__scaler" :style="{ transform: `scale(${zoom})` }">
-            <img src="/assets/office-floor.png" alt="Maquete do escritório" class="op-mockup__img" />
-            <div
-              v-for="(pos, index) in DESK_POSITIONS"
-              :key="index"
-              class="op-mockup__label"
-              :style="{ top: pos.top, left: pos.left }"
-            >
-              {{ office.employees.value[index]?.name ?? "—" }}
-            </div>
-          </div>
-        </div>
-        <div class="op-mockup__zoom">
-          <button type="button" class="op-zoom-btn" aria-label="Diminuir zoom" @click="zoomOut">−</button>
-          <button type="button" class="op-zoom-btn" aria-label="Centralizar zoom" @click="zoomReset">⊙</button>
-          <button type="button" class="op-zoom-btn" aria-label="Aumentar zoom" @click="zoomIn">+</button>
+        <div class="op-mockup__viewport">
+          <VirtualWorld
+            :provider="worldProvider"
+            map-id="office"
+            scope-id="operaia"
+            engine-id="pixi"
+          />
         </div>
       </div>
 
@@ -269,65 +208,17 @@ const viewState = computed<"loading" | "error" | "empty" | "ready">(() => {
   aspect-ratio: 16 / 8;
   overflow: hidden;
   position: relative;
-  touch-action: none;
 }
 
-.op-mockup__scaler {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transform-origin: center center;
-  transition: transform 0.08s ease-out;
-}
-
-.op-mockup__img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.op-mockup__label {
-  position: absolute;
-  transform: translate(-50%, -100%);
-  background: var(--op-panel);
-  border: 1px solid var(--op-line);
-  border-radius: var(--op-radius-xs);
-  padding: 3px 8px;
-  font-size: 10.5px;
-  font-weight: 600;
-  color: var(--op-ink-3);
-  white-space: nowrap;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-
-.op-mockup__zoom {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  display: flex;
-  gap: 4px;
-}
-
-.op-zoom-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: var(--op-radius-sm);
-  border: 1px solid var(--op-bd-btn);
-  background: var(--op-panel);
-  color: var(--op-ink-3);
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.op-zoom-btn:hover {
-  border-color: var(--op-bd-btn-h);
-}
-
-.op-zoom-btn:focus-visible,
 .op-btn-retry:focus-visible {
   outline: 2px solid var(--op-cta);
   outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .op-mockup__viewport {
+    aspect-ratio: 4 / 5;
+  }
 }
 
 .op-team-grid {

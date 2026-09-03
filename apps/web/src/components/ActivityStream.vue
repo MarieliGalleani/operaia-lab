@@ -29,46 +29,46 @@ function actorEmoji(actorId: string): string {
 </script>
 
 <template>
-  <ul class="stream">
-    <li v-for="item in visible" :key="item.id" class="stream__item">
-      <time class="stream__time">{{ formatTime(item.timestamp) }}</time>
-      <span class="stream__rail">
-        <span class="stream__dot">{{ KIND_ICON[item.kind] }}</span>
+  <ul class="op-stream">
+    <li v-for="item in visible" :key="item.id" class="op-stream__item">
+      <time class="op-stream__time">{{ formatTime(item.timestamp) }}</time>
+      <span class="op-stream__rail">
+        <span class="op-stream__dot">{{ KIND_ICON[item.kind] }}</span>
       </span>
-      <p class="stream__msg">
-        <span class="stream__actor">{{ actorEmoji(item.actorId) }}</span>
+      <p class="op-stream__msg">
+        <span class="op-stream__actor">{{ actorEmoji(item.actorId) }}</span>
         {{ item.message }}
       </p>
     </li>
-    <li v-if="visible.length === 0" class="stream__empty">
+    <li v-if="visible.length === 0" class="op-stream__empty">
       Nenhuma atividade por aqui ainda.
     </li>
   </ul>
 </template>
 
 <style scoped>
-.stream {
+.op-stream {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.stream__item {
+.op-stream__item {
   display: flex;
   align-items: flex-start;
   padding: 12px 0;
 }
 
-.stream__time {
+.op-stream__time {
   width: 46px;
   min-width: 46px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--op-muted-3);
   padding-top: 7px;
 }
 
-.stream__rail {
+.op-stream__rail {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -76,41 +76,40 @@ function actorEmoji(actorId: string): string {
   align-self: stretch;
 }
 
-.stream__dot {
+.op-stream__dot {
   width: 32px;
   height: 32px;
   min-width: 32px;
   border-radius: 50%;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--op-panel);
+  border: 1px solid var(--op-line);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
-  box-shadow: var(--shadow-sm);
 }
 
-.stream__item:not(:last-child) .stream__rail::after {
+.op-stream__item:not(:last-child) .op-stream__rail::after {
   content: "";
   flex: 1;
   width: 2px;
-  background: var(--border);
+  background: var(--op-line);
   margin-top: 4px;
 }
 
-.stream__msg {
+.op-stream__msg {
   flex: 1;
-  color: var(--text);
+  color: var(--op-ink-3);
   font-size: 13.5px;
   padding-top: 7px;
 }
 
-.stream__actor {
+.op-stream__actor {
   margin-right: 4px;
 }
 
-.stream__empty {
-  color: var(--text-soft);
+.op-stream__empty {
+  color: var(--op-muted-4);
   font-size: 13px;
   padding: 12px 0;
 }

@@ -1,17 +1,22 @@
 <script setup lang="ts">
 import { computed, watch } from "vue";
+import { useRoute } from "vue-router";
 import MissionDeliveryPanel from "@/components/MissionDeliveryPanel.vue";
 import MissionFlow from "@/components/MissionFlow.vue";
 import MissionStatusBadge from "@/components/MissionStatusBadge.vue";
+import OperationalHeader from "@/components/shell/OperationalHeader.vue";
 import { useMissionDetail } from "@/composables/useMissionDetail";
 import { useOffice } from "@/composables/useOffice";
 import { cleanMissionObjective } from "@/data/mappers";
 import { isActiveMissionStatus } from "@/data/mission-contracts";
+import { findFloor, floorIdFromPath } from "@/data/office-floors";
 import { presentationFor } from "@/data/presentation";
 import { formatDateTime } from "@/utils/format";
 import type { Specialization } from "@/types/office";
 
 const props = defineProps<{ id: string }>();
+const route = useRoute();
+const floor = computed(() => findFloor(floorIdFromPath(route.path)));
 
 const { mission, loading, error, load, reload } = useMissionDetail();
 const { employeeById, projects } = useOffice();
@@ -149,331 +154,390 @@ const team = computed(() => {
 </script>
 
 <template>
-  <div class="studio">
-    <header class="studio__topbar">
-      <div class="topbar__left">
-        <router-link to="/app/missions" class="back">← Missões</router-link>
-        <h1 class="page__title">Missão</h1>
-      </div>
-      <div v-if="mission" class="studio__pulse">
-        <span class="studio__pulse-item">
-          <MissionStatusBadge :status="mission.status" />
-        </span>
-        <span v-if="live" class="studio__pulse-item live">
-          <span class="live-dot" aria-hidden="true" />
+  <OperationalHeader
+    :floor="floor"
+    scope-line="Missões · Detalhe"
+    title="Missão"
+    lede="O que foi pedido, quem está trabalhando e o que já foi entregue."
+    :show-cta="false"
+    :refreshing="loading"
+    @refresh="reload"
+  >
+    <template #extra>
+      <span v-if="mission" class="op-pulse">
+        <MissionStatusBadge :status="mission.status" />
+        <span v-if="live" class="op-pulse__live">
+          <span class="op-live-dot" aria-hidden="true" />
           atualizando
         </span>
-      </div>
-      <div class="topbar__right">
-        <button type="button" class="btn btn--ghost" @click="reload">Atualizar</button>
-      </div>
-    </header>
+      </span>
+      <router-link :to="`${floor.workRoute}`" class="op-btn">← Trabalhos</router-link>
+    </template>
+  </OperationalHeader>
 
-    <div class="studio__stage">
-      <p v-if="loading && !mission" class="state">Buscando a missão na API…</p>
-      <div v-else-if="error && !mission" class="empty-state">
-        <p class="empty-state__title">Missão não disponível</p>
-        <p class="empty-state__body">{{ error }}</p>
-        <button type="button" class="btn btn--primary" @click="load(id)">Tentar de novo</button>
-      </div>
-
-      <template v-else-if="mission">
-        <div class="layout">
-          <div class="layout__main">
-            <section class="panel brief">
-              <p class="eyebrow">O que pedi</p>
-              <h2>{{ cleanMissionObjective(mission.objective) }}</h2>
-              <p v-if="cleanMissionObjective(mission.objective) !== mission.objective" class="brief__raw">
-                {{ mission.objective }}
-              </p>
-              <dl class="facts">
-                <div>
-                  <dt>Status</dt>
-                  <dd><MissionStatusBadge :status="mission.status" /></dd>
-                </div>
-                <div>
-                  <dt>Workspace</dt>
-                  <dd>
-                    <router-link
-                      v-if="mission.workspaceId"
-                      :to="`/app/floor/dev/workspaces/${mission.workspaceId}`"
-                      class="workspace-link"
-                    >
-                      {{ workspaceName }}
-                    </router-link>
-                    <template v-else>{{ workspaceName }}</template>
-                  </dd>
-                </div>
-                <div>
-                  <dt>Responsável</dt>
-                  <dd>{{ owner.emoji }} {{ owner.name }}</dd>
-                </div>
-                <div>
-                  <dt>Tipo</dt>
-                  <dd>{{ mission.missionKind }}</dd>
-                </div>
-              </dl>
-            </section>
-
-            <MissionDeliveryPanel :mission="mission" />
-
-            <section v-if="mission.children.length" class="panel kids">
-              <p class="eyebrow">Filhos da missão</p>
-              <h3>Etapas reais</h3>
-              <ul>
-                <li v-for="child in mission.children" :key="child.id">
-                  <MissionStatusBadge :status="child.status" />
-                  <span>{{ personEmoji(child.ownerEmployeeId, child.requiredSpecialization) }}</span>
-                  <strong>{{ personName(child.ownerEmployeeId) }}</strong>
-                  <em>{{ child.missionKind }}</em>
-                  <span>{{ cleanMissionObjective(child.objective) }}</span>
-                </li>
-              </ul>
-            </section>
-          </div>
-
-          <aside class="layout__rail">
-            <section class="panel">
-              <p class="eyebrow">Fluxo</p>
-              <h3>Quem está trabalhando</h3>
-              <MissionFlow
-                class="rail-flow"
-                :owner-employee-id="ownerEmployeeId"
-                :status="mission.status"
-                :children="mission.children"
-              />
-            </section>
-
-            <section class="panel team">
-              <p class="eyebrow">Equipe</p>
-              <h3>Envolvidos</h3>
-              <ul>
-                <li v-for="member in team" :key="member.id">
-                  <span class="face">{{ personEmoji(member.id, member.spec) }}</span>
-                  <div>
-                    <strong>{{ personName(member.id) }}</strong>
-                    <span>{{ presentationFor(member.spec as Specialization).specialtyLabel }}</span>
-                  </div>
-                </li>
-              </ul>
-            </section>
-
-            <section class="panel activity">
-              <p class="eyebrow">Atividade</p>
-              <h3>Eventos</h3>
-              <ol v-if="mission.events.length">
-                <li v-for="event in mission.events" :key="event.id">
-                  <time>{{ formatDateTime(event.createdAt) }}</time>
-                  <strong>{{ humanEventLabel(event) }}</strong>
-                  <span>{{ event.message }}</span>
-                  <code class="activity__type">{{ event.type }}</code>
-                </li>
-              </ol>
-              <p v-else class="muted">Nenhum evento neste response.</p>
-            </section>
-          </aside>
-        </div>
-      </template>
+  <div class="op-content">
+    <p v-if="loading && !mission" class="op-loading">Buscando a missão na API…</p>
+    <div v-else-if="error && !mission" class="op-error" role="alert">
+      <p class="op-error__title">Missão não disponível</p>
+      <p class="op-error__body">{{ error }}</p>
+      <button type="button" class="op-btn-retry" @click="load(props.id)">Tentar de novo</button>
     </div>
+
+    <template v-else-if="mission">
+      <div class="op-mission-layout">
+        <div class="op-mission-layout__main">
+          <section class="op-brief">
+            <p class="op-eyebrow-sm">O que pedi</p>
+            <h2 class="op-brief__title">{{ cleanMissionObjective(mission.objective) }}</h2>
+            <p v-if="cleanMissionObjective(mission.objective) !== mission.objective" class="op-brief__raw">
+              {{ mission.objective }}
+            </p>
+            <dl class="op-facts">
+              <div>
+                <dt>Status</dt>
+                <dd><MissionStatusBadge :status="mission.status" /></dd>
+              </div>
+              <div>
+                <dt>Workspace</dt>
+                <dd>
+                  <router-link
+                    v-if="mission.workspaceId"
+                    :to="`/app/floor/dev/workspaces/${mission.workspaceId}`"
+                    class="op-workspace-link"
+                  >
+                    {{ workspaceName }}
+                  </router-link>
+                  <template v-else>{{ workspaceName }}</template>
+                </dd>
+              </div>
+              <div>
+                <dt>Responsável</dt>
+                <dd>{{ owner.emoji }} {{ owner.name }}</dd>
+              </div>
+              <div>
+                <dt>Tipo</dt>
+                <dd>{{ mission.missionKind }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <MissionDeliveryPanel :mission="mission" class="op-stack-gap" />
+
+          <section v-if="mission.children.length" class="op-kids op-stack-gap">
+            <p class="op-eyebrow-sm">Filhos da missão</p>
+            <h3 class="op-kids__title">Etapas reais</h3>
+            <ul class="op-kids__list">
+              <li v-for="child in mission.children" :key="child.id">
+                <MissionStatusBadge :status="child.status" />
+                <span>{{ personEmoji(child.ownerEmployeeId, child.requiredSpecialization) }}</span>
+                <strong>{{ personName(child.ownerEmployeeId) }}</strong>
+                <em>{{ child.missionKind }}</em>
+                <span>{{ cleanMissionObjective(child.objective) }}</span>
+              </li>
+            </ul>
+          </section>
+        </div>
+
+        <aside class="op-mission-layout__rail">
+          <section class="op-rail-panel">
+            <p class="op-eyebrow-sm">Fluxo</p>
+            <h3 class="op-rail-panel__title">Quem está trabalhando</h3>
+            <MissionFlow
+              class="op-rail-flow"
+              :owner-employee-id="ownerEmployeeId"
+              :status="mission.status"
+              :children="mission.children"
+            />
+          </section>
+
+          <section class="op-rail-panel op-stack-gap">
+            <p class="op-eyebrow-sm">Equipe</p>
+            <h3 class="op-rail-panel__title">Envolvidos</h3>
+            <ul class="op-team-list">
+              <li v-for="member in team" :key="member.id">
+                <span class="op-team-face">{{ personEmoji(member.id, member.spec) }}</span>
+                <div>
+                  <strong>{{ personName(member.id) }}</strong>
+                  <span>{{ presentationFor(member.spec as Specialization).specialtyLabel }}</span>
+                </div>
+              </li>
+            </ul>
+          </section>
+
+          <section class="op-rail-panel op-stack-gap">
+            <p class="op-eyebrow-sm">Atividade</p>
+            <h3 class="op-rail-panel__title">Eventos</h3>
+            <ol v-if="mission.events.length" class="op-activity-list">
+              <li v-for="event in mission.events" :key="event.id">
+                <time>{{ formatDateTime(event.createdAt) }}</time>
+                <strong>{{ humanEventLabel(event) }}</strong>
+                <span>{{ event.message }}</span>
+                <code class="op-activity-list__type">{{ event.type }}</code>
+              </li>
+            </ol>
+            <p v-else class="op-empty-inline">Nenhum evento neste response.</p>
+          </section>
+        </aside>
+      </div>
+    </template>
   </div>
 </template>
 
 <style scoped>
-.topbar__left {
-  min-width: 160px;
-  margin-right: 16px;
+.op-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 34px 40px;
 }
 
-.back {
-  display: inline-block;
-  font-size: var(--text-xs);
-  color: var(--brand);
-  font-weight: 600;
-  margin-bottom: 4px;
+.op-loading,
+.op-empty-inline {
+  color: var(--op-muted-4);
+  font-size: 13px;
 }
 
-.topbar__right {
-  margin-left: auto;
+.op-eyebrow-sm {
+  font-family: var(--op-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--op-muted-5);
 }
 
-.live {
-  color: var(--success);
-}
-
-.state {
+.op-error {
+  max-width: 480px;
   padding: 24px;
-  color: var(--text-muted);
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
 }
 
-.layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
-  grid-column-gap: 16px;
-  align-items: start;
+.op-error__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--op-ink-2);
+  margin-bottom: 6px;
 }
 
-.layout__main > .panel,
-.layout__rail > .panel {
+.op-error__body {
+  font-size: 12.5px;
+  color: var(--op-muted-3);
   margin-bottom: 14px;
 }
 
-.brief,
-.kids,
-.team,
-.activity,
-.layout__rail .panel {
-  padding: 16px;
+.op-btn-retry {
+  padding: 8px 14px;
+  border-radius: var(--op-radius-sm);
+  border: 1px solid var(--op-bd-btn);
+  background: var(--op-raise);
+  color: var(--op-ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.brief h2,
-.kids h3,
-.team h3,
-.activity h3,
-.layout__rail h3 {
+.op-btn {
+  padding: 9px 15px;
+  border: 1px solid var(--op-bd-btn);
+  border-radius: var(--op-radius-sm);
+  background: transparent;
+  color: var(--op-muted);
+  font-family: "Sora", sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.op-btn:hover {
+  border-color: var(--op-bd-btn-h);
+  color: var(--op-ink-3);
+  background: var(--op-raise);
+}
+
+.op-pulse {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.op-pulse__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--op-green);
+}
+
+.op-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--op-green);
+}
+
+.op-mission-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.op-stack-gap {
+  margin-top: 14px;
+}
+
+.op-brief,
+.op-kids,
+.op-rail-panel {
+  padding: 20px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
+}
+
+.op-brief__title,
+.op-kids__title,
+.op-rail-panel__title {
   margin-top: 4px;
-  font-size: var(--text-lg);
+  font-size: 16px;
   font-weight: 700;
+  color: var(--op-ink-2);
 }
 
-.brief__raw {
+.op-brief__raw {
   margin-top: 10px;
-  font-size: var(--text-xs);
-  color: var(--text-soft);
+  font-size: 11.5px;
+  color: var(--op-muted-5);
   white-space: pre-wrap;
 }
 
-.workspace-link {
-  color: var(--brand);
+.op-workspace-link {
+  color: var(--op-cta);
   font-weight: 600;
 }
 
-.facts {
+.op-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-column-gap: 12px;
-  grid-row-gap: 10px;
+  gap: 10px 12px;
   margin-top: 16px;
 }
 
-.facts dt {
-  font-size: var(--text-xs);
-  color: var(--text-soft);
+.op-facts dt {
+  font-size: 10px;
+  color: var(--op-muted-5);
   text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
-.facts dd {
+.op-facts dd {
   margin-top: 4px;
-  font-size: var(--text-sm);
+  font-size: 13px;
+  color: var(--op-ink-3);
 }
 
-.rail-flow {
+.op-rail-flow {
   margin-top: 12px;
 }
 
-.kids ul,
-.team ul,
-.activity ol {
+.op-kids__list,
+.op-team-list,
+.op-activity-list {
   list-style: none;
   margin: 12px 0 0;
   padding: 0;
 }
 
-.kids li {
+.op-kids__list li {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: 8px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: var(--text-sm);
+  border-bottom: 1px solid var(--op-line);
+  font-size: 13px;
+  color: var(--op-ink-3);
 }
 
-.kids li > * {
-  margin-right: 8px;
-}
-
-.kids em {
+.op-kids__list em {
   font-style: normal;
-  color: var(--text-soft);
-  font-size: var(--text-xs);
+  color: var(--op-muted-5);
+  font-size: 11px;
 }
 
-.team li {
+.op-team-list li {
   display: flex;
   align-items: center;
   margin-bottom: 10px;
 }
 
-.face {
+.op-team-face {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  border-radius: var(--op-radius-sm);
+  background: var(--op-raise);
+  border: 1px solid var(--op-line);
   display: flex;
   align-items: center;
   justify-content: center;
   margin-right: 10px;
 }
 
-.team li div {
+.op-team-list li div {
   display: flex;
   flex-direction: column;
 }
 
-.team li span {
-  margin-top: 2px;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
+.op-team-list li strong {
+  font-size: 13px;
+  color: var(--op-ink-2);
 }
 
-.activity li {
+.op-team-list li span {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--op-muted-4);
+}
+
+.op-activity-list li {
   display: flex;
   flex-direction: column;
   padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--op-line);
 }
 
-.activity time {
-  font-size: 11px;
-  color: var(--text-soft);
+.op-activity-list time {
+  font-size: 10.5px;
+  color: var(--op-muted-5);
 }
 
-.activity strong {
+.op-activity-list strong {
   margin-top: 2px;
-  font-size: var(--text-sm);
+  font-size: 13px;
+  color: var(--op-ink-2);
 }
 
-.activity span {
+.op-activity-list span {
   margin-top: 2px;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
+  font-size: 11.5px;
+  color: var(--op-muted-3);
 }
 
-.activity__type {
+.op-activity-list__type {
   margin-top: 4px;
   font-size: 10px;
-  color: var(--text-soft);
-  font-family: ui-monospace, monospace;
-}
-
-.muted {
-  margin-top: 10px;
-  font-size: var(--text-sm);
-  color: var(--text-soft);
+  color: var(--op-muted-5);
+  font-family: var(--op-font-mono);
 }
 
 @media (max-width: 980px) {
-  .layout {
+  .op-mission-layout {
     grid-template-columns: 1fr;
   }
-  .studio__topbar {
-    flex-wrap: wrap;
-  }
-  .topbar__right {
-    width: 100%;
-    margin: 10px 0 0;
-  }
-  .facts {
+  .op-facts {
     grid-template-columns: 1fr;
   }
 }

@@ -113,15 +113,15 @@ const steps = computed<readonly FlowStep[]>(() => {
 </script>
 
 <template>
-  <ol class="flow">
+  <ol class="op-flow">
     <li
       v-for="step in steps"
       :key="step.key"
-      class="flow__item"
-      :class="`flow__item--${step.state}`"
+      class="op-flow__item"
+      :class="`op-flow__item--${step.state}`"
     >
-      <span class="flow__face">{{ step.emoji }}</span>
-      <div class="flow__copy">
+      <span class="op-flow__face">{{ step.emoji }}</span>
+      <div class="op-flow__copy">
         <strong>{{ step.label }}</strong>
         <span>{{ step.hint }}</span>
       </div>
@@ -130,41 +130,41 @@ const steps = computed<readonly FlowStep[]>(() => {
 </template>
 
 <style scoped>
-.flow {
+.op-flow {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.flow__item {
+.op-flow__item {
   display: flex;
   align-items: center;
   padding: 10px 12px;
   margin-bottom: 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
+  border-radius: var(--op-radius-sm);
+  border: 1px solid var(--op-line);
+  background: var(--op-raise);
 }
 
-.flow__item:last-child {
+.op-flow__item:last-child {
   margin-bottom: 0;
 }
 
-.flow__item--current {
-  border-color: var(--brand-line);
-  background: var(--brand-soft);
+.op-flow__item--current {
+  border-color: var(--op-cta);
+  background: var(--op-sel);
 }
 
-.flow__item--idle {
+.op-flow__item--idle {
   opacity: 0.55;
 }
 
-.flow__face {
+.op-flow__face {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  border-radius: var(--op-radius-sm);
+  background: var(--op-panel);
+  border: 1px solid var(--op-line);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -172,19 +172,20 @@ const steps = computed<readonly FlowStep[]>(() => {
   font-size: 18px;
 }
 
-.flow__copy {
+.op-flow__copy {
   display: flex;
   flex-direction: column;
 }
 
-.flow__copy strong {
-  font-size: var(--text-sm);
+.op-flow__copy strong {
+  font-size: 12.5px;
   font-weight: 600;
+  color: var(--op-ink-2);
 }
 
-.flow__copy span {
+.op-flow__copy span {
   margin-top: 2px;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
+  font-size: 11px;
+  color: var(--op-muted-4);
 }
 </style>

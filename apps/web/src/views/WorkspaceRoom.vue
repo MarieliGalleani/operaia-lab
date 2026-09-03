@@ -4,14 +4,16 @@
  * Layout decision-first (ref. analytics Olayard): KPIs + deck + board que preenche a viewport.
  */
 import { computed, onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 import ActivityStream from "@/components/ActivityStream.vue";
-import LoadingState from "@/components/command/LoadingState.vue";
+import OperationalHeader from "@/components/shell/OperationalHeader.vue";
 import TaskBoard from "@/components/TaskBoard.vue";
 import WorkflowViewer from "@/components/WorkflowViewer.vue";
 import WorkspaceView from "@/components/WorkspaceView.vue";
 import { useOffice } from "@/composables/useOffice";
 import { createMissionsClient } from "@/data/adapters/missions-client";
 import { officeCommandClient } from "@/data/adapters/office-client";
+import { findFloor, floorIdFromPath } from "@/data/office-floors";
 import type {
   ApprovalListItem,
   AutomationListItem,
@@ -25,6 +27,8 @@ import type { Workflow } from "@/types/office";
 const missionsClient = createMissionsClient();
 
 const props = defineProps<{ id: string }>();
+const route = useRoute();
+const floor = computed(() => findFloor(floorIdFromPath(route.path)));
 
 const { employeeById, projects, tasks, activities, fetchWorkflow } = useOffice();
 
@@ -52,7 +56,6 @@ const doingCount = computed(
 const doneCount = computed(
   () => projectTasks.value.filter((t) => t.status === "DONE").length,
 );
-const openTasks = computed(() => backlogCount.value + doingCount.value);
 
 const workflow = ref<Workflow | undefined>(undefined);
 const officeContext = ref<WorkspaceContextDto | null>(null);
@@ -129,345 +132,256 @@ watch(
 </script>
 
 <template>
-  <div class="ws-page" :class="{ 'ws-page--ready': Boolean(project) }">
-    <header class="topbar">
-      <div class="topbar__left">
-        <router-link to="/app/workspaces" class="topbar__back">← Workspaces</router-link>
-        <h1 v-if="project" class="topbar__title">{{ project.name }}</h1>
-        <h1 v-else class="topbar__title">Workspace</h1>
-      </div>
-
-      <div v-if="project" class="topbar__center">
-        <div class="focus">
-          <span class="focus__label">Status</span>
-          <span class="focus__name">{{ project.status }}</span>
-        </div>
-        <div class="pulse">
-          <span class="pulse__item"><strong>{{ project.progress }}%</strong> progresso</span>
-          <span class="pulse__item"><strong>{{ openTasks }}</strong> abertas</span>
-          <span class="pulse__item"><strong>{{ team.length }}</strong> na equipe</span>
-        </div>
-      </div>
-
-      <div class="topbar__right">
-        <div class="crew" aria-label="Equipe do workspace">
-          <span
-            v-for="member in team"
-            :key="member.id"
-            class="crew__face"
-            :title="`${member.role} — ${member.name}`"
-          >
-            {{ member.emoji }}
-          </span>
-        </div>
-        <router-link
-          v-if="project"
-          :to="{ path: '/app/command/new', query: { workspace: project.id } }"
-          class="btn btn--primary"
-        >
-          Nova demanda
-        </router-link>
-        <router-link to="/app/office/sala-ceo" class="btn btn--ghost">Com Opera</router-link>
-      </div>
-    </header>
-
-    <template v-if="project">
-      <section class="ws-context panel" aria-label="Contexto do workspace">
+  <OperationalHeader
+    :floor="floor"
+    scope-line="Trabalhos · Detalhe"
+    :title="project?.name ?? 'Projeto'"
+    lede="O que a OperaIA sabe e está fazendo neste projeto agora."
+    :show-cta="false"
+    :show-refresh="false"
+  >
+    <template #extra>
+      <div v-if="project" class="op-crew" aria-label="Equipe do workspace">
         <span
-          class="badge"
-          :class="
-            officeContext?.kind === 'lab' ? 'badge--active' : 'badge--planned'
-          "
+          v-for="member in team"
+          :key="member.id"
+          class="op-crew__face"
+          :title="`${member.role} — ${member.name}`"
         >
-          {{
-            officeContext?.kind === "lab"
-              ? "OperaIA.lab"
-              : "Cliente / Workspace"
-          }}
+          {{ member.emoji }}
         </span>
-        <strong>{{ officeContext?.name ?? project.name }}</strong>
-        <span class="ws-context__sep">·</span>
-        <span>{{ officeContext?.statusLabel ?? `Status ${project.status}` }}</span>
-        <span class="ws-context__sep">·</span>
-        <router-link :to="{ path: '/app/command/new', query: { workspace: project.id } }">
+      </div>
+      <router-link
+        v-if="project"
+        :to="{ path: '/app/floor/dev/command/new', query: { workspace: project.id } }"
+        class="op-btn op-btn--cta"
+      >
+        Nova demanda
+      </router-link>
+      <router-link :to="floor.workRoute" class="op-btn">← Trabalhos</router-link>
+    </template>
+  </OperationalHeader>
+
+  <div class="op-content">
+    <template v-if="project">
+      <section class="op-ctx">
+        <span class="op-status-chip" :class="{ 'op-status-chip--active': officeContext?.kind === 'lab' }">
+          {{ officeContext?.kind === "lab" ? "OperaIA.lab" : "Cliente / Workspace" }}
+        </span>
+        <strong class="op-ctx__name">{{ officeContext?.name ?? project.name }}</strong>
+        <span class="op-ctx__sep">·</span>
+        <span class="op-ctx__status">{{ officeContext?.statusLabel ?? `Status ${project.status}` }}</span>
+        <span class="op-ctx__sep">·</span>
+        <router-link
+          :to="{ path: '/app/floor/dev/command/new', query: { workspace: project.id } }"
+          class="op-ctx__link"
+        >
           Nova demanda neste workspace
         </router-link>
 
-        <LoadingState
-          v-if="contextState === 'loading'"
-          label="Carregando contexto Office"
-        />
-        <p
-          v-else-if="contextState === 'error'"
-          class="ws-context__error"
-          role="alert"
-        >
+        <p v-if="contextState === 'loading'" class="op-loading op-ctx__full">Carregando contexto Office…</p>
+        <p v-else-if="contextState === 'error'" class="op-ctx__error op-ctx__full" role="alert">
           {{ contextError }}
-          <button
-            type="button"
-            class="btn btn--ghost"
-            @click="loadOfficeContext(project.id, project.name)"
-          >
+          <button type="button" class="op-btn-retry" @click="loadOfficeContext(project.id, project.name)">
             Tentar de novo
           </button>
         </p>
-        <div
-          v-else-if="contextState === 'ready' && officeContext"
-          class="ws-context__office"
-        >
-          <p class="ws-context__counts" aria-label="Contagens oficiais">
-            <span
-              ><strong>{{ officeContext.automationsActive }}</strong> automações
-              ativas</span
-            >
-            <span
-              ><strong>{{ officeContext.missionsOpen }}</strong> missões
-              abertas</span
-            >
-            <span
-              ><strong>{{ officeContext.decisionsRecent }}</strong> decisões
-              (7d)</span
-            >
-            <span
-              ><strong>{{ officeContext.approvalsPending }}</strong> aprovações
-              pendentes</span
-            >
+        <div v-else-if="contextState === 'ready' && officeContext" class="op-ctx__office op-ctx__full">
+          <p class="op-ctx__counts" aria-label="Contagens oficiais">
+            <span><strong>{{ officeContext.automationsActive }}</strong> automações ativas</span>
+            <span><strong>{{ officeContext.missionsOpen }}</strong> missões abertas</span>
+            <span><strong>{{ officeContext.decisionsRecent }}</strong> decisões (7d)</span>
+            <span><strong>{{ officeContext.approvalsPending }}</strong> aprovações pendentes</span>
           </p>
-          <p class="ws-context__hint">
-            Credenciais: valores nunca exibidos — apenas status configurado.
-          </p>
-          <ul
-            v-if="officeContext.integrations.length"
-            class="ws-context__list"
-            aria-label="Integrações"
-          >
-            <li
-              v-for="item in officeContext.integrations"
-              :key="item.id"
-            >
-              {{ item.label }}
-              ·
-              {{ item.configured ? "configurada" : "pendente" }}
+          <p class="op-ctx__hint">Credenciais: valores nunca exibidos — apenas status configurado.</p>
+          <ul v-if="officeContext.integrations.length" class="op-ctx__list" aria-label="Integrações">
+            <li v-for="item in officeContext.integrations" :key="item.id">
+              {{ item.label }} · {{ item.configured ? "configurada" : "pendente" }}
             </li>
           </ul>
-          <ul
-            v-if="officeContext.credentials.length"
-            class="ws-context__list"
-            aria-label="Credenciais"
-          >
-            <li
-              v-for="item in officeContext.credentials"
-              :key="item.id"
-            >
-              {{ item.label }}
-              ·
-              {{ item.configured ? "configurada" : "pendente" }}
+          <ul v-if="officeContext.credentials.length" class="op-ctx__list" aria-label="Credenciais">
+            <li v-for="item in officeContext.credentials" :key="item.id">
+              {{ item.label }} · {{ item.configured ? "configurada" : "pendente" }}
             </li>
           </ul>
           <p
-            v-if="
-              !officeContext.integrations.length &&
-              !officeContext.credentials.length
-            "
-            class="ws-context__empty"
+            v-if="!officeContext.integrations.length && !officeContext.credentials.length"
+            class="op-ctx__empty"
           >
             Nenhuma integração ou credencial registrada neste workspace.
           </p>
         </div>
       </section>
 
-      <section class="project-context panel" aria-label="Contexto do projeto">
-        <header class="project-context__head">
-          <p class="eyebrow">Contexto</p>
-          <h2>O que a OperaIA sabe sobre este projeto</h2>
-        </header>
-        <div class="project-context__grid">
+      <section class="op-panel-block op-stack-gap">
+        <p class="op-eyebrow-sm">Contexto</p>
+        <h2 class="op-panel-block__title">O que a OperaIA sabe sobre este projeto</h2>
+        <div class="op-context-grid">
           <article>
             <h3>Objetivo</h3>
             <p v-if="project.projectObjective">{{ project.projectObjective }}</p>
-            <p v-else class="project-context__empty">
-              Nenhum objetivo definido ainda.
-            </p>
+            <p v-else class="op-empty-inline">Nenhum objetivo definido ainda.</p>
           </article>
           <article>
             <h3>Contexto</h3>
             <p v-if="project.projectContext">{{ project.projectContext }}</p>
-            <p v-else class="project-context__empty">
-              Nenhum contexto registrado ainda.
-            </p>
+            <p v-else class="op-empty-inline">Nenhum contexto registrado ainda.</p>
           </article>
           <article>
             <h3>Restrições</h3>
             <p v-if="project.projectConstraints">{{ project.projectConstraints }}</p>
-            <p v-else class="project-context__empty">
-              Nenhuma restrição registrada ainda.
-            </p>
+            <p v-else class="op-empty-inline">Nenhuma restrição registrada ainda.</p>
           </article>
         </div>
       </section>
 
-      <section class="project-work panel" aria-label="Trabalho do projeto">
-        <header class="project-work__head">
-          <p class="eyebrow">Trabalho</p>
-          <h2>O que está acontecendo neste projeto</h2>
-        </header>
-        <LoadingState v-if="workState === 'loading'" label="Carregando trabalho do projeto" />
-        <p v-else-if="workState === 'error'" class="project-work__error" role="alert">
+      <section class="op-panel-block op-stack-gap">
+        <p class="op-eyebrow-sm">Trabalho</p>
+        <h2 class="op-panel-block__title">O que está acontecendo neste projeto</h2>
+        <p v-if="workState === 'loading'" class="op-loading">Carregando trabalho do projeto…</p>
+        <p v-else-if="workState === 'error'" class="op-work-error" role="alert">
           Não foi possível carregar o trabalho deste projeto agora.
         </p>
-        <div v-else class="project-work__grid">
-          <article class="pw-card">
+        <div v-else class="op-work-grid">
+          <article class="op-pw-card">
             <header><h3>Demandas</h3></header>
-            <p class="pw-card__unavailable">
-              Ainda não é possível listar demandas por projeto — essa
-              capacidade não existe hoje no backend (P1.13B).
+            <p class="op-pw-card__unavailable">
+              Ainda não é possível listar demandas por projeto — essa capacidade não existe hoje no backend (P1.13B).
             </p>
           </article>
 
-          <article class="pw-card">
+          <article class="op-pw-card">
             <header>
               <h3>Missões</h3>
-              <span class="pw-card__count">{{ projectMissions.length }}</span>
+              <span class="op-pw-card__count">{{ projectMissions.length }}</span>
             </header>
-            <ul v-if="projectMissions.length" class="pw-card__list">
+            <ul v-if="projectMissions.length" class="op-pw-card__list">
               <li v-for="m in projectMissions.slice(0, 5)" :key="m.id">
-                <router-link :to="`/app/floor/dev/missions/${m.id}`">
-                  {{ m.objective.slice(0, 60) }}
-                </router-link>
+                <router-link :to="`/app/floor/dev/missions/${m.id}`">{{ m.objective.slice(0, 60) }}</router-link>
               </li>
             </ul>
-            <p v-else class="pw-card__empty">Nenhuma missão neste projeto ainda.</p>
-            <router-link to="/app/floor/dev/missions" class="pw-card__more">Ver todas as missões →</router-link>
+            <p v-else class="op-pw-card__empty">Nenhuma missão neste projeto ainda.</p>
+            <router-link to="/app/floor/dev/missions" class="op-pw-card__more">Ver todas as missões →</router-link>
           </article>
 
-          <article class="pw-card">
+          <article class="op-pw-card">
             <header>
               <h3>Execuções</h3>
-              <span class="pw-card__count">{{ projectExecutions.length }}</span>
+              <span class="op-pw-card__count">{{ projectExecutions.length }}</span>
             </header>
-            <ul v-if="projectExecutions.length" class="pw-card__list">
+            <ul v-if="projectExecutions.length" class="op-pw-card__list">
               <li v-for="e in projectExecutions.slice(0, 5)" :key="e.id">
-                <router-link :to="`/app/floor/dev/executions/${e.id}`">
-                  {{ e.automationName }} · {{ e.status }}
-                </router-link>
+                <router-link :to="`/app/floor/dev/executions/${e.id}`">{{ e.automationName }} · {{ e.status }}</router-link>
               </li>
             </ul>
-            <p v-else class="pw-card__empty">Nenhuma execução neste projeto ainda.</p>
+            <p v-else class="op-pw-card__empty">Nenhuma execução neste projeto ainda.</p>
           </article>
 
-          <article class="pw-card">
+          <article class="op-pw-card">
             <header>
               <h3>Decisões</h3>
-              <span class="pw-card__count">{{ projectDecisions.length }}</span>
+              <span class="op-pw-card__count">{{ projectDecisions.length }}</span>
             </header>
-            <ul v-if="projectDecisions.length" class="pw-card__list">
+            <ul v-if="projectDecisions.length" class="op-pw-card__list">
               <li v-for="d in projectDecisions.slice(0, 5)" :key="d.decisionId">
-                <router-link :to="`/app/floor/dev/decisions/${d.decisionId}`">
-                  {{ d.objective.slice(0, 60) }}
-                </router-link>
+                <router-link :to="`/app/floor/dev/decisions/${d.decisionId}`">{{ d.objective.slice(0, 60) }}</router-link>
               </li>
             </ul>
-            <p v-else class="pw-card__empty">Nenhuma decisão neste projeto ainda.</p>
+            <p v-else class="op-pw-card__empty">Nenhuma decisão neste projeto ainda.</p>
           </article>
 
-          <article class="pw-card">
+          <article class="op-pw-card">
             <header>
               <h3>Aprovações</h3>
-              <span class="pw-card__count">{{ projectApprovals.length }}</span>
+              <span class="op-pw-card__count">{{ projectApprovals.length }}</span>
             </header>
-            <ul v-if="projectApprovals.length" class="pw-card__list">
+            <ul v-if="projectApprovals.length" class="op-pw-card__list">
               <li v-for="a in projectApprovals.slice(0, 5)" :key="a.id">
-                <router-link :to="`/app/floor/dev/command/approvals/${a.id}`">
-                  {{ a.title.slice(0, 60) }} · {{ a.status }}
-                </router-link>
+                <router-link :to="`/app/floor/dev/command/approvals/${a.id}`">{{ a.title.slice(0, 60) }} · {{ a.status }}</router-link>
               </li>
             </ul>
-            <p v-else class="pw-card__empty">Nenhuma aprovação neste projeto.</p>
+            <p v-else class="op-pw-card__empty">Nenhuma aprovação neste projeto.</p>
           </article>
 
-          <article class="pw-card">
+          <article class="op-pw-card">
             <header>
               <h3>Automações</h3>
-              <span class="pw-card__count">{{ projectAutomations.length }}</span>
+              <span class="op-pw-card__count">{{ projectAutomations.length }}</span>
             </header>
-            <ul v-if="projectAutomations.length" class="pw-card__list">
+            <ul v-if="projectAutomations.length" class="op-pw-card__list">
               <li v-for="a in projectAutomations.slice(0, 5)" :key="a.id">
-                <router-link :to="`/app/floor/automation/automations/${a.id}`">
-                  {{ a.name }}
-                </router-link>
+                <router-link :to="`/app/floor/automation/automations/${a.id}`">{{ a.name }}</router-link>
               </li>
             </ul>
-            <p v-else class="pw-card__empty">Nenhuma automação neste projeto.</p>
+            <p v-else class="op-pw-card__empty">Nenhuma automação neste projeto.</p>
           </article>
         </div>
       </section>
 
-      <section class="kpi-strip">
-        <article class="kpi-card panel card-motion" style="--d: 1">
-          <p class="kpi-card__label">Progresso</p>
-          <p class="kpi-card__value">{{ project.progress }}%</p>
-          <div class="meter"><span :style="{ width: `${project.progress}%` }" /></div>
-          <p class="kpi-card__hint">objetivo do workspace</p>
+      <section class="op-kpi-strip op-stack-gap">
+        <article class="op-kpi-card">
+          <p class="op-kpi-card__label">Progresso</p>
+          <p class="op-kpi-card__value">{{ project.progress }}%</p>
+          <div class="op-meter"><span :style="{ width: `${project.progress}%` }" /></div>
+          <p class="op-kpi-card__hint">objetivo do workspace</p>
         </article>
-        <article class="kpi-card panel card-motion" style="--d: 2">
-          <p class="kpi-card__label">Backlog</p>
-          <p class="kpi-card__value">{{ backlogCount }}</p>
-          <p class="kpi-card__hint">aguardando execução</p>
+        <article class="op-kpi-card">
+          <p class="op-kpi-card__label">Backlog</p>
+          <p class="op-kpi-card__value">{{ backlogCount }}</p>
+          <p class="op-kpi-card__hint">aguardando execução</p>
         </article>
-        <article class="kpi-card panel card-motion" style="--d: 3">
-          <p class="kpi-card__label">Em andamento</p>
-          <p class="kpi-card__value">{{ doingCount }}</p>
-          <p class="kpi-card__hint">fluxo ativo agora</p>
+        <article class="op-kpi-card">
+          <p class="op-kpi-card__label">Em andamento</p>
+          <p class="op-kpi-card__value">{{ doingCount }}</p>
+          <p class="op-kpi-card__hint">fluxo ativo agora</p>
         </article>
-        <article class="kpi-card panel card-motion" style="--d: 4">
-          <p class="kpi-card__label">Concluídas</p>
-          <p class="kpi-card__value">{{ doneCount }}</p>
-          <p class="kpi-card__hint">de {{ projectTasks.length }} tarefas</p>
+        <article class="op-kpi-card">
+          <p class="op-kpi-card__label">Concluídas</p>
+          <p class="op-kpi-card__value">{{ doneCount }}</p>
+          <p class="op-kpi-card__hint">de {{ projectTasks.length }} tarefas</p>
         </article>
       </section>
 
-      <div class="deck">
-        <section class="deck__main">
-          <WorkspaceView :project="project" class="card-motion" style="--d: 5" />
+      <div class="op-deck op-stack-gap">
+        <section class="op-deck__main">
+          <WorkspaceView :project="project" />
 
-          <div class="board-wrap panel card-motion" style="--d: 6">
-            <header class="board-wrap__head">
+          <div class="op-board-wrap op-stack-gap">
+            <header class="op-board-wrap__head">
               <div>
-                <p class="eyebrow">Kanban</p>
+                <p class="op-eyebrow-sm">Kanban</p>
                 <h2>Tarefas</h2>
               </div>
-              <span class="board-wrap__meta">{{ projectTasks.length }} no fluxo</span>
+              <span class="op-board-wrap__meta">{{ projectTasks.length }} no fluxo</span>
             </header>
             <TaskBoard :tasks="projectTasks" fill />
           </div>
         </section>
 
-        <aside class="deck__rail">
-          <div class="card-motion" style="--d: 7">
-            <WorkflowViewer v-if="workflow" :workflow="workflow" />
-            <article v-else class="panel rail-empty">
-              <p class="eyebrow">Workflow</p>
-              <p class="rail-empty__body">Sem fluxo registrado ainda — peça um plano à Opera.</p>
-              <router-link to="/app/office/sala-ceo" class="btn btn--ghost">Abrir Sala da CEO</router-link>
-            </article>
-          </div>
+        <aside class="op-deck__rail">
+          <WorkflowViewer v-if="workflow" :workflow="workflow" />
+          <article v-else class="op-rail-empty">
+            <p class="op-eyebrow-sm">Workflow</p>
+            <p class="op-rail-empty__body">Sem fluxo registrado ainda — peça um plano à Opera.</p>
+            <router-link to="/app/office/sala-ceo" class="op-btn">Abrir Sala da CEO</router-link>
+          </article>
 
-          <section class="rail-feed panel card-motion" style="--d: 8">
-            <header class="rail-feed__head">
+          <section class="op-rail-feed op-stack-gap">
+            <header class="op-rail-feed__head">
               <div>
-                <p class="eyebrow">Pulso</p>
+                <p class="op-eyebrow-sm">Pulso</p>
                 <h3>Histórico</h3>
               </div>
-              <span class="live-dot" aria-hidden="true" />
+              <span class="op-live-dot" aria-hidden="true" />
             </header>
-            <div class="rail-feed__body">
+            <div class="op-rail-feed__body">
               <ActivityStream :activities="projectActivities" />
-              <div v-if="projectActivities.length === 0" class="rail-empty-state">
-                <p class="rail-empty-state__title">Sem movimento ainda</p>
-                <p class="rail-empty-state__body">
+              <div v-if="projectActivities.length === 0" class="op-rail-empty-state">
+                <p class="op-rail-empty-state__title">Sem movimento ainda</p>
+                <p class="op-rail-empty-state__body">
                   Quando a equipe agir neste workspace, o feed aparece aqui.
                 </p>
-                <router-link to="/app/office/atividades" class="btn btn--ghost">Ver atividades do lab</router-link>
+                <router-link to="/app/office/atividades" class="op-btn">Ver atividades do lab</router-link>
               </div>
             </div>
           </section>
@@ -475,185 +389,90 @@ watch(
       </div>
     </template>
 
-    <p v-else class="missing">Workspace não encontrado.</p>
+    <p v-else class="op-empty-inline">Workspace não encontrado.</p>
   </div>
 </template>
 
 <style scoped>
-.ws-page {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  box-sizing: border-box;
-  padding: 0 0 16px;
-  animation: rise-in 0.45s var(--ease) both;
-}
-
-.ws-context {
-  margin: 12px 20px 0;
-  padding: 12px 16px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-}
-.ws-context .badge {
-  margin-right: 10px;
-}
-.ws-context__sep {
-  margin: 0 8px;
-  color: var(--text-soft);
-}
-.ws-context__error,
-.ws-context__office,
-.ws-context :deep(.loading) {
-  flex-basis: 100%;
-  margin-top: 10px;
-}
-.ws-context__error {
-  color: var(--danger);
-  font-size: var(--text-sm);
-}
-.ws-context__error .btn {
-  margin-left: 8px;
-}
-.ws-context__counts {
-  display: flex;
-  flex-wrap: wrap;
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-.ws-context__counts span {
-  margin-right: 16px;
-  margin-bottom: 4px;
-}
-.ws-context__hint {
-  margin: 8px 0 0;
-  font-size: var(--text-xs);
-  color: var(--text-soft);
-}
-.ws-context__list {
-  margin: 8px 0 0;
-  padding-left: 18px;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-.ws-context__list li {
-  margin-bottom: 2px;
-}
-.ws-context__empty {
-  margin: 8px 0 0;
-  font-size: var(--text-sm);
-  color: var(--text-soft);
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-  background:
-    radial-gradient(ellipse at 0% 0%, rgba(59, 130, 246, 0.14), transparent 42%),
-    radial-gradient(ellipse at 100% 0%, rgba(139, 92, 246, 0.09), transparent 36%),
-    linear-gradient(180deg, #0c1424 0%, var(--bg) 100%);
-}
-
-.topbar__left {
-  min-width: 160px;
-  margin-right: 16px;
-}
-
-.topbar__back {
-  display: inline-block;
-  font-size: var(--text-xs);
-  color: var(--brand);
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.topbar__title {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-}
-
-.topbar__center {
+.op-content {
   flex: 1;
-  display: flex;
-  align-items: center;
-  min-width: 0;
+  overflow-y: auto;
+  padding: 24px 34px 40px;
 }
 
-.focus {
-  display: flex;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 12px;
-  background: var(--glass-sheen), var(--glass-strong);
-  border: 1px solid var(--border);
-  margin-right: 12px;
+.op-stack-gap {
+  margin-top: 16px;
 }
 
-.focus__label {
-  font-size: var(--text-xs);
-  color: var(--text-soft);
-  font-weight: 600;
+.op-loading,
+.op-empty-inline {
+  color: var(--op-muted-4);
+  font-size: 13px;
+}
+
+.op-eyebrow-sm {
+  font-family: var(--op-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-right: 10px;
+  color: var(--op-muted-5);
 }
 
-.focus__name {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--brand);
-}
-
-.pulse {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.pulse__item {
+.op-btn {
+  padding: 9px 15px;
+  border: 1px solid var(--op-bd-btn);
+  border-radius: var(--op-radius-sm);
+  background: transparent;
+  color: var(--op-muted);
+  font-family: "Sora", sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
   display: inline-flex;
-  align-items: baseline;
-  margin-right: 8px;
-  margin-top: 2px;
-  padding: 7px 11px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--glass-sheen), var(--glass-strong);
-  font-size: 12px;
-  color: var(--text-muted);
+  align-items: center;
 }
 
-.pulse__item strong {
-  color: var(--text);
-  font-weight: 700;
-  margin-right: 5px;
-  font-size: 15px;
+.op-btn:hover:not(:disabled) {
+  border-color: var(--op-bd-btn-h);
+  color: var(--op-ink-3);
+  background: var(--op-raise);
 }
 
-.topbar__right {
+.op-btn--cta {
+  border-color: var(--op-cta);
+  background: var(--op-cta);
+  color: #fff;
+  font-weight: 600;
+}
+
+.op-btn--cta:hover:not(:disabled) {
+  background: var(--op-cta-h);
+  border-color: var(--op-cta-h);
+}
+
+.op-btn-retry {
+  padding: 8px 14px;
+  border-radius: var(--op-radius-sm);
+  border: 1px solid var(--op-bd-btn);
+  background: var(--op-raise);
+  color: var(--op-ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.op-crew {
   display: flex;
   align-items: center;
-  margin-left: 12px;
 }
 
-.crew {
-  display: flex;
-  align-items: center;
-  margin-right: 12px;
-}
-
-.crew__face {
-  width: 30px;
-  height: 30px;
+.op-crew__face {
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  background: var(--surface-2);
-  border: 2px solid var(--bg);
+  background: var(--op-raise);
+  border: 2px solid var(--op-bg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -661,303 +480,389 @@ watch(
   margin-left: -8px;
 }
 
-.crew__face:first-child {
+.op-crew__face:first-child {
   margin-left: 0;
 }
 
-.project-context,
-.project-work {
-  margin: 12px 20px 0;
-  padding: 16px 18px;
+.op-ctx {
+  padding: 14px 18px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
-.project-context__head h2 {
+.op-ctx__name {
+  font-size: 13px;
+  color: var(--op-ink-2);
+  margin-right: 10px;
+}
+
+.op-ctx__sep {
+  margin: 0 8px;
+  color: var(--op-muted-5);
+}
+
+.op-ctx__status {
+  font-size: 12.5px;
+  color: var(--op-muted-3);
+}
+
+.op-ctx__link {
+  font-size: 12.5px;
+  color: var(--op-cta);
+  font-weight: 600;
+}
+
+.op-ctx__full {
+  flex-basis: 100%;
+  margin-top: 10px;
+}
+
+.op-ctx__error {
+  color: var(--op-red);
+  font-size: 12.5px;
+}
+
+.op-ctx__error .op-btn-retry {
+  margin-left: 8px;
+}
+
+.op-ctx__counts {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--op-muted-3);
+}
+
+.op-ctx__counts span {
+  margin-right: 16px;
+  margin-bottom: 4px;
+}
+
+.op-ctx__counts strong {
+  color: var(--op-ink-2);
+}
+
+.op-ctx__hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--op-muted-5);
+}
+
+.op-ctx__list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  color: var(--op-muted-3);
+}
+
+.op-ctx__list li {
+  margin-bottom: 2px;
+}
+
+.op-ctx__empty {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--op-muted-5);
+}
+
+.op-status-chip {
+  margin-right: 10px;
+  font-family: var(--op-font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: var(--op-radius-xs);
+  background: var(--op-raise);
+  color: var(--op-muted-2);
+}
+
+.op-status-chip--active {
+  color: var(--op-green);
+}
+
+.op-panel-block {
+  padding: 20px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
+}
+
+.op-panel-block__title {
   margin-top: 4px;
-  font-size: var(--text-lg);
+  font-size: 16px;
   font-weight: 700;
+  color: var(--op-ink-2);
 }
 
-.project-context__grid {
+.op-context-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-gap: 12px;
+  gap: 12px;
   margin-top: 14px;
 }
 
-.project-context__grid article {
+.op-context-grid article {
   padding: 12px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
+  border-radius: var(--op-radius-sm);
+  border: 1px solid var(--op-line);
+  background: var(--op-raise);
 }
 
-.project-context__grid h3 {
-  font-size: var(--text-xs);
+.op-context-grid h3 {
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--text-soft);
+  letter-spacing: 0.06em;
+  color: var(--op-muted-5);
 }
 
-.project-context__grid p {
+.op-context-grid p {
   margin-top: 8px;
-  font-size: var(--text-sm);
-  color: var(--text);
+  font-size: 13px;
+  color: var(--op-ink-3);
   white-space: pre-wrap;
 }
 
-.project-context__empty {
-  color: var(--text-soft) !important;
-  font-style: italic;
-}
-
-@media (max-width: 900px) {
-  .project-context {
-    margin: 12px 14px 0;
-  }
-  .project-context__grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.project-work__head h2 {
-  margin-top: 4px;
-  font-size: var(--text-lg);
-  font-weight: 700;
-}
-
-.project-work__error {
+.op-work-error {
   margin-top: 12px;
-  font-size: var(--text-sm);
-  color: var(--danger);
+  font-size: 13px;
+  color: var(--op-red);
 }
 
-.project-work__grid {
+.op-work-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  grid-gap: 12px;
+  gap: 12px;
   margin-top: 14px;
 }
 
-.pw-card {
+.op-pw-card {
   padding: 12px 14px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
+  border-radius: var(--op-radius-sm);
+  border: 1px solid var(--op-line);
+  background: var(--op-raise);
 }
 
-.pw-card header {
+.op-pw-card header {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.pw-card h3 {
-  font-size: var(--text-sm);
+.op-pw-card h3 {
+  font-size: 12.5px;
   font-weight: 700;
+  color: var(--op-ink-2);
 }
 
-.pw-card__count {
-  font-size: var(--text-xs);
+.op-pw-card__count {
+  font-size: 10.5px;
   font-weight: 700;
-  color: var(--brand);
-  background: var(--brand-soft);
-  border-radius: var(--radius-full);
+  color: var(--op-cta);
+  background: var(--op-sel);
+  border-radius: var(--op-radius-full);
   padding: 2px 8px;
 }
 
-.pw-card__list {
+.op-pw-card__list {
   list-style: none;
   margin: 10px 0 0;
   padding: 0;
 }
 
-.pw-card__list li {
+.op-pw-card__list li {
   margin-bottom: 6px;
-  font-size: var(--text-xs);
+  font-size: 11.5px;
 }
 
-.pw-card__list a {
-  color: var(--text);
+.op-pw-card__list a {
+  color: var(--op-ink-3);
 }
 
-.pw-card__list a:hover {
-  color: var(--brand);
+.op-pw-card__list a:hover {
+  color: var(--op-cta);
 }
 
-.pw-card__empty,
-.pw-card__unavailable {
+.op-pw-card__empty,
+.op-pw-card__unavailable {
   margin-top: 10px;
-  font-size: var(--text-xs);
-  color: var(--text-soft);
+  font-size: 11.5px;
+  color: var(--op-muted-5);
 }
 
-.pw-card__more {
+.op-pw-card__more {
   display: inline-block;
   margin-top: 10px;
-  font-size: var(--text-xs);
+  font-size: 11.5px;
   font-weight: 600;
-  color: var(--brand);
+  color: var(--op-cta);
 }
 
-@media (max-width: 900px) {
-  .project-work {
-    margin: 12px 14px 0;
-  }
-  .project-work__grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.kpi-strip {
-  flex-shrink: 0;
-  padding: 0 20px;
-}
-
-.deck {
+.op-kpi-strip {
   display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.85fr);
-  grid-column-gap: 14px;
-  flex: 1;
-  min-height: 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.op-kpi-card {
+  padding: 16px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
+}
+
+.op-kpi-card__label {
+  font-size: 11px;
+  color: var(--op-muted-4);
+}
+
+.op-kpi-card__value {
+  margin-top: 6px;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--op-ink);
+  letter-spacing: -0.02em;
+}
+
+.op-meter {
+  margin-top: 10px;
+  height: 6px;
+  border-radius: var(--op-radius-full);
+  background: var(--op-line);
+  overflow: hidden;
+}
+
+.op-meter span {
+  display: block;
+  height: 100%;
+  background: var(--op-cta);
+  border-radius: var(--op-radius-full);
+}
+
+.op-kpi-card__hint {
   margin-top: 8px;
-  padding: 0 20px;
-  align-items: stretch;
+  font-size: 11px;
+  color: var(--op-muted-5);
 }
 
-.deck__main {
+.op-deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.9fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.op-deck__main,
+.op-deck__rail {
   display: flex;
   flex-direction: column;
   min-height: 0;
 }
 
-.deck__rail {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
+.op-board-wrap {
+  padding: 16px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
 }
 
-.board-wrap {
-  flex: 1;
-  min-height: 280px;
-  margin-top: 12px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-}
-
-.board-wrap :deep(.board--fill) {
-  flex: 1;
-  min-height: 0;
-}
-
-.board-wrap__head {
+.op-board-wrap__head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 10px;
-  flex-shrink: 0;
+  margin-bottom: 12px;
 }
 
-.board-wrap__head h2 {
+.op-board-wrap__head h2 {
   margin-top: 4px;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--op-ink-2);
 }
 
-.board-wrap__meta {
+.op-board-wrap__meta {
   font-size: 11px;
-  color: var(--text-soft);
+  color: var(--op-muted-5);
 }
 
-.rail-feed {
-  flex: 1;
-  min-height: 160px;
-  margin-top: 12px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
+.op-rail-empty {
+  padding: 20px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
 }
 
-.rail-feed__head {
+.op-rail-empty__body {
+  margin-top: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--op-muted-3);
+}
+
+.op-rail-feed {
+  padding: 16px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
+}
+
+.op-rail-feed__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 8px;
-  flex-shrink: 0;
 }
 
-.rail-feed__head h3 {
+.op-rail-feed__head h3 {
   margin-top: 4px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--op-ink-2);
 }
 
-.rail-feed__body {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
+.op-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--op-green);
+  margin-top: 6px;
 }
 
-.rail-empty {
-  padding: 14px;
-}
-
-.rail-empty__body {
-  margin-top: 8px;
-  margin-bottom: 12px;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.rail-empty-state {
+.op-rail-empty-state {
   padding: 20px 8px;
   text-align: center;
 }
 
-.rail-empty-state__title {
-  font-size: 14px;
+.op-rail-empty-state__title {
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--op-ink-2);
 }
 
-.rail-empty-state__body {
+.op-rail-empty-state__body {
   margin-top: 6px;
   margin-bottom: 14px;
   font-size: 12px;
-  color: var(--text-muted);
-}
-
-.missing {
-  padding: 28px;
-  font-size: var(--text-sm);
-  color: var(--text-soft);
+  color: var(--op-muted-3);
 }
 
 @media (max-width: 1100px) {
-  .deck {
+  .op-deck {
     grid-template-columns: 1fr;
-    grid-row-gap: 12px;
-  }
-  .rail-feed {
-    min-height: 220px;
   }
 }
 
 @media (max-width: 900px) {
-  .topbar {
-    flex-wrap: wrap;
-  }
-  .topbar__left,
-  .topbar__center,
-  .topbar__right {
-    width: 100%;
-    margin: 0 0 10px;
-  }
-  .kpi-strip {
-    padding: 0 14px;
-  }
-  .deck {
-    padding: 0 14px;
+  .op-context-grid,
+  .op-work-grid,
+  .op-kpi-strip {
+    grid-template-columns: 1fr;
   }
 }
 </style>

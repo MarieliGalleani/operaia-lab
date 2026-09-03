@@ -57,16 +57,16 @@ function specialistEmoji(id: string | undefined, specialization: string): string
 </script>
 
 <template>
-  <section class="delivery panel">
-    <header class="delivery__head">
-      <p class="eyebrow">{{ completed ? "Entrega pronta" : "Entrega" }}</p>
+  <section class="op-delivery">
+    <header class="op-delivery__head">
+      <p class="op-eyebrow-sm">{{ completed ? "Entrega pronta" : "Entrega" }}</p>
       <h2>{{ completed ? "Resultado do escritório" : "Ainda em andamento" }}</h2>
     </header>
 
-    <p v-if="mission.usableResult" class="delivery__result">
+    <p v-if="mission.usableResult" class="op-delivery__result">
       {{ mission.usableResult }}
     </p>
-    <p v-else class="delivery__pending">
+    <p v-else class="op-delivery__pending">
       {{
         completed
           ? "A missão concluiu, mas não há usableResult neste response."
@@ -74,24 +74,24 @@ function specialistEmoji(id: string | undefined, specialization: string): string
       }}
     </p>
 
-    <div v-if="answer" class="delivery__answer">
-      <article v-if="answer.summary" class="delivery__block">
+    <div v-if="answer" class="op-delivery__answer">
+      <article v-if="answer.summary" class="op-delivery__block">
         <h3>Resumo</h3>
         <p>{{ answer.summary }}</p>
       </article>
-      <article v-if="answer.projects?.length" class="delivery__block">
+      <article v-if="answer.projects?.length" class="op-delivery__block">
         <h3>Projetos</h3>
         <ul>
           <li v-for="item in answer.projects" :key="item">{{ item }}</li>
         </ul>
       </article>
-      <article v-if="answer.risks?.length" class="delivery__block">
+      <article v-if="answer.risks?.length" class="op-delivery__block">
         <h3>Riscos</h3>
         <ul>
           <li v-for="item in answer.risks" :key="item">{{ item }}</li>
         </ul>
       </article>
-      <article v-if="answer.nextActions?.length" class="delivery__block">
+      <article v-if="answer.nextActions?.length" class="op-delivery__block">
         <h3>Próximas ações</h3>
         <ul>
           <li v-for="item in answer.nextActions" :key="item">{{ item }}</li>
@@ -99,13 +99,13 @@ function specialistEmoji(id: string | undefined, specialization: string): string
       </article>
     </div>
 
-    <div v-if="mission.specialists.length" class="delivery__people">
+    <div v-if="mission.specialists.length" class="op-delivery__people">
       <h3>Especialistas na entrega</h3>
-      <div class="delivery__chips">
+      <div class="op-delivery__chips">
         <span
           v-for="(specialist, index) in mission.specialists"
           :key="specialist.employeeId ?? `${specialist.specialization}-${index}`"
-          class="delivery__chip"
+          class="op-delivery__chip"
         >
           {{ specialistEmoji(specialist.employeeId, specialist.specialization) }}
           {{ specialistName(specialist.employeeId) }}
@@ -115,21 +115,21 @@ function specialistEmoji(id: string | undefined, specialization: string): string
         v-for="(specialist, index) in mission.specialists"
         v-show="Boolean(specialist.summary)"
         :key="`sum-${specialist.employeeId ?? index}`"
-        class="delivery__note"
+        class="op-delivery__note"
       >
         {{ specialist.summary }}
       </p>
     </div>
 
-    <div v-if="deliveryEvents.length" class="delivery__created">
+    <div v-if="deliveryEvents.length" class="op-delivery__created">
       <h3>delivery_created</h3>
       <article
         v-for="event in deliveryEvents"
         :key="event.id"
-        class="delivery__event"
+        class="op-delivery__event"
       >
         <p>{{ event.message }}</p>
-        <p v-for="line in evidenceLines(event)" :key="line" class="delivery__note">
+        <p v-for="line in evidenceLines(event)" :key="line" class="op-delivery__note">
           {{ line }}
         </p>
       </article>
@@ -138,7 +138,7 @@ function specialistEmoji(id: string | undefined, specialization: string): string
     <router-link
       v-if="mission.workspaceId"
       :to="`/app/floor/dev/workspaces/${mission.workspaceId}`"
-      class="delivery__back-to-project"
+      class="op-delivery__back-to-project"
     >
       ← Voltar ao projeto
     </router-link>
@@ -146,99 +146,112 @@ function specialistEmoji(id: string | undefined, specialization: string): string
 </template>
 
 <style scoped>
-.delivery {
-  padding: 18px;
+.op-delivery {
+  padding: 20px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
 }
 
-.delivery__head h2 {
+.op-eyebrow-sm {
+  font-family: var(--op-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--op-muted-5);
+}
+
+.op-delivery__head h2 {
   margin-top: 4px;
-  font-size: var(--text-lg);
+  font-size: 16px;
   font-weight: 700;
+  color: var(--op-ink-2);
 }
 
-.delivery__result {
+.op-delivery__result {
   margin-top: 14px;
-  font-size: var(--text-md);
+  font-size: 14px;
   line-height: 1.5;
-  color: var(--text);
+  color: var(--op-ink-3);
 }
 
-.delivery__pending {
+.op-delivery__pending {
   margin-top: 14px;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
+  font-size: 13px;
+  color: var(--op-muted-3);
 }
 
-.delivery__answer {
+.op-delivery__answer {
   margin-top: 16px;
 }
 
-.delivery__block {
+.op-delivery__block {
   margin-top: 12px;
 }
 
-.delivery__block h3,
-.delivery__people h3,
-.delivery__created h3 {
-  font-size: var(--text-xs);
+.op-delivery__block h3,
+.op-delivery__people h3,
+.op-delivery__created h3 {
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-soft);
+  color: var(--op-muted-5);
 }
 
-.delivery__block p,
-.delivery__block li {
+.op-delivery__block p,
+.op-delivery__block li {
   margin-top: 6px;
-  font-size: var(--text-sm);
-  color: var(--text);
+  font-size: 13px;
+  color: var(--op-ink-3);
 }
 
-.delivery__block ul {
+.op-delivery__block ul {
   margin: 0;
   padding-left: 18px;
 }
 
-.delivery__people,
-.delivery__created {
+.op-delivery__people,
+.op-delivery__created {
   margin-top: 16px;
 }
 
-.delivery__chips {
+.op-delivery__chips {
   display: flex;
   flex-wrap: wrap;
   margin-top: 8px;
+  gap: 8px;
 }
 
-.delivery__chip {
-  margin-right: 8px;
-  margin-bottom: 8px;
+.op-delivery__chip {
   padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  font-size: var(--text-xs);
+  border-radius: var(--op-radius-full);
+  border: 1px solid var(--op-line);
+  background: var(--op-raise);
+  font-size: 12px;
+  color: var(--op-ink-3);
 }
 
-.delivery__note {
+.op-delivery__note {
   margin-top: 8px;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
+  font-size: 13px;
+  color: var(--op-muted-3);
 }
 
-.delivery__event {
+.op-delivery__event {
   margin-top: 8px;
   padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  font-size: var(--text-sm);
+  border-radius: var(--op-radius-sm);
+  border: 1px solid var(--op-line);
+  background: var(--op-raise);
+  font-size: 13px;
+  color: var(--op-ink-3);
 }
 
-.delivery__back-to-project {
+.op-delivery__back-to-project {
   display: inline-block;
   margin-top: 18px;
-  font-size: var(--text-sm);
+  font-size: 13px;
   font-weight: 600;
-  color: var(--brand);
+  color: var(--op-cta);
 }
 </style>

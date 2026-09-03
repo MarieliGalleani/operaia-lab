@@ -5,14 +5,18 @@
  * Nenhum modelo novo, nenhuma tabela Agent — roster real vem de useOffice().
  */
 import { computed, onMounted, ref, watch } from "vue";
-import LoadingState from "@/components/command/LoadingState.vue";
+import { useRoute } from "vue-router";
 import MissionStatusBadge from "@/components/MissionStatusBadge.vue";
+import OperationalHeader from "@/components/shell/OperationalHeader.vue";
 import { useOffice } from "@/composables/useOffice";
 import { createMissionsClient } from "@/data/adapters/missions-client";
 import type { MissionListItemDTO } from "@/data/dto";
+import { findFloor, floorIdFromPath } from "@/data/office-floors";
 import { formatDateTime } from "@/utils/format";
 
 const props = defineProps<{ employeeId: string }>();
+const route = useRoute();
+const floor = computed(() => findFloor(floorIdFromPath(route.path)));
 
 const { employeeById, projects, loaded, load } = useOffice();
 const missionsClient = createMissionsClient();
@@ -49,209 +53,268 @@ watch(
   (id) => loadMissions(id),
 );
 
-const executed = computed(() =>
-  missions.value.filter((m) => m.missionKind === "EXECUTE"),
-);
-const completed = computed(() =>
-  missions.value.filter((m) => m.status === "COMPLETED"),
-);
+const executed = computed(() => missions.value.filter((m) => m.missionKind === "EXECUTE"));
+const completed = computed(() => missions.value.filter((m) => m.status === "COMPLETED"));
 </script>
 
 <template>
-  <div class="studio">
-    <header class="studio__topbar">
-      <div class="topbar__left">
-        <router-link to="/app/floor/dev/team" class="back">← Equipe</router-link>
-        <h1 class="page__title">{{ employee?.name ?? "Employee" }}</h1>
-      </div>
-    </header>
-
-    <div class="studio__stage">
-      <p v-if="!employee" class="state">Employee não encontrado no roster atual.</p>
-      <template v-else>
-        <section class="panel profile">
-          <div class="profile__head">
-            <span class="profile__avatar">{{ employee.emoji }}</span>
-            <div>
-              <h2>{{ employee.role }} — {{ employee.name }}</h2>
-              <p class="profile__spec">{{ employee.specialtyLabel }}</p>
-            </div>
-            <span class="badge" :class="employee.active ? 'badge--active' : 'badge--planned'">
-              {{ employee.statusLabel }}
-            </span>
+  <OperationalHeader
+    :floor="floor"
+    scope-line="Equipe · Detalhe"
+    :title="employee?.name ?? 'Pessoa'"
+    lede="Perfil e histórico de missões desta pessoa da equipe digital."
+    :show-cta="false"
+    :show-refresh="false"
+  >
+    <template #extra>
+      <router-link :to="floor.teamRoute" class="op-btn">← Equipe</router-link>
+    </template>
+  </OperationalHeader>
+  <div class="op-content">
+    <p v-if="!employee" class="op-empty-inline">Pessoa não encontrada no roster atual.</p>
+    <template v-else>
+      <section class="op-profile">
+        <div class="op-profile__head">
+          <span class="op-profile__avatar">{{ employee.emoji }}</span>
+          <div class="op-profile__head-copy">
+            <h2 class="op-profile__name">{{ employee.role }} — {{ employee.name }}</h2>
+            <p class="op-profile__spec">{{ employee.specialtyLabel }}</p>
           </div>
-          <dl class="facts">
-            <div>
-              <dt>Trabalho atual</dt>
-              <dd>{{ employee.mission || "Nenhum no momento" }}</dd>
-            </div>
-            <div>
-              <dt>Última ação</dt>
-              <dd>{{ employee.lastActivity || "—" }}</dd>
-            </div>
-          </dl>
-        </section>
+          <span class="op-status-chip" :class="{ 'op-status-chip--active': employee.active }">
+            {{ employee.statusLabel }}
+          </span>
+        </div>
+        <dl class="op-facts">
+          <div>
+            <dt>Trabalho atual</dt>
+            <dd>{{ employee.mission || "Nenhum no momento" }}</dd>
+          </div>
+          <div>
+            <dt>Última ação</dt>
+            <dd>{{ employee.lastActivity || "—" }}</dd>
+          </div>
+        </dl>
+      </section>
 
-        <section class="panel history">
-          <header class="history__head">
-            <p class="eyebrow">Histórico</p>
-            <h3>Missões</h3>
-            <span class="history__meta">
-              {{ missions.length }} no total · {{ executed.length }} execuções ·
-              {{ completed.length }} concluídas
-            </span>
-          </header>
+      <section class="op-history">
+        <header class="op-history__head">
+          <p class="op-eyebrow-sm">Histórico</p>
+          <h3 class="op-history__title">Missões</h3>
+          <span class="op-history__meta">
+            {{ missions.length }} no total · {{ executed.length }} execuções · {{ completed.length }} concluídas
+          </span>
+        </header>
 
-          <LoadingState v-if="state === 'loading'" />
-          <p v-else-if="state === 'error'" class="history__error" role="alert">
-            Não foi possível carregar as missões deste employee agora.
-          </p>
-          <ul v-else-if="missions.length" class="history__list">
-            <li v-for="m in missions" :key="m.id">
-              <router-link :to="`/app/floor/dev/missions/${m.id}`" class="history__item">
-                <MissionStatusBadge :status="m.status" />
-                <span class="history__objective">{{ m.objective }}</span>
-                <span class="history__ws">{{ workspaceName(m.workspaceId) }}</span>
-                <time>{{ formatDateTime(m.createdAt) }}</time>
-              </router-link>
-            </li>
-          </ul>
-          <p v-else class="history__empty">
-            Nenhuma missão registrada para este employee ainda.
-          </p>
-        </section>
-      </template>
-    </div>
+        <p v-if="state === 'loading'" class="op-loading">Carregando missões…</p>
+        <p v-else-if="state === 'error'" class="op-history__error" role="alert">
+          Não foi possível carregar as missões desta pessoa agora.
+        </p>
+        <ul v-else-if="missions.length" class="op-history__list">
+          <li v-for="m in missions" :key="m.id">
+            <router-link :to="`/app/floor/dev/missions/${m.id}`" class="op-history__item">
+              <MissionStatusBadge :status="m.status" />
+              <span class="op-history__objective">{{ m.objective }}</span>
+              <span class="op-history__ws">{{ workspaceName(m.workspaceId) }}</span>
+              <time>{{ formatDateTime(m.createdAt) }}</time>
+            </router-link>
+          </li>
+        </ul>
+        <p v-else class="op-empty-inline">Nenhuma missão registrada para esta pessoa ainda.</p>
+      </section>
+    </template>
   </div>
 </template>
 
 <style scoped>
-.topbar__left {
-  min-width: 180px;
-  margin-right: 16px;
+.op-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 34px 40px;
 }
-.back {
-  display: inline-block;
-  font-size: var(--text-xs);
-  color: var(--brand);
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-.state {
-  padding: 24px;
-  color: var(--text-muted);
-}
-.profile {
-  padding: 18px;
-  margin-bottom: 16px;
-}
-.profile__head {
-  display: flex;
+
+.op-btn {
+  padding: 9px 15px;
+  border: 1px solid var(--op-bd-btn);
+  border-radius: var(--op-radius-sm);
+  background: transparent;
+  color: var(--op-muted);
+  font-family: "Sora", sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
   align-items: center;
 }
-.profile__avatar {
+
+.op-btn:hover {
+  border-color: var(--op-bd-btn-h);
+  color: var(--op-ink-3);
+  background: var(--op-raise);
+}
+
+.op-loading,
+.op-empty-inline {
+  color: var(--op-muted-4);
+  font-size: 13px;
+}
+
+.op-eyebrow-sm {
+  font-family: var(--op-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--op-muted-5);
+}
+
+.op-profile {
+  max-width: 720px;
+  padding: 20px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
+  margin-bottom: 16px;
+}
+
+.op-profile__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.op-profile__avatar {
   width: 56px;
   height: 56px;
-  border-radius: 14px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  flex-shrink: 0;
+  border-radius: var(--op-radius);
+  background: var(--op-raise);
+  border: 1px solid var(--op-line);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 28px;
-  margin-right: 14px;
 }
-.profile__head h2 {
-  font-size: var(--text-lg);
+
+.op-profile__head-copy {
+  min-width: 0;
+}
+
+.op-profile__name {
+  font-size: 17px;
   font-weight: 700;
+  color: var(--op-ink);
 }
-.profile__spec {
+
+.op-profile__spec {
   margin-top: 4px;
-  font-size: var(--text-sm);
-  color: var(--text-soft);
+  font-size: 12.5px;
+  color: var(--op-muted-3);
 }
-.profile__head .badge {
+
+.op-status-chip {
   margin-left: auto;
+  flex-shrink: 0;
+  font-family: var(--op-font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: var(--op-radius-xs);
+  background: var(--op-raise);
+  color: var(--op-muted-2);
 }
-.facts {
+
+.op-status-chip--active {
+  color: var(--op-green);
+}
+
+.op-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-column-gap: 12px;
-  grid-row-gap: 10px;
+  gap: 12px 14px;
   margin-top: 18px;
 }
-.facts dt {
-  font-size: var(--text-xs);
-  color: var(--text-soft);
+
+.op-facts dt {
+  font-size: 10px;
+  color: var(--op-muted-5);
   text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
-.facts dd {
+
+.op-facts dd {
   margin-top: 4px;
-  font-size: var(--text-sm);
+  font-size: 13px;
+  color: var(--op-ink-3);
 }
-.history {
-  padding: 18px;
+
+.op-history {
+  max-width: 720px;
+  padding: 20px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
 }
-.history__head h3 {
+
+.op-history__title {
   margin-top: 4px;
-  font-size: var(--text-lg);
+  font-size: 15px;
   font-weight: 700;
+  color: var(--op-ink-2);
 }
-.history__meta {
+
+.op-history__meta {
   display: block;
   margin-top: 6px;
-  font-size: var(--text-xs);
-  color: var(--text-soft);
+  font-size: 11px;
+  color: var(--op-muted-5);
 }
-.history__error {
+
+.op-history__error {
   margin-top: 14px;
-  color: var(--danger);
+  font-size: 13px;
+  color: var(--op-red);
 }
-.history__empty {
-  margin-top: 14px;
-  font-size: var(--text-sm);
-  color: var(--text-soft);
-}
-.history__list {
+
+.op-history__list {
   list-style: none;
   margin: 14px 0 0;
   padding: 0;
 }
-.history__item {
+
+.op-history__item {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  gap: 10px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: var(--text-sm);
-  color: var(--text);
+  border-bottom: 1px solid var(--op-line);
+  font-size: 13px;
+  color: var(--op-ink-3);
+  text-decoration: none;
 }
-.history__item > * {
-  margin-right: 10px;
-}
-.history__objective {
+
+.op-history__objective {
   flex: 1;
   min-width: 200px;
 }
-.history__ws {
-  font-size: var(--text-xs);
-  color: var(--text-soft);
-}
-.history__item time {
-  font-size: var(--text-xs);
-  color: var(--text-soft);
+
+.op-history__ws,
+.op-history__item time {
+  font-size: 11px;
+  color: var(--op-muted-5);
 }
 
 @media (max-width: 768px) {
-  .profile__head {
+  .op-profile__head {
     flex-wrap: wrap;
   }
-  .profile__head .badge {
+  .op-status-chip {
     margin-left: 0;
-    margin-top: 10px;
     width: 100%;
+    text-align: center;
   }
-  .facts {
+  .op-facts {
     grid-template-columns: 1fr;
   }
 }

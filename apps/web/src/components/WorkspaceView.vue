@@ -9,10 +9,10 @@ const props = defineProps<{ project: Project }>();
 const { employeeById } = useOffice();
 
 const STATUS: Record<ProjectStatus, { label: string; cls: string }> = {
-  ACTIVE: { label: "Ativo", cls: "badge--active" },
-  PLANNED: { label: "Planejado", cls: "badge--planned" },
-  PAUSED: { label: "Pausado", cls: "badge--paused" },
-  COMPLETED: { label: "Concluído", cls: "badge--completed" },
+  ACTIVE: { label: "Ativo", cls: "active" },
+  PLANNED: { label: "Planejado", cls: "planned" },
+  PAUSED: { label: "Pausado", cls: "paused" },
+  COMPLETED: { label: "Concluído", cls: "completed" },
 };
 
 const team = computed(() =>
@@ -28,30 +28,30 @@ function authorName(id: string): string {
 </script>
 
 <template>
-  <div class="ws">
-    <article class="ws__overview panel">
-      <div class="ws__head">
+  <div class="op-ws">
+    <article class="op-ws__overview">
+      <div class="op-ws__head">
         <div>
-          <p class="eyebrow">Objetivo</p>
-          <p class="ws__objective">{{ project.objective }}</p>
+          <p class="op-eyebrow-sm">Objetivo</p>
+          <p class="op-ws__objective">{{ project.objective }}</p>
         </div>
-        <span class="badge" :class="STATUS[project.status].cls">
+        <span class="op-status-chip" :class="`op-status-chip--${STATUS[project.status].cls}`">
           {{ STATUS[project.status].label }}
         </span>
       </div>
 
-      <div class="ws__progress">
-        <div class="meter">
+      <div class="op-ws__progress">
+        <div class="op-meter">
           <span :style="{ width: `${project.progress}%` }" />
         </div>
-        <span class="ws__pct">{{ project.progress }}%</span>
+        <span class="op-ws__pct">{{ project.progress }}%</span>
       </div>
 
-      <div class="ws__team">
-        <p class="eyebrow">Equipe envolvida</p>
-        <div class="ws__members">
-          <div v-for="member in team" :key="member.id" class="ws__member">
-            <span class="ws__face">{{ member.emoji }}</span>
+      <div class="op-ws__team">
+        <p class="op-eyebrow-sm">Equipe envolvida</p>
+        <div class="op-ws__members">
+          <div v-for="member in team" :key="member.id" class="op-ws__member">
+            <span class="op-ws__face">{{ member.emoji }}</span>
             <div>
               <strong>{{ member.role }} — {{ member.name }}</strong>
               <span>{{ member.statusLabel }}</span>
@@ -61,21 +61,21 @@ function authorName(id: string): string {
       </div>
     </article>
 
-    <article class="ws__decisions panel">
-      <p class="eyebrow">Últimas decisões</p>
-      <ul class="ws__dec-list">
-        <li v-for="dec in project.decisions" :key="dec.id" class="ws__dec">
-          <p class="ws__dec-text">{{ dec.summary }}</p>
-          <span class="ws__dec-meta">
+    <article class="op-ws__decisions">
+      <p class="op-eyebrow-sm">Últimas decisões</p>
+      <ul class="op-ws__dec-list">
+        <li v-for="dec in project.decisions" :key="dec.id" class="op-ws__dec">
+          <p class="op-ws__dec-text">{{ dec.summary }}</p>
+          <span class="op-ws__dec-meta">
             {{ authorName(dec.authorId) }} · {{ formatDateTime(dec.date) }}
           </span>
         </li>
-        <li v-if="project.decisions.length === 0" class="ws__dec-empty">
-          <p class="ws__dec-empty__title">Nenhuma decisão ainda</p>
-          <p class="ws__dec-empty__body">
+        <li v-if="project.decisions.length === 0" class="op-ws__dec-empty">
+          <p class="op-ws__dec-empty__title">Nenhuma decisão ainda</p>
+          <p class="op-ws__dec-empty__body">
             Use a Sala da CEO para registrar o próximo direcionamento deste workspace.
           </p>
-          <router-link to="/app/office/sala-ceo" class="btn btn--ghost">Falar com a Opera</router-link>
+          <router-link to="/app/office/sala-ceo" class="op-btn">Falar com a Opera</router-link>
         </li>
       </ul>
     </article>
@@ -83,78 +83,116 @@ function authorName(id: string): string {
 </template>
 
 <style scoped>
-.ws {
+.op-ws {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
-  grid-column-gap: 12px;
+  gap: 12px;
   align-items: stretch;
   flex-shrink: 0;
 }
 
-.ws__overview,
-.ws__decisions {
-  padding: 14px 16px;
-  min-height: 0;
+.op-eyebrow-sm {
+  font-family: var(--op-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--op-muted-5);
 }
 
-.ws__head {
+.op-ws__overview,
+.op-ws__decisions {
+  padding: 18px 20px;
+  min-height: 0;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
+}
+
+.op-ws__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  gap: 10px;
 }
 
-.ws__objective {
+.op-ws__objective {
   margin-top: 6px;
   font-size: 15px;
-  color: var(--text);
+  color: var(--op-ink);
   line-height: 1.45;
   max-width: 48ch;
   font-weight: 600;
 }
 
-.ws__progress {
+.op-status-chip {
+  flex-shrink: 0;
+  font-family: var(--op-font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: var(--op-radius-xs);
+  background: var(--op-raise);
+  color: var(--op-muted-2);
+}
+
+.op-status-chip--active {
+  color: var(--op-green);
+}
+
+.op-ws__progress {
   display: flex;
   align-items: center;
   margin-top: 14px;
+  gap: 10px;
 }
 
-.ws__progress .meter {
+.op-meter {
   flex: 1;
-  margin-right: 10px;
   height: 6px;
+  border-radius: var(--op-radius-full);
+  background: var(--op-line);
+  overflow: hidden;
 }
 
-.ws__pct {
+.op-meter span {
+  display: block;
+  height: 100%;
+  background: var(--op-cta);
+  border-radius: var(--op-radius-full);
+}
+
+.op-ws__pct {
   font-size: 12px;
   font-weight: 700;
-  color: var(--text-muted);
+  color: var(--op-muted-2);
 }
 
-.ws__team {
+.op-ws__team {
   margin-top: 16px;
 }
 
-.ws__members {
+.op-ws__members {
   margin-top: 8px;
 }
 
-.ws__member {
+.op-ws__member {
   display: flex;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--op-line);
 }
 
-.ws__member:last-child {
+.op-ws__member:last-child {
   border-bottom: none;
 }
 
-.ws__face {
+.op-ws__face {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: var(--op-raise);
+  border: 1px solid var(--op-line);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -163,70 +201,90 @@ function authorName(id: string): string {
   flex-shrink: 0;
 }
 
-.ws__member strong {
+.op-ws__member strong {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--op-ink-2);
 }
 
-.ws__member span {
+.op-ws__member span {
   display: block;
   font-size: 11px;
-  color: var(--text-soft);
+  color: var(--op-muted-4);
   margin-top: 2px;
 }
 
-.ws__dec-list {
+.op-ws__dec-list {
   list-style: none;
   margin: 8px 0 0;
   padding: 0;
 }
 
-.ws__dec {
+.op-ws__dec {
   padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--op-line);
 }
 
-.ws__dec:last-child {
+.op-ws__dec:last-child {
   border-bottom: none;
 }
 
-.ws__dec-text {
-  color: var(--text);
+.op-ws__dec-text {
+  color: var(--op-ink-3);
   font-size: 13px;
   line-height: 1.45;
 }
 
-.ws__dec-meta {
+.op-ws__dec-meta {
   display: block;
   margin-top: 5px;
   font-size: 11px;
-  color: var(--text-soft);
+  color: var(--op-muted-4);
 }
 
-.ws__dec-empty {
+.op-ws__dec-empty {
   padding: 12px 0 4px;
 }
 
-.ws__dec-empty__title {
+.op-ws__dec-empty__title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--op-ink-2);
 }
 
-.ws__dec-empty__body {
+.op-ws__dec-empty__body {
   margin-top: 6px;
   margin-bottom: 12px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--op-muted-3);
   line-height: 1.4;
 }
 
+.op-btn {
+  padding: 9px 15px;
+  border: 1px solid var(--op-bd-btn);
+  border-radius: var(--op-radius-sm);
+  background: transparent;
+  color: var(--op-muted);
+  font-family: "Sora", sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.op-btn:hover {
+  border-color: var(--op-bd-btn-h);
+  color: var(--op-ink-3);
+  background: var(--op-raise);
+}
+
 @media (max-width: 860px) {
-  .ws {
+  .op-ws {
     grid-template-columns: 1fr;
-    grid-row-gap: 12px;
   }
 }
 </style>

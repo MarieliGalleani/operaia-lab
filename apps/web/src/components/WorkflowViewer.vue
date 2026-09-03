@@ -38,39 +38,39 @@ const steps = computed(() => props.workflow.steps);
 </script>
 
 <template>
-  <div class="workflow panel">
-    <header class="workflow__head">
+  <div class="op-workflow">
+    <header class="op-workflow__head">
       <div>
-        <p class="eyebrow">Fluxo de trabalho</p>
-        <h3 class="workflow__title">{{ workflow.title }}</h3>
+        <p class="op-eyebrow-sm">Fluxo de trabalho</p>
+        <h3 class="op-workflow__title">{{ workflow.title }}</h3>
       </div>
     </header>
 
-    <div class="workflow__rail">
+    <div class="op-workflow__rail">
       <div
         v-for="stage in STAGES"
         :key="stage.stage"
-        class="stage"
-        :class="`stage--${stageStatus(stage.stage)}`"
+        class="op-stage"
+        :class="`op-stage--${stageStatus(stage.stage)}`"
       >
-        <span class="stage__dot" />
-        <span class="stage__label">{{ stage.label }}</span>
+        <span class="op-stage__dot" />
+        <span class="op-stage__label">{{ stage.label }}</span>
       </div>
     </div>
 
-    <ol class="chain">
+    <ol class="op-chain">
       <li
         v-for="(step, index) in steps"
         :key="index"
-        class="chain__step"
-        :class="`chain__step--${step.status}`"
+        class="op-chain__step"
+        :class="`op-chain__step--${step.status}`"
       >
-        <span class="chain__avatar">{{ actorEmoji(step.actorId) }}</span>
-        <div class="chain__body">
-          <div class="chain__actor">{{ actorLabel(step.actorId) }}</div>
-          <div class="chain__detail">{{ step.detail }}</div>
+        <span class="op-chain__avatar">{{ actorEmoji(step.actorId) }}</span>
+        <div class="op-chain__body">
+          <div class="op-chain__actor">{{ actorLabel(step.actorId) }}</div>
+          <div class="op-chain__detail">{{ step.detail }}</div>
         </div>
-        <span class="chain__status">
+        <span class="op-chain__status">
           {{ step.status === "done" ? "✓" : step.status === "current" ? "•••" : "" }}
         </span>
       </li>
@@ -79,33 +79,44 @@ const steps = computed(() => props.workflow.steps);
 </template>
 
 <style scoped>
-.workflow {
-  padding: 14px;
+.op-workflow {
+  padding: 20px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
 }
 
-.workflow__head {
+.op-eyebrow-sm {
+  font-family: var(--op-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--op-muted-5);
+}
+
+.op-workflow__head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   margin-bottom: 14px;
 }
 
-.workflow__title {
+.op-workflow__title {
   margin-top: 4px;
   font-size: 15px;
-  font-family: var(--font-display);
   font-weight: 700;
+  color: var(--op-ink-2);
 }
 
-.workflow__rail {
+.op-workflow__rail {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   padding: 4px 0 22px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--op-line);
 }
 
-.stage {
+.op-stage {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -113,81 +124,81 @@ const steps = computed(() => props.workflow.steps);
   position: relative;
 }
 
-.stage:not(:last-child)::after {
+.op-stage:not(:last-child)::after {
   content: "";
   position: absolute;
   top: 6px;
   left: 50%;
   width: 100%;
   height: 1px;
-  background: linear-gradient(90deg, var(--border-strong), transparent);
+  background: linear-gradient(90deg, var(--op-line-strong), transparent);
 }
 
-.stage__dot {
+.op-stage__dot {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: var(--border-strong);
-  border: 2px solid var(--surface);
+  background: var(--op-line-strong);
+  border: 2px solid var(--op-panel);
   z-index: 1;
   margin-bottom: 8px;
 }
 
-.stage__label {
+.op-stage__label {
   font-size: 10.5px;
-  color: var(--text-soft);
+  color: var(--op-muted-4);
   text-align: center;
   font-weight: 500;
   letter-spacing: 0.02em;
 }
 
-.stage--done .stage__dot {
-  background: var(--brand);
+.op-stage--done .op-stage__dot {
+  background: var(--op-cta);
 }
-.stage--done .stage__label {
-  color: var(--text-muted);
+.op-stage--done .op-stage__label {
+  color: var(--op-muted-2);
 }
-.stage--current .stage__dot {
-  background: var(--accent);
-  box-shadow: 0 0 0 4px var(--accent-soft);
+.op-stage--current .op-stage__dot {
+  background: var(--op-cta);
+  box-shadow: 0 0 0 4px var(--op-sel);
 }
-.stage--current .stage__label {
-  color: var(--text);
+.op-stage--current .op-stage__label {
+  color: var(--op-ink-2);
   font-weight: 700;
 }
 
-.chain {
+.op-chain {
   list-style: none;
   margin: 18px 0 0;
   padding: 0;
 }
 
-.chain__step {
+.op-chain__step {
   display: flex;
   align-items: center;
   padding: 12px 14px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--op-radius-sm);
   margin-bottom: 8px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  transition: border-color 0.2s var(--ease), background 0.2s var(--ease);
+  background: var(--op-raise);
+  border: 1px solid var(--op-line);
+  transition: border-color 0.15s ease, background 0.15s ease;
 }
 
-.chain__step--current {
-  border-color: var(--brand-line);
-  background: var(--brand-soft);
+.op-chain__step--current {
+  border-color: var(--op-cta);
+  background: var(--op-sel);
 }
 
-.chain__step--pending {
+.op-chain__step--pending {
   opacity: 0.6;
 }
 
-.chain__avatar {
+.op-chain__avatar {
   width: 36px;
   height: 36px;
-  border-radius: 12px;
-  background: var(--glass-strong);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--op-radius-sm);
+  background: var(--op-panel);
+  border: 1px solid var(--op-line);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -195,26 +206,26 @@ const steps = computed(() => props.workflow.steps);
   margin-right: 12px;
 }
 
-.chain__body {
+.op-chain__body {
   flex: 1;
 }
 
-.chain__actor {
+.op-chain__actor {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--op-ink-2);
 }
 
-.chain__detail {
+.op-chain__detail {
   font-size: 12.5px;
-  color: var(--text-muted);
+  color: var(--op-muted-3);
   margin-top: 2px;
 }
 
-.chain__status {
+.op-chain__status {
   font-size: 13px;
   font-weight: 700;
-  color: var(--brand);
+  color: var(--op-cta);
   margin-left: 10px;
 }
 </style>

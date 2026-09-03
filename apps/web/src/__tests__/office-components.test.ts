@@ -85,7 +85,7 @@ describe("Tarefas, activity stream e workflow", () => {
 
   it("ActivityStream lista as atividades com horário", () => {
     const wrapper = mount(ActivityStream, { props: { activities } });
-    expect(wrapper.findAll(".stream__item")).toHaveLength(activities.length);
+    expect(wrapper.findAll(".op-stream__item")).toHaveLength(activities.length);
   });
 
   it("WorkflowViewer mostra os estágios e a cadeia de delegação", () => {
