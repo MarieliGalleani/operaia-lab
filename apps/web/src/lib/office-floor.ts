@@ -22,3 +22,45 @@ export function originToFloor(
   }
   return AUTOMATION_ORIGINS.has(origin) ? "AUTOMATION" : "DEVELOPMENT";
 }
+
+/**
+ * Especialidade -> andar, para segmentar a Equipe (P1.21 fix). Mesma
+ * ideia de originToFloor: uma regra pura e honesta, sem inventar andar
+ * pra especialidade que ainda nao tem um.
+ *
+ * MANAGEMENT (Opera/CEO) nao entra no mapa de proposito: o CEO coordena
+ * todos os andares (ver docs/operaia-ceo.md), entao aparece em todos —
+ * nao e "nao segmentado", e um papel transversal real.
+ *
+ * FINANCE/LEGAL/OPERATIONS/UX_DESIGN/PRODUCT/COMMERCIAL tambem ficam de
+ * fora: nao existe andar pra eles ainda (so Dev/Automacao/Marketing),
+ * entao nao aparecem em nenhum andar em vez de serem empurrados pra um
+ * errado.
+ */
+export type EmployeeFloorId = "dev" | "automation" | "marketing";
+
+const FLOOR_BY_SPECIALIZATION: Readonly<Record<string, EmployeeFloorId>> = {
+  SOFTWARE_ENGINEERING: "dev",
+  PRODUCT_DESIGN: "dev",
+  PRODUCT_MANAGEMENT: "dev",
+  AUTOMATION: "automation",
+  MARKETING: "marketing",
+};
+
+export function specializationToFloor(
+  specialization: string,
+): EmployeeFloorId | null {
+  return FLOOR_BY_SPECIALIZATION[specialization] ?? null;
+}
+
+/** Roster de um andar: especialistas do andar + CEO (papel transversal). */
+export function employeesForFloor<T extends { readonly specialization: string }>(
+  employees: readonly T[],
+  floorId: EmployeeFloorId,
+): readonly T[] {
+  return employees.filter(
+    (e) =>
+      e.specialization === "MANAGEMENT" ||
+      specializationToFloor(e.specialization) === floorId,
+  );
+}

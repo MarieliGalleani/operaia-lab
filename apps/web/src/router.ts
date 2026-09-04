@@ -202,8 +202,16 @@ const routes: RouteRecordRaw[] = [
           },
           {
             path: "team",
-            name: "automation-team",
-            component: TeamView,
+            component: RouterView,
+            children: [
+              { path: "", name: "automation-team", component: TeamView },
+              {
+                path: ":employeeId",
+                name: "automation-employee-detail",
+                component: EmployeeDetailView,
+                props: true,
+              },
+            ],
           },
         ],
       },
@@ -225,8 +233,16 @@ const routes: RouteRecordRaw[] = [
           },
           {
             path: "team",
-            name: "marketing-team",
-            component: TeamView,
+            component: RouterView,
+            children: [
+              { path: "", name: "marketing-team", component: TeamView },
+              {
+                path: ":employeeId",
+                name: "marketing-employee-detail",
+                component: EmployeeDetailView,
+                props: true,
+              },
+            ],
           },
           {
             path: "signals",

@@ -7,9 +7,15 @@
  * decorativo. Antes disso a aba usava uma imagem estatica com
  * etiquetas de nome paradas (fiel ao handoff, mas sem ninguem andando)
  * — trocado a pedido explicito da usuaria ("meus agentes nao estao
- * andando na maquete"). Employee nao tem floorId no dominio
- * (confirmado) — mostra o roster inteiro em todo andar, rotulado
- * honestamente como tal.
+ * andando na maquete").
+ *
+ * P1.21-FIX (segmentacao por andar): Employee nao tem floorId no
+ * dominio, mas tem `specialization` — suficiente pra segmentar sem
+ * inventar campo novo (ver specializationToFloor em office-floor.ts,
+ * mesmo padrao de originToFloor pra missoes). Antes o roster inteiro
+ * aparecia em todo andar (Dev/Automacao/Marketing viam os mesmos 9
+ * funcionarios), e o card sempre linkava pra `/app/floor/dev/team/:id`
+ * mesmo estando em outro andar.
  *
  * P1.X-FIX:
  * - REG-04: refresh real (office.load(true)), nao mais no-op.
@@ -24,6 +30,7 @@ import { computed, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import OperationalHeader from "@/components/shell/OperationalHeader.vue";
 import { findFloor, floorIdFromPath } from "@/data/office-floors";
+import { employeesForFloor } from "@/lib/office-floor";
 import { createOfficeWorldProvider } from "@/modules/office-domain/office-world-data-provider";
 import VirtualWorld from "@/modules/virtual-world/vue/VirtualWorld.vue";
 import { useOffice } from "@/composables/useOffice";
@@ -32,6 +39,10 @@ const route = useRoute();
 const floor = computed(() => findFloor(floorIdFromPath(route.path)));
 const office = useOffice();
 const worldProvider = createOfficeWorldProvider();
+
+const floorEmployees = computed(() =>
+  employeesForFloor(office.employees.value, floor.value.id),
+);
 
 async function load(force = false): Promise<void> {
   await office.load(force);
@@ -62,7 +73,7 @@ function involvedProjects(employeeId: string): readonly string[] {
 const viewState = computed<"loading" | "error" | "empty" | "ready">(() => {
   if (office.loading.value && office.employees.value.length === 0) return "loading";
   if (office.error.value && office.employees.value.length === 0) return "error";
-  if (office.employees.value.length === 0) return "empty";
+  if (floorEmployees.value.length === 0) return "empty";
   return "ready";
 });
 </script>
@@ -70,9 +81,9 @@ const viewState = computed<"loading" | "error" | "empty" | "ready">(() => {
 <template>
   <OperationalHeader
     :floor="floor"
-    :scope-line="`${floor.name} · dados isolados`"
+    :scope-line="`${floor.name} · equipe do andar`"
     title="Equipe alocada"
-    lede="Quem deste andar está executando e quem está livre — a mesma equipe digital, ainda não segmentada por andar."
+    lede="Quem deste andar está executando e quem está livre — só especialistas deste andar, mais o CEO, que coordena todos."
     :show-cta="false"
     :refreshing="office.loading.value && office.loaded.value"
     @refresh="refresh"
@@ -87,7 +98,7 @@ const viewState = computed<"loading" | "error" | "empty" | "ready">(() => {
     </div>
 
     <p v-else-if="viewState === 'empty'" class="op-empty-inline">
-      Nenhum especialista registrado.
+      Nenhum especialista deste andar registrado ainda.
     </p>
 
     <template v-else>
@@ -104,9 +115,9 @@ const viewState = computed<"loading" | "error" | "empty" | "ready">(() => {
 
       <div class="op-team-grid">
         <router-link
-          v-for="e in office.employees.value"
+          v-for="e in floorEmployees"
           :key="e.id"
-          :to="`/app/floor/dev/team/${e.id}`"
+          :to="`${floor.teamRoute}/${e.id}`"
           class="op-employee-card"
         >
           <div class="op-employee-card__head">
