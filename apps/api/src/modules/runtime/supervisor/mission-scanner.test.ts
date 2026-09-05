@@ -152,4 +152,37 @@ describe("MissionScanner — FAILED exhausted + latch", () => {
       false,
     );
   });
+
+  it("F — FAILED esgotado por workspace inexistente nunca escala, mesmo sem latch (regressao producao)", async () => {
+    const report = await new MissionScanner(
+      queueOf([
+        mission({
+          id: "m-ghost",
+          workspaceId: "verify-crit-1788468000916",
+          lastError: "Workspace nao encontrado: verify-crit-1788468000916",
+        }),
+      ]),
+      clock,
+      30_000,
+      new InMemoryCoordinationLatchStore(),
+    ).scan();
+
+    const item = report.items.find((i) => i.missionId === "m-ghost");
+    expect(item?.category).toBe("FAILED");
+    expect(item?.needsCoordination).toBe(false);
+    expect(report.coordinationNeeded).toBe(0);
+  });
+
+  it("G — FAILED esgotado por outro erro continua escalando normalmente", async () => {
+    const report = await new MissionScanner(
+      queueOf([mission({ id: "m-quota", lastError: "Quota M1 excedida" })]),
+      clock,
+      30_000,
+      new InMemoryCoordinationLatchStore(),
+    ).scan();
+
+    const item = report.items.find((i) => i.missionId === "m-quota");
+    expect(item?.needsCoordination).toBe(true);
+    expect(report.coordinationNeeded).toBe(1);
+  });
 });

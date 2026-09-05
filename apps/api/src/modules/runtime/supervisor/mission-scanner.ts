@@ -10,6 +10,22 @@ import type {
 } from "./types.js";
 
 /**
+ * Prefixo do erro lancado por QueuedMissionExecutor#execute quando o
+ * workspace da missao nao existe mais (ver queued-mission-executor.ts).
+ * Esgotamento por esse motivo nunca vira COORDINATE: a missao de
+ * coordenacao passaria pelo mesmo QueuedMissionExecutor#execute, bateria
+ * no mesmo workspace inexistente e tambem se esgotaria — gerando uma
+ * nova escalacao (novo missionId, logo fora do latch CONSUMED existente)
+ * infinitamente. Confirmado em producao: workspace verify-crit-* gerou
+ * 600+ falhas/2h nesse ciclo antes desse fix.
+ */
+const WORKSPACE_NOT_FOUND_PREFIX = "Workspace nao encontrado";
+
+function isUnrecoverableWorkspaceError(lastError: string | null): boolean {
+  return lastError != null && lastError.startsWith(WORKSPACE_NOT_FOUND_PREFIX);
+}
+
+/**
  * MissionScanner — observa estados de missao.
  * Detecta timeout/stale/retry/waiting. Nao resolve — apenas encaminha.
  * MQ-3: STALE = RUNNING sem liveness de WorkerHeartbeat (nao Mission.updatedAt).
@@ -56,16 +72,22 @@ export class MissionScanner {
         }
         if (status === "FAILED") {
           const canRetry = mission.attempt < mission.maxAttempts;
+          const unrecoverable =
+            !canRetry && isUnrecoverableWorkspaceError(mission.lastError);
           items.push(
             toItem(
               mission,
               canRetry ? "RETRY" : "FAILED",
               canRetry,
-              // Retryable: F6.1 sem COORDINATE. Esgotado: escalacao operacional.
-              !canRetry,
+              // Retryable: F6.1 sem COORDINATE. Esgotado: escalacao
+              // operacional — exceto workspace inexistente (sem escalacao
+              // possivel, ver isUnrecoverableWorkspaceError acima).
+              !canRetry && !unrecoverable,
               canRetry
                 ? `FAILED elegivel a retry (${mission.attempt}/${mission.maxAttempts})`
-                : `FAILED esgotado (${mission.attempt}/${mission.maxAttempts})`,
+                : unrecoverable
+                  ? `FAILED esgotado, workspace inexistente — sem escalacao (${mission.attempt}/${mission.maxAttempts})`
+                  : `FAILED esgotado (${mission.attempt}/${mission.maxAttempts})`,
             ),
           );
           continue;
