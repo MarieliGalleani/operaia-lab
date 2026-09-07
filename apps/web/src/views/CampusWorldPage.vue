@@ -87,8 +87,9 @@ async function goToResident(targetMapId: string): Promise<void> {
             :disabled="traveling !== null"
             @click="goToResident(r.targetMapId)"
           >
+            <span class="directory-item__badge">{{ r.label.slice(0, 2).toUpperCase() }}</span>
             <span class="directory-item__label">{{ r.label }}</span>
-            <span v-if="currentMapId === r.targetMapId" class="directory-item__here">você está aqui</span>
+            <span v-if="currentMapId === r.targetMapId" class="directory-item__here">aqui</span>
             <span v-else-if="traveling === r.targetMapId" class="directory-item__here">indo…</span>
           </button>
         </li>
@@ -109,71 +110,79 @@ async function goToResident(targetMapId: string): Promise<void> {
   position: absolute;
   top: 12px;
   left: 12px;
+  z-index: 5;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  border-radius: 10px;
-  border: 1px solid var(--op-line-strong, rgba(148, 163, 184, 0.24));
-  background: var(--op-panel, rgba(14, 21, 36, 0.78));
-  color: var(--op-ink-3, #f1f5f9);
-  font-size: 13px;
-  font-weight: 600;
+  gap: 7px;
+  padding: 9px 15px;
+  border-radius: var(--op-radius-sm);
+  border: 1px solid var(--op-bd-btn);
+  background: var(--op-panel);
+  color: var(--op-muted);
+  font-family: "Sora", sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .directory-toggle:hover {
-  border-color: var(--op-accent, #8b5cf6);
+  border-color: var(--op-bd-btn-h);
+  color: var(--op-ink-3);
+  background: var(--op-raise);
 }
 
 .directory-toggle:focus-visible {
-  outline: 2px solid var(--op-accent, #8b5cf6);
+  outline: 2px solid var(--op-cta);
   outline-offset: 2px;
 }
 
 .directory-panel {
   position: absolute;
-  top: 56px;
+  top: 58px;
   left: 12px;
-  width: 240px;
+  z-index: 5;
+  width: 248px;
   max-height: min(70vh, 420px);
   overflow-y: auto;
-  border-radius: 12px;
-  border: 1px solid var(--op-line-strong, rgba(148, 163, 184, 0.24));
-  background: var(--op-panel, rgba(14, 21, 36, 0.92));
-  box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.6);
+  border-radius: var(--op-radius);
+  border: 1px solid var(--op-line-strong);
+  background: var(--op-panel);
+  box-shadow: 0 20px 48px -16px rgba(0, 0, 0, 0.55);
 }
 
 .directory-panel__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px 8px;
-  border-bottom: 1px solid var(--op-line-strong, rgba(148, 163, 184, 0.16));
+  padding: 13px 14px 10px;
+  border-bottom: 1px solid var(--op-line);
 }
 
 .directory-panel__title {
   margin: 0;
-  font-size: 12px;
-  font-weight: 700;
+  font-family: var(--op-font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--op-ink-3, #f1f5f9);
+  letter-spacing: 0.1em;
+  color: var(--op-muted-5);
 }
 
 .directory-panel__close {
   border: none;
   background: none;
-  color: var(--op-ink-3, #f1f5f9);
-  opacity: 0.7;
+  color: var(--op-muted-3);
   cursor: pointer;
   font-size: 13px;
   line-height: 1;
-  padding: 2px;
+  padding: 4px;
+  border-radius: var(--op-radius-xs);
 }
 
 .directory-panel__close:hover {
-  opacity: 1;
+  color: var(--op-ink-3);
+  background: var(--op-raise);
 }
 
 .directory-list {
@@ -182,27 +191,29 @@ async function goToResident(targetMapId: string): Promise<void> {
   padding: 6px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .directory-item {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 9px 10px;
-  border-radius: 8px;
-  border: none;
+  gap: 10px;
+  padding: 8px 9px;
+  border-radius: var(--op-radius-sm);
+  border: 1px solid transparent;
   background: transparent;
-  color: var(--op-ink-3, #f1f5f9);
+  color: var(--op-ink-3);
+  font-family: "Sora", sans-serif;
   font-size: 13px;
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
 }
 
 .directory-item:hover:not(:disabled) {
-  background: rgba(139, 92, 246, 0.14);
+  background: var(--op-hover);
 }
 
 .directory-item:disabled {
@@ -210,29 +221,56 @@ async function goToResident(targetMapId: string): Promise<void> {
 }
 
 .directory-item.is-current {
-  color: var(--op-accent, #8b5cf6);
+  border-color: var(--op-bd-sel);
+  background: var(--op-sel);
+}
+
+.directory-item__badge {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--op-radius-sm);
+  background: var(--op-raise);
+  display: grid;
+  place-items: center;
+  font-family: var(--op-font-mono);
+  font-size: 10px;
   font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--op-muted-2);
+}
+
+.directory-item.is-current .directory-item__badge {
+  color: var(--op-cta);
 }
 
 .directory-item__label {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.directory-item.is-current .directory-item__label {
+  color: var(--op-ink);
+  font-weight: 600;
+}
+
 .directory-item__here {
   flex: none;
-  font-size: 10.5px;
+  font-family: var(--op-font-mono);
+  font-size: 9.5px;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.7;
+  letter-spacing: 0.08em;
+  color: var(--op-cta);
 }
 
 .directory-panel__hint {
   margin: 0;
-  padding: 8px 14px 12px;
+  padding: 9px 14px 13px;
+  border-top: 1px solid var(--op-line);
   font-size: 11px;
-  color: var(--op-ink-3, #f1f5f9);
-  opacity: 0.6;
+  color: var(--op-muted-4);
 }
 </style>

@@ -149,18 +149,22 @@ function onMapLoaded(mapId: string): void {
 .office-world__live {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border-radius: 999px;
-  font-size: 12px;
+  gap: 7px;
+  padding: 9px 13px;
+  border-radius: var(--op-radius-sm);
+  border: 1px solid var(--op-bd-btn);
+  background: var(--op-panel);
+  font-family: var(--op-font-mono);
+  font-size: 11px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.55);
-  background: rgba(20, 20, 30, 0.65);
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--op-muted-4);
 }
 
 .office-world__live.is-on {
-  color: #7dffb0;
+  color: var(--op-green);
+  border-color: var(--op-bd-btn-h);
 }
 
 .office-world__live-dot {
@@ -183,25 +187,26 @@ function onMapLoaded(mapId: string): void {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 16px;
-  border: none;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #fff;
-  background: linear-gradient(135deg, #4c8bfa 0%, #3b82f6 45%, #8b5cf6 100%);
-  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.18), 0 10px 32px -6px rgba(124, 58, 237, 0.4);
+  padding: 9px 15px;
+  border: 1px solid var(--op-bd-btn);
+  border-radius: var(--op-radius-sm);
+  background: var(--op-panel);
+  color: var(--op-muted);
+  font-family: "Sora", sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
   cursor: pointer;
-  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s ease;
+  transition: all 0.15s ease;
 }
 
 .office-world__refresh:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.25), 0 14px 36px -6px rgba(124, 58, 237, 0.5);
+  border-color: var(--op-bd-btn-h);
+  color: var(--op-ink-3);
+  background: var(--op-raise);
 }
 
 .office-world__refresh:disabled {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: wait;
 }
 
