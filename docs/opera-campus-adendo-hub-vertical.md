@@ -1,9 +1,9 @@
 # Adendo Arquitetural — Hub Vertical do Opera Campus
 
-**Tipo:** revisão documental da Baseline (sem implementação)  
-**Status:** aguardando aprovação  
+**Tipo:** revisão documental da Baseline  
+**Status:** **APROVADO** (Marieli Galleani, 2026-09-07) — integra a Baseline como **v1.1**  
 **Base:** [`opera-campus-baseline-v1.md`](opera-campus-baseline-v1.md) (v1.0 LOCKED)  
-**Efeito após aprovação:** passa a integrar a Baseline como **v1.1** (hub de distribuição)
+**Implementação:** ver seção "Registro de implementação" no fim deste documento — divergiu do plano original de "Próximo passo" por limite real de engine, não por decisão de escopo.
 
 ---
 
@@ -95,16 +95,43 @@ Regra de ouro (inalterada):
 2. Cada Residente ocupa **andar(es) próprio(s)** — mapas separados.  
 3. Não há mistura de equipes entre andares.  
 4. Novos Residentes = novos andares/entradas por composição.  
-5. Nenhuma implementação foi feita só com este documento.
+5. ~~Nenhuma implementação foi feita só com este documento.~~ Superado — ver "Registro de implementação" abaixo.
 
 ---
 
-## Próximo passo (após aprovação deste adendo)
+## Registro de implementação (2026-09-07)
 
-1. Atualizar Baseline para **v1.1** (status LOCKED).  
-2. Elaborar **plano de execução** mínimo (só mapas/portais/labels do hub) — sem expandir escopo da Fase 2.  
-3. Só então implementar.
+O plano original de "Próximo passo" (Baseline v1.1 → plano de execução →
+só então implementar) foi comprimido: a aprovação e a implementação
+pragmática aconteceram na mesma sessão, a pedido da Marieli ("pode
+fazer") depois de constatar dois problemas concretos que tornavam a
+navegação confusa — Geraí sem entrada registrada na praça (Residente
+documentado, impossível de visitar) e nenhum atalho pra chegar direto
+num Residente sem caminhar até a fachada certa.
+
+**O que foi construído é uma leitura pragmática do hub vertical, não
+um elevador físico:**
+
+- Um painel de UI ("Elevador · escolha o andar") abre automaticamente
+  ao chegar na Recepção, listando todos os Residentes registrados
+  (`campus-resident-entrances.ts`) com teleporte direto de um clique.
+- **Motivo de não ter sido um elevador espacial de verdade:** o Portal
+  System da engine troca de mapa sozinho ao ser tocado (1 portal = 1
+  destino fixo) — não existe hoje um tipo de interação multi-destino
+  ("entra na cabine, escolhe o andar, sai no andar certo"). Construir
+  isso exigiria alterar o Portal System/Runtime, o que este próprio
+  adendo proíbe explicitamente ("O que este adendo NÃO autoriza").
+- A Praça Central **não foi alterada nem removida** — continua
+  navegável a pé, exatamente como a v1.0 previa. O painel é aditivo.
+- Geraí foi registrada no catálogo do mundo (`office-map-provider.ts`)
+  e na praça (`campus-resident-entrances.ts`) — antes tinha mapas e
+  elenco prontos mas nenhum registro, portanto inacessível.
+
+**Ainda em aberto, se algum dia fizer sentido priorizar:** um elevador
+espacial de verdade (cabine, animação, escolha de andar dentro do
+próprio mundo 3D) continua sendo trabalho de engine genuíno, não
+coberto por este adendo nem pela implementação atual.
 
 ---
 
-*Documento apenas. Sem alteração de código.*
+*Decisão registrada; implementação descrita acima já em produção.*

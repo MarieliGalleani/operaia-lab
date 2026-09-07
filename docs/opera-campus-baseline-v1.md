@@ -1,11 +1,11 @@
-# Opera Campus — Baseline Arquitetural v1.0
+# Opera Campus — Baseline Arquitetural v1.1
 
 **Documento oficial de referência**  
-**Versão:** 1.0  
+**Versão:** 1.1 (v1.0 permanece válida abaixo; v1.1 = adendo do hub vertical, aprovado)  
 **Status:** LOCKED  
 **Origem:** Fase 1 (MVP espacial) concluída · testes 93/93  
 **Complementar:** `docs/opera-campus-fase-1.md` (plano de entrega da Fase 1)  
-**Adendo (aguardando aprovação):** [`opera-campus-adendo-hub-vertical.md`](opera-campus-adendo-hub-vertical.md) — hub = hall + elevador · um Residente por andar (proposta Baseline v1.1)
+**Adendo v1.1 (APROVADO 2026-09-07):** [`opera-campus-adendo-hub-vertical.md`](opera-campus-adendo-hub-vertical.md) — hub = hall + elevador · um Residente por andar. Implementado como painel de UI (não elevador espacial) — ver "Registro de implementação" no próprio adendo.
 
 Este documento registra as decisões aprovadas, os princípios, os limites e as regras que **não podem ser quebradas** sem nova revisão arquitetural.
 
