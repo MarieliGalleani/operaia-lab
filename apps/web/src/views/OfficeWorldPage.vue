@@ -8,6 +8,7 @@
  */
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
+import { connectLiveStatusSocket } from "@/modules/office-domain/live-status-socket";
 import { createOfficeWorldProvider } from "@/modules/office-domain/office-world-data-provider";
 import VirtualWorld from "@/modules/virtual-world/vue/VirtualWorld.vue";
 import type { WorldRuntime } from "@/modules/virtual-world/contracts/world-runtime";
@@ -21,10 +22,22 @@ const mapId = computed(() => {
 
 const worldRef = ref<{ runtime: WorldRuntime | null } | null>(null);
 const refreshing = ref(false);
+const live = ref(false);
 
-// Status ao vivo só é buscado quando o mapa carrega (ver live-agent-status.ts).
+// Status ao vivo só era buscado quando o mapa carregava (ver
+// live-agent-status.ts) — sem push contínuo. Agora o servidor avisa via
+// WebSocket (live-status-socket.ts) toda vez que um funcionário começa,
+// termina ou falha uma missão, e a tela recarrega sozinha. Debounced:
+// vários agentes podem mudar de estado quase juntos.
+let liveRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleLiveRefresh(): void {
+  if (liveRefreshTimer) clearTimeout(liveRefreshTimer);
+  liveRefreshTimer = setTimeout(() => void refreshStatus(), 800);
+}
+
 // Se a aba ficar aberta e o usuário voltar depois de um tempo fora (ex: fechou
-// o notebook), recarrega o mapa pra trazer o estado atual dos agentes.
+// o notebook), recarrega o mapa pra trazer o estado atual dos agentes — rede
+// de segurança pro caso do WebSocket ter caído enquanto a aba estava oculta.
 let hiddenAt: number | null = null;
 const STALE_AFTER_MS = 20_000;
 
@@ -50,12 +63,24 @@ function onVisibilityChange(): void {
   hiddenAt = null;
 }
 
+let disconnectLiveStatus: (() => void) | null = null;
+
 onMounted(() => {
   document.addEventListener("visibilitychange", onVisibilityChange);
+  disconnectLiveStatus = connectLiveStatusSocket({
+    onConnectionChange: (connected) => {
+      live.value = connected;
+    },
+    onEvent: () => {
+      scheduleLiveRefresh();
+    },
+  });
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("visibilitychange", onVisibilityChange);
+  if (liveRefreshTimer) clearTimeout(liveRefreshTimer);
+  disconnectLiveStatus?.();
 });
 
 function onReady(engineId: string): void {
@@ -79,18 +104,28 @@ function onMapLoaded(mapId: string): void {
       @ready="onReady"
       @map-loaded="onMapLoaded"
     />
-    <button
-      type="button"
-      class="office-world__refresh"
-      :disabled="refreshing"
-      title="Atualizar status dos agentes"
-      @click="refreshStatus"
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :class="{ 'is-spinning': refreshing }">
-        <path d="M20 11a8 8 0 1 0-2.6 6M20 5v6h-6" />
-      </svg>
-      {{ refreshing ? "Atualizando…" : "Atualizar" }}
-    </button>
+    <div class="office-world__controls">
+      <span
+        class="office-world__live"
+        :class="{ 'is-on': live }"
+        :title="live ? 'Tempo real conectado' : 'Tempo real indisponível — atualize manualmente'"
+      >
+        <span class="office-world__live-dot" aria-hidden="true"></span>
+        {{ live ? "Ao vivo" : "Offline" }}
+      </span>
+      <button
+        type="button"
+        class="office-world__refresh"
+        :disabled="refreshing"
+        title="Atualizar status dos agentes"
+        @click="refreshStatus"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" :class="{ 'is-spinning': refreshing }">
+          <path d="M20 11a8 8 0 1 0-2.6 6M20 5v6h-6" />
+        </svg>
+        {{ refreshing ? "Atualizando…" : "Atualizar" }}
+      </button>
+    </div>
   </div>
 </template>
 
@@ -101,11 +136,50 @@ function onMapLoaded(mapId: string): void {
   min-height: 620px;
 }
 
-.office-world__refresh {
+.office-world__controls {
   position: absolute;
   top: 16px;
   left: 16px;
   z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.office-world__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+  background: rgba(20, 20, 30, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.office-world__live.is-on {
+  color: #7dffb0;
+}
+
+.office-world__live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.office-world__live.is-on .office-world__live-dot {
+  animation: office-world-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes office-world-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.office-world__refresh {
   display: inline-flex;
   align-items: center;
   gap: 8px;

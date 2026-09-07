@@ -1,6 +1,7 @@
 import { prisma, type Prisma } from "@operaia/database";
 import { runWithLLMExecutionContext } from "@operaia/ai-core";
 import type { EmployeeProfile } from "@operaia/employee-framework";
+import { broadcastLiveStatus } from "./live-status-broadcaster.js";
 import {
   StaleMissionOwnershipError,
   type MissionQueue,
@@ -152,6 +153,11 @@ export class EmployeeWorker {
           },
           "Executando missao",
         );
+        broadcastLiveStatus({
+          employeeId: this.employeeId,
+          busy: true,
+          objective: claimed.objective,
+        });
 
         try {
           await runWithLLMExecutionContext(
@@ -176,6 +182,11 @@ export class EmployeeWorker {
             },
             "Missao concluida",
           );
+          broadcastLiveStatus({
+            employeeId: this.employeeId,
+            busy: false,
+            objective: null,
+          });
         } catch (error) {
           if (error instanceof StaleMissionOwnershipError) {
             this.options.logger.warn(
@@ -215,6 +226,11 @@ export class EmployeeWorker {
                 },
                 "Missao falhou",
               );
+              broadcastLiveStatus({
+                employeeId: this.employeeId,
+                busy: false,
+                objective: null,
+              });
             } catch (failError) {
               if (failError instanceof StaleMissionOwnershipError) {
                 this.options.logger.warn(

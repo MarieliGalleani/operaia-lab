@@ -24,6 +24,7 @@ import { createProductLabRuntime } from "./modules/operations/product-lab-runtim
 import { createOperationsRoutes } from "./modules/operations/operations.routes.js";
 import { projectRoutes } from "./modules/projects/projects.routes.js";
 import type { ContinuousRuntime } from "./modules/runtime/continuous-runtime.js";
+import { liveStatusRoutes } from "./modules/runtime/live-status.routes.js";
 import { createRuntimeRoutes } from "./modules/runtime/runtime.routes.js";
 import { enqueueSignalCoordinateMission } from "./modules/runtime/signal-mission-converter.js";
 import { createGithubWebhookRoutes } from "./modules/signals/github-webhook.routes.js";
@@ -111,6 +112,7 @@ export function buildApp(): AppBundle {
       { prefix: "/api/v1" },
     );
     protectedApi.register(scheduleRuleRoutes, { prefix: "/api/v1" });
+    protectedApi.register(liveStatusRoutes, { prefix: "/api/v1/ws" });
   });
   app.register(
     createGithubWebhookRoutes({
