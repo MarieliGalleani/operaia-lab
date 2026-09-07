@@ -22,6 +22,8 @@ import {
   executeDemandResponseSchema,
   executionDetailSchema,
   executionListItemSchema,
+  externalAutomationSchema,
+  externalAutomationsUnavailableSchema,
   interpretDemandBodySchema,
   interpretDemandResponseSchema,
   officeUnavailableSchema,
@@ -35,6 +37,10 @@ import {
   getExecutionById,
   listExecutions,
 } from "./execution-projection.service.js";
+import {
+  listExternalAutomations,
+  setExternalAutomationActive,
+} from "./external-automation.service.js";
 import { getWorkspaceContext } from "./workspace-context.service.js";
 import { buildAutonomyLoopEvidence } from "./autonomy-loop-evidence.js";
 import { assessAutonomyLoop } from "./autonomy-loop-harness.js";
@@ -254,6 +260,50 @@ export function createAutomationOfficeRoutes(
         },
       },
       async (request) => getAutomationById(request.params.id),
+    );
+
+    app.get(
+      "/office/external-automations",
+      {
+        schema: {
+          tags: ["automation-office"],
+          response: {
+            200: z.array(externalAutomationSchema),
+            503: externalAutomationsUnavailableSchema,
+          },
+        },
+      },
+      async () => listExternalAutomations(),
+    );
+
+    app.post(
+      "/office/external-automations/:id/activate",
+      {
+        schema: {
+          tags: ["automation-office"],
+          params: z.object({ id: z.string().min(1) }),
+          response: {
+            200: externalAutomationSchema,
+            503: externalAutomationsUnavailableSchema,
+          },
+        },
+      },
+      async (request) => setExternalAutomationActive(request.params.id, true),
+    );
+
+    app.post(
+      "/office/external-automations/:id/deactivate",
+      {
+        schema: {
+          tags: ["automation-office"],
+          params: z.object({ id: z.string().min(1) }),
+          response: {
+            200: externalAutomationSchema,
+            503: externalAutomationsUnavailableSchema,
+          },
+        },
+      },
+      async (request) => setExternalAutomationActive(request.params.id, false),
     );
 
     app.get(

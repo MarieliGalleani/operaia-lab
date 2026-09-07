@@ -263,6 +263,19 @@ export interface AutomationListItem {
   readonly lastSuccess: boolean | null;
 }
 
+/**
+ * Automacao externa (n8n) — nao e uma AutomationListItem: vive fora do
+ * office, sem risk/autonomy/employee. So espelha nome/status reais e
+ * um link pra abrir no n8n.
+ */
+export interface ExternalAutomation {
+  readonly id: string;
+  readonly name: string;
+  readonly active: boolean;
+  readonly updatedAt: string;
+  readonly editorUrl: string;
+}
+
 export interface AutomationDto extends AutomationListItem {
   readonly actions: readonly string[];
   readonly nextExecutionAt: string | null;

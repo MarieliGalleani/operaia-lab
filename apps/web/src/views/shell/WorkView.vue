@@ -29,7 +29,11 @@ import { findFloor, floorIdFromPath } from "@/data/office-floors";
 import { useOffice } from "@/composables/useOffice";
 import { officeCommandClient } from "@/data/adapters/office-client";
 import { PREPARATION_AUTOMATIONS } from "@/data/automation-capabilities";
-import type { AutomationListItem, AutomationStatus } from "@/data/office-command";
+import type {
+  AutomationListItem,
+  AutomationStatus,
+  ExternalAutomation,
+} from "@/data/office-command";
 
 const route = useRoute();
 const floor = computed(() => findFloor(floorIdFromPath(route.path)));
@@ -54,13 +58,58 @@ async function loadAutomations(): Promise<void> {
   }
 }
 
+/**
+ * Automações externas (n8n) — independente do estado de `automations`
+ * (OfficeAutomation): vive fora do office, so espelha status real.
+ * `externalAutomations === null` + estado "unavailable" = n8n nao
+ * configurado no ambiente, nao "zero workflows".
+ */
+const externalAutomations = ref<readonly ExternalAutomation[] | null>(null);
+const externalState = ref<"idle" | "loading" | "ready" | "unavailable" | "error">("idle");
+const externalError = ref<string | null>(null);
+const externalToggling = ref<string | null>(null);
+
+async function loadExternalAutomations(): Promise<void> {
+  externalState.value = "loading";
+  externalError.value = null;
+  try {
+    const result = await officeCommandClient.listExternalAutomations();
+    externalAutomations.value = result;
+    externalState.value = result === null ? "unavailable" : "ready";
+  } catch (error) {
+    externalError.value =
+      error instanceof Error
+        ? error.message
+        : "Não foi possível consultar as automações externas.";
+    externalState.value = "error";
+    console.log("[work-view] falha ao carregar automações externas", error);
+  }
+}
+
+async function toggleExternalAutomation(item: ExternalAutomation): Promise<void> {
+  externalToggling.value = item.id;
+  try {
+    const updated = await officeCommandClient.setExternalAutomationActive(
+      item.id,
+      !item.active,
+    );
+    externalAutomations.value = (externalAutomations.value ?? []).map((a) =>
+      a.id === updated.id ? updated : a,
+    );
+  } catch (error) {
+    console.log("[work-view] falha ao alternar automação externa", error);
+  } finally {
+    externalToggling.value = null;
+  }
+}
+
 async function loadDev(force: boolean): Promise<void> {
   await office.load(force);
 }
 
 async function loadForFloor(force = false): Promise<void> {
   if (floor.value.id === "automation") {
-    await loadAutomations();
+    await Promise.all([loadAutomations(), loadExternalAutomations()]);
   } else if (floor.value.id === "dev") {
     await loadDev(force);
   }
@@ -198,6 +247,46 @@ const AUTOMATION_STATUS_LABEL: Record<string, { label: string; tone: string }> =
     </template>
 
     <template v-else-if="floor.id === 'automation'">
+      <section class="op-group">
+        <p class="op-eyebrow-sm">n8n</p>
+        <h3 class="op-group__title">Automações externas</h3>
+
+        <p v-if="externalState === 'unavailable'" class="op-empty-inline">
+          n8n não conectado a este ambiente ainda (faltam N8N_API_URL/N8N_API_KEY).
+        </p>
+        <p v-else-if="externalState === 'error'" class="op-empty-inline">{{ externalError }}</p>
+        <p v-else-if="externalState === 'loading' || externalState === 'idle'" class="op-loading">
+          Consultando o n8n…
+        </p>
+        <p v-else-if="(externalAutomations ?? []).length === 0" class="op-empty-inline">
+          Nenhum workflow encontrado no n8n.
+        </p>
+        <div v-else class="op-work-grid">
+          <div v-for="ext in externalAutomations" :key="ext.id" class="op-work-card">
+            <div class="op-work-card__head">
+              <p class="op-work-card__name">{{ ext.name }}</p>
+              <span class="op-work-card__status" :class="ext.active ? 'is-green' : 'is-muted'">
+                {{ ext.active ? "ativo" : "inativo" }}
+              </span>
+            </div>
+            <p class="op-mono op-work-card__meta">
+              atualizado {{ new Date(ext.updatedAt).toLocaleString("pt-BR") }}
+            </p>
+            <div class="op-work-card__foot">
+              <a :href="ext.editorUrl" target="_blank" rel="noopener" class="op-btn-retry">Abrir no n8n</a>
+              <button
+                type="button"
+                class="op-btn-retry"
+                :disabled="externalToggling === ext.id"
+                @click="toggleExternalAutomation(ext)"
+              >
+                {{ externalToggling === ext.id ? "…" : ext.active ? "Desativar" : "Ativar" }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <p v-if="automations.length === 0" class="op-empty-inline">
         Nenhuma automação registrada ainda. As capacidades em preparação abaixo ainda não possuem execução operacional.
       </p>

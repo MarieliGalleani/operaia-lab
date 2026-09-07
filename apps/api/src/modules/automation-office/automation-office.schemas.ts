@@ -349,3 +349,22 @@ export const officeUnavailableSchema = z.object({
   message: z.string(),
   degradations: z.array(z.string()),
 });
+
+/**
+ * Automacao externa (n8n) — nao e uma OfficeAutomation (nao roda no
+ * runtime de missoes do office, nao tem risk/autonomy/employee). E um
+ * workflow real que vive fora do operaia-lab; o andar de Automacao so
+ * espelha o status e permite ligar/desligar via API do n8n.
+ */
+export const externalAutomationSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  active: z.boolean(),
+  updatedAt: z.string(),
+  editorUrl: z.string(),
+});
+
+export const externalAutomationsUnavailableSchema = z.object({
+  code: z.literal("N8N_NOT_CONFIGURED"),
+  message: z.string(),
+});

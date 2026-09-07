@@ -5,7 +5,7 @@
  * - VITE_OFFICE_COMMAND_MOCK=true → mock explícito (dev/testes).
  * - caso contrário → API real; erros HTTP/rede propagam (sem fallback silencioso).
  */
-import { createHttpClient, type HttpClient } from "./http-client";
+import { createHttpClient, HttpError, type HttpClient } from "./http-client";
 import type {
   ApprovalActionResponse,
   ApprovalDetailDto,
@@ -19,6 +19,7 @@ import type {
   ExecuteDemandResponse,
   ExecutionDto,
   ExecutionListItem,
+  ExternalAutomation,
   InterpretDemandResponse,
   WorkspaceContextDto,
 } from "../office-command";
@@ -57,6 +58,9 @@ export interface OfficeCommandClient {
   getDecision(id: string): Promise<DecisionTraceDto | null>;
   listAutomations(workspaceId?: string): Promise<readonly AutomationListItem[]>;
   getAutomation(id: string): Promise<AutomationDto | null>;
+  /** null = n8n nao configurado no ambiente (N8N_API_URL/N8N_API_KEY ausentes). */
+  listExternalAutomations(): Promise<readonly ExternalAutomation[] | null>;
+  setExternalAutomationActive(id: string, active: boolean): Promise<ExternalAutomation>;
   listExecutions(workspaceId?: string): Promise<readonly ExecutionListItem[]>;
   getExecution(id: string): Promise<ExecutionDto | null>;
   getWorkspaceContext(
@@ -172,6 +176,27 @@ export function createOfficeCommandClient(
     async getAutomation(id) {
       if (useMock) return mockAutomation(id);
       return http.get<AutomationDto>(`/office/automations/${id}`);
+    },
+
+    async listExternalAutomations() {
+      if (useMock) return [];
+      try {
+        return await http.get<readonly ExternalAutomation[]>(
+          "/office/external-automations",
+        );
+      } catch (error) {
+        if (error instanceof HttpError && error.status === 503) {
+          return null;
+        }
+        throw error;
+      }
+    },
+
+    async setExternalAutomationActive(id, active) {
+      return http.post<ExternalAutomation>(
+        `/office/external-automations/${id}/${active ? "activate" : "deactivate"}`,
+        {},
+      );
     },
 
     async listExecutions(workspaceId) {
