@@ -103,16 +103,43 @@ export const REAL_AGENT_ROSTER: readonly RealAgentMeta[] = [
 ] as const;
 
 /**
+ * Id do roster (maquete) -> employeeId real do runtime, só onde divergem.
+ * liveStatus vem chaveado por employeeId real (ver live-agent-status.ts);
+ * sem esse alias, "opera" e "mag" nunca batiam com "operaia-ceo"/"cto-mag"
+ * e ficavam presos no stateId padrão, nunca virando "AVAILABLE" — bug
+ * silencioso, so os outros 7 ids batiam por coincidencia com o backend.
+ */
+const BACKEND_EMPLOYEE_ID: Readonly<Record<string, string>> = {
+  opera: "operaia-ceo",
+  mag: "cto-mag",
+};
+
+/**
  * Combina o elenco real com as estações de um andar (sede ou cliente) e o
  * status ao vivo — ocupado agora fica no posto no estado característico do
  * agente; livre agora vira "AVAILABLE" (rouba para zonas de descanso).
+ *
+ * `engagedIds`: quando informado (andar de cliente real), só entram os
+ * agentes de fato alocados no projeto daquele workspace — sem isso, todo
+ * andar mostrava o elenco inteiro parado igual, mesmo quem nunca tocou
+ * aquele cliente. `undefined` = comportamento antigo (sede OperaIA.lab,
+ * onde faz sentido mostrar todo mundo). Vem em employeeId real (mesmo
+ * formato de Project.teamIds), por isso o filtro resolve o alias antes
+ * de comparar — mesmo motivo do alias no liveStatus acima.
  */
 export function buildActorsForStations(
   stations: Readonly<Record<string, TileCoord>>,
   liveStatus: ReadonlyMap<string, LiveAgentStatus>,
+  engagedIds?: ReadonlySet<string>,
 ): readonly ActorDescriptor[] {
-  return REAL_AGENT_ROSTER.map((agent) => {
-    const live = liveStatus.get(agent.id);
+  const roster = engagedIds
+    ? REAL_AGENT_ROSTER.filter((agent) =>
+        engagedIds.has(BACKEND_EMPLOYEE_ID[agent.id] ?? agent.id),
+      )
+    : REAL_AGENT_ROSTER;
+
+  return roster.map((agent) => {
+    const live = liveStatus.get(BACKEND_EMPLOYEE_ID[agent.id] ?? agent.id);
     return {
       id: agent.id,
       name: agent.name,

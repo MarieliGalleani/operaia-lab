@@ -9,6 +9,8 @@ import type { MapProvider } from "../virtual-world/contracts/providers";
 import { CAMPUS_PLAZA_MAP } from "./data/campus-plaza-map";
 import { CAMPUS_RECEPTION_MAP } from "./data/campus-reception-map";
 import { CLIENT_FLOORS } from "./data/client-floors-registry";
+import { GERAI_ENTRANCE_MAP } from "./data/gerai-entrance-map";
+import { GERAI_F2_MAP } from "./data/gerai-floor-2-map";
 import { OFFICE_MAP } from "./data/office-map";
 
 const CLIENT_MAP_ENTRIES: Readonly<Record<string, MapManifest>> =
@@ -23,6 +25,10 @@ const WORLD_CATALOG: Readonly<Record<string, MapManifest>> = {
   [CAMPUS_RECEPTION_MAP.id]: CAMPUS_RECEPTION_MAP,
   [CAMPUS_PLAZA_MAP.id]: CAMPUS_PLAZA_MAP,
   [OFFICE_MAP.id]: OFFICE_MAP,
+  // Geraí existia como dado (mapas + elenco) mas nunca foi registrada
+  // aqui — na pratica, era impossivel visitar a sede dela.
+  [GERAI_ENTRANCE_MAP.id]: GERAI_ENTRANCE_MAP,
+  [GERAI_F2_MAP.id]: GERAI_F2_MAP,
   ...CLIENT_MAP_ENTRIES,
 };
 

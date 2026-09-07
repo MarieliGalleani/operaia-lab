@@ -10,6 +10,7 @@
  * novo = um item aqui + em client-floors-registry.ts, nada mais.
  */
 
+import { GERAI_ENTRANCE_MAP_ID } from "./campus-ids";
 import { CLIENT_FLOORS } from "./client-floors-registry";
 
 /** Slot visual na praça (posição relativa das fachadas). */
@@ -32,6 +33,21 @@ const LAB_ENTRANCE: ResidentEntranceDef = {
   slot: 0,
 };
 
+/**
+ * Geraí tinha mapas e elenco prontos (gerai-entrance-map.ts,
+ * gerai-floor-2-map.ts) mas nunca teve entrada registrada aqui nem no
+ * catalogo do mundo (office-map-provider.ts) — na pratica, Residente
+ * documentado como "sede integrada" que nao dava pra visitar.
+ */
+const GERAI_ENTRANCE: ResidentEntranceDef = {
+  residentId: "gerai",
+  label: "Geraí",
+  portalId: "plaza-to-gerai",
+  targetMapId: GERAI_ENTRANCE_MAP_ID,
+  targetSpawnId: "from-plaza",
+  slot: 1,
+};
+
 const CLIENT_ENTRANCES: readonly ResidentEntranceDef[] = CLIENT_FLOORS.map(
   (build, index) => ({
     residentId: build.entranceMapId.replace(/-entrance$/, ""),
@@ -39,15 +55,16 @@ const CLIENT_ENTRANCES: readonly ResidentEntranceDef[] = CLIENT_FLOORS.map(
     portalId: `plaza-to-${build.entranceMapId.replace(/-entrance$/, "")}`,
     targetMapId: build.entranceMapId,
     targetSpawnId: "from-plaza",
-    slot: index + 1,
+    slot: index + 2, // 0 = Lab, 1 = Geraí
   }),
 );
 
 /**
- * Residentes conectados à praça hoje: a sede + os clientes reais.
+ * Residentes conectados à praça hoje: a sede + Geraí + os clientes reais.
  * Adicionar Residente = novo item + mapas no catálogo (sem tocar nos maps Campus).
  */
 export const CAMPUS_RESIDENT_ENTRANCES: readonly ResidentEntranceDef[] = [
   LAB_ENTRANCE,
+  GERAI_ENTRANCE,
   ...CLIENT_ENTRANCES,
 ];
