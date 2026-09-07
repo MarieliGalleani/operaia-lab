@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { detectActionRisk } from "../governance/risk-classifier.js";
 import type {
   AutonomyLevel,
   DemandBriefDto,
@@ -7,29 +8,6 @@ import type {
   WorkPlanStepDto,
 } from "./automation-office.types.js";
 import { resolveWorkspaceName } from "./workspace-catalog.js";
-
-const CRITICAL_KEYWORDS = [
-  "produção",
-  "producao",
-  "deploy",
-  "delete",
-  "remover",
-  "drop",
-  "credencial",
-  "secret",
-  "password",
-  "token",
-];
-
-const HIGH_KEYWORDS = [
-  "migrar",
-  "migration",
-  "database",
-  "banco",
-  "infra",
-  "payment",
-  "pagamento",
-];
 
 interface InterpretInput {
   readonly text: string;
@@ -48,17 +26,7 @@ interface InterpretResult {
 }
 
 function detectRisk(text: string): RiskLevel {
-  const lower = text.toLowerCase();
-  if (CRITICAL_KEYWORDS.some((keyword) => lower.includes(keyword))) {
-    return "CRITICAL";
-  }
-  if (HIGH_KEYWORDS.some((keyword) => lower.includes(keyword))) {
-    return "HIGH";
-  }
-  if (lower.length > 400) {
-    return "MEDIUM";
-  }
-  return "LOW";
+  return detectActionRisk(text);
 }
 
 function resolveAutonomy(risk: RiskLevel): AutonomyLevel {

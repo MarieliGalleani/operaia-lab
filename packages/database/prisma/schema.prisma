@@ -718,6 +718,10 @@ model OfficeApprovalRequest {
   workspaceId    String
   demandId       String?
   demand         OfficeDemand?        @relation(fields: [demandId], references: [id], onDelete: SetNull)
+  /// Referencia solta (sem relacao Prisma) a uma Mission real do pipeline
+  /// de execucao continua — mesmo padrao ja usado em OfficeDemand.missionId,
+  /// pois Mission vive num bounded context separado.
+  missionId      String?
   action         String
   risk           OfficeRiskLevel      @default(MEDIUM)
   impact         String
@@ -733,6 +737,7 @@ model OfficeApprovalRequest {
 
   @@index([workspaceId, status])
   @@index([demandId])
+  @@index([missionId])
   @@map("office_approval_requests")
 }
 

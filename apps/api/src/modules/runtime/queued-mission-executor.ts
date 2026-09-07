@@ -13,8 +13,13 @@ import {
   defaultFailurePolicy,
   NonCriticalOperation,
 } from "@operaia/operational-health";
+import {
+  createApprovalForMission,
+  hasApprovalForMission,
+} from "../automation-office/approval.service.js";
 import type { DigitalOffice } from "../employees/office-composition.js";
 import type { WorkspaceSource } from "../employees/workspace-source.js";
+import { detectActionRisk } from "../governance/risk-classifier.js";
 import { buildDomainSyncActions } from "../operations/mission-domain-sync.js";
 import {
   buildMissionExecutionPlan,
@@ -538,6 +543,7 @@ export class QueuedMissionExecutor {
       workerEmployeeId,
       mission.workspaceId,
     );
+    await this.flagCriticalRiskForApproval(mission, context.objective);
     const result = await runner.run(employee, {
       workspace: context.workspace,
       objective: context.objective,
@@ -660,6 +666,62 @@ export class QueuedMissionExecutor {
       source: mission,
       delivery,
     });
+  }
+
+  /**
+   * Aviso retrospectivo, nao um portao: se o objetivo da missao bater em
+   * palavra-chave de risco CRITICAL, registra uma OfficeApprovalRequest
+   * pra revisao humana. A missao segue executando normalmente — nao ha
+   * MissionStatus de pausa hoje (WAITING ja e usado pelo fan-in de
+   * COORDINATE) e criar um exigiria mudanca bem maior no pipeline. Nunca
+   * deve derrubar a execucao real: qualquer falha aqui so e logada.
+   */
+  private async flagCriticalRiskForApproval(
+    mission: Mission,
+    objective: string,
+  ): Promise<void> {
+    if (detectActionRisk(objective) !== "CRITICAL") {
+      return;
+    }
+    try {
+      if (await hasApprovalForMission(mission.id)) {
+        return;
+      }
+      await createApprovalForMission({
+        missionId: mission.id,
+        workspaceId: mission.workspaceId,
+        action: objective.slice(0, 200),
+        risk: "CRITICAL",
+        impact:
+          "Ação classificada como crítica (produção, dados ou credenciais) — já foi executada pelo pipeline.",
+        reason:
+          "O objetivo desta missão contém termos associados a mudanças de alto risco.",
+        validated: [],
+        approveEffect: "Marca esta execução como revisada por um humano.",
+        rejectEffect: "Sinaliza a execução para investigação — não desfaz o que já rodou.",
+        officeDecision:
+          "Executado automaticamente pelo pipeline contínuo; esta aprovação é retrospectiva.",
+      });
+      this.logger.info(
+        {
+          component: "queued-mission-executor",
+          event: "critical_risk_approval_created",
+          missionId: mission.id,
+          workspaceId: mission.workspaceId,
+        },
+        "Missão de risco crítico registrada para aprovação humana",
+      );
+    } catch (error) {
+      this.logger.warn(
+        {
+          component: "queued-mission-executor",
+          event: "critical_risk_approval_failed",
+          missionId: mission.id,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        "Falha ao registrar aprovação de risco crítico — execução da missão prossegue normalmente",
+      );
+    }
   }
 
   private async runConsolidate(

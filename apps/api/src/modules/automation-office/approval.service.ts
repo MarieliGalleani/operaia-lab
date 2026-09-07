@@ -8,8 +8,7 @@ import {
   resolveWorkspaceName,
 } from "./workspace-catalog.js";
 
-export async function createApprovalForDemand(input: {
-  readonly demandId: string;
+interface CreateApprovalCommon {
   readonly workspaceId: string;
   readonly action: string;
   readonly risk: RiskLevel;
@@ -19,11 +18,16 @@ export async function createApprovalForDemand(input: {
   readonly approveEffect: string;
   readonly rejectEffect: string;
   readonly officeDecision: string;
-}) {
+}
+
+async function createApprovalRequest(
+  input: CreateApprovalCommon & { readonly demandId?: string; readonly missionId?: string },
+) {
   assertOfficialWorkspace(input.workspaceId);
   return prisma.officeApprovalRequest.create({
     data: {
-      demandId: input.demandId,
+      demandId: input.demandId ?? null,
+      missionId: input.missionId ?? null,
       workspaceId: input.workspaceId,
       action: input.action,
       risk: input.risk,
@@ -36,6 +40,33 @@ export async function createApprovalForDemand(input: {
       status: "PENDING",
     },
   });
+}
+
+export async function createApprovalForDemand(
+  input: CreateApprovalCommon & { readonly demandId: string },
+) {
+  return createApprovalRequest(input);
+}
+
+/**
+ * Aprovacao retrospectiva: criada quando o pipeline continuo de missoes
+ * (EmployeeWorker/QueuedMissionExecutor) ja executou uma acao classificada
+ * como risco CRITICAL. A missao nao para pra esperar — isso so avisa que
+ * algo arriscado aconteceu e precisa de revisao humana. Ver
+ * apps/api/src/modules/runtime/queued-mission-executor.ts (runExecute).
+ */
+export async function createApprovalForMission(
+  input: CreateApprovalCommon & { readonly missionId: string },
+) {
+  return createApprovalRequest(input);
+}
+
+export async function hasApprovalForMission(missionId: string): Promise<boolean> {
+  const existing = await prisma.officeApprovalRequest.findFirst({
+    where: { missionId },
+    select: { id: true },
+  });
+  return existing !== null;
 }
 
 export async function listApprovals(workspaceId?: string) {
