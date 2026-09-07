@@ -142,7 +142,7 @@ async function goToResident(targetMapId: string): Promise<void> {
   top: 58px;
   left: 12px;
   z-index: 5;
-  width: 248px;
+  width: min(248px, calc(100vw - 24px));
   max-height: min(70vh, 420px);
   overflow-y: auto;
   border-radius: var(--op-radius);

@@ -140,10 +140,12 @@ function onMapLoaded(mapId: string): void {
   position: absolute;
   top: 16px;
   left: 16px;
+  right: 16px;
   z-index: 5;
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .office-world__live {

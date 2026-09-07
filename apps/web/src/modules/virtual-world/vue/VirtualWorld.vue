@@ -189,6 +189,7 @@ defineExpose({ runtime });
   position: absolute;
   left: 12px;
   bottom: 12px;
+  max-width: calc(100% - 24px);
   padding: 8px 12px;
   border-radius: var(--op-radius-sm, 8px);
   font-family: "Sora", sans-serif;
