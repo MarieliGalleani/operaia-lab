@@ -65,6 +65,10 @@ export type {
   ListInfrastructureInput,
   InfrastructureInventory,
   ListInfrastructureTool,
+  WebSearchInput,
+  WebSearchHit,
+  WebSearchResult,
+  WebSearchTool,
 } from "./tools.js";
 
 export {
@@ -122,3 +126,9 @@ export {
   type InfrastructureLogSource,
   type WorkspaceInfrastructureResolver,
 } from "./adapters/local/index.js";
+
+export {
+  TavilyWebSearchAdapter,
+  createWebSearchToolPorts,
+  type TavilyWebSearchAdapterOptions,
+} from "./adapters/web-search/tavily-web-search-adapter.js";

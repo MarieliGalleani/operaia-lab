@@ -279,6 +279,28 @@ export interface ListInfrastructureTool {
   ): Promise<ToolResult<InfrastructureInventory>>;
 }
 
+/** Pesquisa na web real — nao GitHub/infra (P1.24). */
+export interface WebSearchInput {
+  readonly query: string;
+  /** Default 5, limitado a 10 pelo adapter. */
+  readonly maxResults?: number;
+}
+
+export interface WebSearchHit {
+  readonly title: string;
+  readonly url: string;
+  readonly snippet: string;
+}
+
+export interface WebSearchResult {
+  readonly query: string;
+  readonly results: readonly WebSearchHit[];
+}
+
+export interface WebSearchTool {
+  execute(input: WebSearchInput): Promise<ToolResult<WebSearchResult>>;
+}
+
 /**
  * Ports opcionais — preenchidos por adapters (A.2+ GitHub / A.3 Local).
  */
@@ -296,4 +318,5 @@ export interface ToolPorts {
   readonly readDockerfile?: ReadDockerfileTool;
   readonly readCaddy?: ReadCaddyTool;
   readonly listInfrastructure?: ListInfrastructureTool;
+  readonly webSearch?: WebSearchTool;
 }

@@ -111,6 +111,8 @@ const envSchema = z.object({
    * Sem token, usa API publica (rate limit menor).
    */
   GITHUB_TOKEN: z.string().optional(),
+  /** P1.24 — sem ela, webSearch fica NOT_IMPLEMENTED (Mercurio hoje). */
+  TAVILY_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

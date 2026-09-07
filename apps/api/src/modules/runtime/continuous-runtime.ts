@@ -82,6 +82,8 @@ export interface ContinuousRuntimeConfig {
    * Ex.: { "operaia-lab": "/home/ubuntu/operaia-lab" }
    */
   readonly workspaceInfraRoots?: Readonly<Record<string, string>>;
+  /** Chave da Tavily (P1.24) — sem ela, webSearch fica NOT_IMPLEMENTED. */
+  readonly webSearchApiKey?: string | null;
   /**
    * Action Runtime A.5 — default createLabActionRuntime (InMemory ledger).
    * Producao: passar executionLedger Prisma ou actionRuntime pronto.
@@ -149,7 +151,11 @@ export class ContinuousRuntime {
           config.allowLearningPrismaFallback ?? false,
       },
     );
-    if (config.domainSignals || config.workspaceInfraRoots) {
+    if (
+      config.domainSignals ||
+      config.workspaceInfraRoots ||
+      config.webSearchApiKey
+    ) {
       this.executor.setToolsFactory(
         createEmployeeToolsFactory({
           signals: config.domainSignals,
@@ -158,6 +164,7 @@ export class ContinuousRuntime {
           workspaceInfraRoots: config.workspaceInfraRoots ?? {
             "operaia-lab": process.cwd(),
           },
+          webSearchApiKey: config.webSearchApiKey,
         }),
       );
     }

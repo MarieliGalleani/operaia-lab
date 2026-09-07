@@ -22,6 +22,7 @@ export const ToolCapabilityGroup = {
   Documents: "Documents",
   RepositoryDocs: "RepositoryDocs",
   RoadmapDocs: "RoadmapDocs",
+  WebSearch: "WebSearch",
 } as const;
 
 export type ToolCapabilityGroup =
@@ -59,6 +60,7 @@ export const TOOL_GROUP_TOOLS: Readonly<
     ToolId.searchFiles,
   ],
   RoadmapDocs: [ToolId.readFile, ToolId.listDirectory, ToolId.searchFiles],
+  WebSearch: [ToolId.webSearch],
 };
 
 /**
@@ -67,6 +69,9 @@ export const TOOL_GROUP_TOOLS: Readonly<
  * Orion: Runtime + Logs
  * Mag / Luna: sem Logs
  * Mercurio / Themis: sem Infra
+ * Mercurio: unico com WebSearch hoje (P1.24) — pesquisa de mercado/
+ * concorrencia e o uso mais natural; expandir pra outros employees e
+ * so adicionar o grupo na lista deles.
  */
 export const DEFAULT_EMPLOYEE_TOOL_GROUPS: Readonly<
   Record<string, readonly ToolCapabilityGroup[]>
@@ -88,7 +93,7 @@ export const DEFAULT_EMPLOYEE_TOOL_GROUPS: Readonly<
   orion: [ToolCapabilityGroup.Runtime, ToolCapabilityGroup.Logs],
   aurora: [ToolCapabilityGroup.Finance],
   themis: [ToolCapabilityGroup.Documents],
-  mercurio: [ToolCapabilityGroup.RepositoryDocs],
+  mercurio: [ToolCapabilityGroup.RepositoryDocs, ToolCapabilityGroup.WebSearch],
   nexus: [ToolCapabilityGroup.RoadmapDocs],
   // Opera coordena; ferramentas de leitura ficam com especialistas.
   "operaia-ceo": [],

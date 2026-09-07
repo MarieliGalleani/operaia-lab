@@ -105,6 +105,7 @@ export function createProductLabRuntime(): ProductRuntime {
     },
     domainSignals: signals,
     githubToken: env.GITHUB_TOKEN,
+    webSearchApiKey: env.TAVILY_API_KEY,
     workGovernanceGate,
     workspaceInfraRoots: {
       "operaia-lab": process.cwd(),

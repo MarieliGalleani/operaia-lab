@@ -10,6 +10,7 @@ import {
 import {
   createGithubToolPorts,
   createLocalInfrastructureToolPorts,
+  createWebSearchToolPorts,
   FileInfrastructureLogSource,
   MapWorkspaceInfrastructureResolver,
   MemoryTtlCache,
@@ -35,6 +36,8 @@ export interface EmployeeToolsFactoryOptions {
   readonly infraResolver?: WorkspaceInfrastructureResolver;
   readonly infraFs?: InfrastructureFileSystem;
   readonly infraLogs?: InfrastructureLogSource;
+  /** Sem isso, webSearch fica NOT_IMPLEMENTED pra quem tiver o grupo WebSearch. */
+  readonly webSearchApiKey?: string | null;
 }
 
 /**
@@ -80,8 +83,19 @@ export function createEmployeeToolsFactory(
       });
     }
 
+    const webSearchPorts: ToolPorts = input.webSearchApiKey
+      ? createWebSearchToolPorts({
+          apiKey: input.webSearchApiKey,
+          employeeId,
+        })
+      : {};
+
     // Local primeiro; GitHub sobrescreve readWorkflow (API Actions).
-    const ports: ToolPorts = { ...localPorts, ...githubPorts };
+    const ports: ToolPorts = {
+      ...localPorts,
+      ...githubPorts,
+      ...webSearchPorts,
+    };
     return buildToolsForEmployee(employeeId, { ports });
   };
 }

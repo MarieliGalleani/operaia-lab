@@ -32,6 +32,8 @@ import type {
   SearchFilesInput,
   SearchFilesResult,
   ToolPorts,
+  WebSearchInput,
+  WebSearchResult,
   WorkflowInfo,
 } from "./tools.js";
 
@@ -156,6 +158,12 @@ export class ToolContext {
   ): Promise<ToolResult<InfrastructureInventory>> {
     return this.invoke(ToolId.listInfrastructure, input, (ports, value) =>
       ports.listInfrastructure!.execute(value),
+    );
+  }
+
+  webSearch(input: WebSearchInput): Promise<ToolResult<WebSearchResult>> {
+    return this.invoke(ToolId.webSearch, input, (ports, value) =>
+      ports.webSearch!.execute(value),
     );
   }
 

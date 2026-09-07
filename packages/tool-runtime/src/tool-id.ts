@@ -15,6 +15,7 @@ export const ToolId = {
   readDockerfile: "readDockerfile",
   readCaddy: "readCaddy",
   listInfrastructure: "listInfrastructure",
+  webSearch: "webSearch",
 } as const;
 
 export type ToolId = (typeof ToolId)[keyof typeof ToolId];
