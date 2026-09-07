@@ -5,12 +5,17 @@
  * A arquitetura do mundo é o grafo de mapas; esta página apenas escolhe o
  * mapa inicial do produto. Sem lógica de Residente na engine.
  *
- * Diretório (P1.22): a praça já suporta qualquer quantidade de Residentes
- * via registro (campus-resident-entrances.ts), mas só dava pra chegar
- * neles andando até a fachada certa — sem letreiro, sem lista, fácil de
- * se perder. O diretório é só um atalho de UI (chama runtime.loadMap
- * direto); não cria regra nova de navegação nem conhece Residente algum
- * além do que já está no registro do domínio espacial.
+ * "Elevador" (P1.22, adendo hub-vertical): o adendo pede hall + elevador
+ * como hub de distribuição em vez de andar até a fachada certa na praça.
+ * Um elevador físico com cabine/animação exigiria um novo tipo de
+ * interação multi-destino que o Portal System não tem hoje (portal
+ * sempre troca de mapa sozinho ao ser tocado — não dá pra interceptar
+ * sem mexer no motor, e o adendo proíbe isso: "não autoriza... alterar
+ * Runtime, ECS, Portal System ou engine"). Esta é a leitura pragmatica
+ * do mesmo pedido: o painel de andares abre automaticamente ao chegar
+ * no hall (Recepção) — você VÊ os andares e escolhe, sem precisar
+ * caminhar pela praça procurando fachada. Só UI (chama runtime.loadMap
+ * já público); a praça e o grafo de mapas continuam intocados.
  */
 import { computed, ref } from "vue";
 import { CAMPUS_RECEPTION_MAP_ID } from "@/modules/office-domain/data/campus-ids";
@@ -20,7 +25,7 @@ import VirtualWorld from "@/modules/virtual-world/vue/VirtualWorld.vue";
 
 const provider = createOfficeWorldProvider();
 const worldRef = ref<InstanceType<typeof VirtualWorld> | null>(null);
-const directoryOpen = ref(false);
+const directoryOpen = ref(true);
 const currentMapId = ref(CAMPUS_RECEPTION_MAP_ID);
 const traveling = ref<string | null>(null);
 
@@ -65,12 +70,12 @@ async function goToResident(targetMapId: string): Promise<void> {
       :aria-expanded="directoryOpen"
       @click="directoryOpen = !directoryOpen"
     >
-      <span aria-hidden="true">🏢</span> Diretório
+      <span aria-hidden="true">🛗</span> Elevador
     </button>
 
-    <div v-if="directoryOpen" class="directory-panel" role="dialog" aria-label="Diretório de Residentes">
+    <div v-if="directoryOpen" class="directory-panel" role="dialog" aria-label="Elevador — escolha o andar">
       <div class="directory-panel__head">
-        <p class="directory-panel__title">Residentes do Campus</p>
+        <p class="directory-panel__title">Elevador · escolha o andar</p>
         <button type="button" class="directory-panel__close" aria-label="Fechar" @click="directoryOpen = false">✕</button>
       </div>
       <ul class="directory-list">
@@ -88,6 +93,7 @@ async function goToResident(targetMapId: string): Promise<void> {
           </button>
         </li>
       </ul>
+      <p class="directory-panel__hint">Ou feche e ande até a fachada na praça, se preferir.</p>
     </div>
   </div>
 </template>
@@ -220,5 +226,13 @@ async function goToResident(targetMapId: string): Promise<void> {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   opacity: 0.7;
+}
+
+.directory-panel__hint {
+  margin: 0;
+  padding: 8px 14px 12px;
+  font-size: 11px;
+  color: var(--op-ink-3, #f1f5f9);
+  opacity: 0.6;
 }
 </style>
