@@ -19,6 +19,12 @@ export {
 export { FallbackLLMProvider } from "./providers/fallback-llm-provider.js";
 export { GeminiProvider } from "./providers/gemini-provider.js";
 export {
+  GeminiEmbeddingsProvider,
+  cosineSimilarity,
+  type EmbeddingsProvider,
+  type GeminiEmbeddingsProviderOptions,
+} from "./providers/gemini-embeddings-provider.js";
+export {
   DeterministicLLMProvider,
   DeterministicNarrativeLLM,
 } from "./providers/deterministic-llm-provider.js";

@@ -345,6 +345,11 @@ model OperationalMemoryNote {
   createdAt       DateTime  @default(now())
   expiresAt       DateTime?
   archivedAt      DateTime?
+  /// Embedding Gemini (text-embedding-004, 768 dims) — array nativo do
+  /// Postgres, sem pgvector (extensao indisponivel nesta instancia).
+  /// Cosseno calculado em memoria no app; null = nota anterior a este
+  /// campo ou geracao de embedding falhou, busca cai pra so lexical.
+  embedding       Float[]   @default([])
 
   @@unique([workspaceId, sourceType, sourceId, kind])
   @@index([workspaceId, createdAt])

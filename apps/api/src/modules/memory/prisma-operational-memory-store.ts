@@ -1,7 +1,18 @@
 /**
  * MemoryStore M1 persistente (PostgreSQL / Prisma).
  * Indice derivado — Mission / MissionLearning continuam fonte de verdade.
+ *
+ * Busca semantica (P1.25): sem pgvector disponivel nesta instancia
+ * Postgres, embeddings (Gemini text-embedding-004) ficam num Float[]
+ * comum e a similaridade de cosseno e calculada em memoria sobre o
+ * mesmo lote de candidatos que a busca lexical ja buscava — o corpus
+ * por workspace e pequeno (quota M1), entao isso e barato. Sem
+ * EmbeddingsProvider configurado, ou se a geracao falhar pra uma nota
+ * especifica, a busca cai pra lexical pura — nunca quebra por causa
+ * disso.
  */
+import type { EmbeddingsProvider } from "@operaia/ai-core";
+import { cosineSimilarity } from "@operaia/ai-core";
 import {
   clampMemoryContent,
   defaultExpiresAt,
@@ -20,22 +31,29 @@ import {
 } from "@operaia/memory";
 import { prisma, type Prisma } from "@operaia/database";
 
+/** Abaixo disso, um resultado so-semantico e descartado (ruido). */
+const SEMANTIC_MIN_SCORE = 0.5;
+
 export interface PrismaOperationalMemoryStoreOptions {
   readonly quotaPerWorkspace?: number;
   readonly maxAgeDays?: number;
   /** Exige workspaceId no search (default true — produto). */
   readonly requireWorkspaceFilter?: boolean;
+  /** Sem isso, busca fica so lexical (comportamento anterior). */
+  readonly embeddings?: EmbeddingsProvider;
 }
 
 export class PrismaOperationalMemoryStore implements MemoryStore {
   private readonly quota: number;
   private readonly maxAgeDays: number;
   private readonly requireWorkspaceFilter: boolean;
+  private readonly embeddings: EmbeddingsProvider | undefined;
 
   constructor(options: PrismaOperationalMemoryStoreOptions = {}) {
     this.quota = options.quotaPerWorkspace ?? MEMORY_M1_QUOTA_PER_WORKSPACE;
     this.maxAgeDays = options.maxAgeDays ?? 90;
     this.requireWorkspaceFilter = options.requireWorkspaceFilter ?? true;
+    this.embeddings = options.embeddings;
   }
 
   async store(record: MemoryRecord): Promise<void> {
@@ -105,6 +123,10 @@ export class PrismaOperationalMemoryStore implements MemoryStore {
       }
     }
 
+    const embedding = this.embeddings
+      ? ((await this.embeddings.embed(content)) ?? [])
+      : [];
+
     const data = {
       content,
       layer: asString(metadata.layer) ?? MEMORY_LAYER_OPERATIONAL,
@@ -120,6 +142,7 @@ export class PrismaOperationalMemoryStore implements MemoryStore {
       metadataJson: metadata as Prisma.InputJsonValue,
       expiresAt,
       archivedAt: null,
+      embedding: [...embedding],
     };
 
     await prisma.operationalMemoryNote.upsert({
@@ -176,6 +199,9 @@ export class PrismaOperationalMemoryStore implements MemoryStore {
     });
 
     const terms = tokenize(query.text);
+    const queryEmbedding = this.embeddings
+      ? await this.embeddings.embed(query.text)
+      : null;
     const scored: MemorySearchResult[] = [];
 
     for (const row of rows) {
@@ -183,9 +209,19 @@ export class PrismaOperationalMemoryStore implements MemoryStore {
       if (!matchesExtraFilters(record.metadata, query.filter)) {
         continue;
       }
-      const score = scoreRecord(record.content, query.text, terms);
-      if (score <= 0) {
-        continue;
+
+      let score: number;
+      if (queryEmbedding && row.embedding.length > 0) {
+        const semantic = cosineSimilarity(queryEmbedding, row.embedding);
+        if (semantic < SEMANTIC_MIN_SCORE) {
+          continue;
+        }
+        score = semantic;
+      } else {
+        score = scoreRecord(record.content, query.text, terms);
+        if (score <= 0) {
+          continue;
+        }
       }
       scored.push({ record, score });
     }

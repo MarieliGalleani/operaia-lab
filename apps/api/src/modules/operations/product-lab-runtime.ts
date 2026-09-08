@@ -50,6 +50,7 @@ export function createProductLabRuntime(): ProductRuntime {
 
   const memoryStore = createMemoryStore(
     resolveMemoryStoreMode(env.MEMORY_STORE),
+    { embeddingsApiKey: env.GEMINI_API_KEY },
   );
 
   const workGovernanceGate = createPrismaAlreadyDoneGate();
