@@ -26,7 +26,7 @@
  *   envolvidos e ultima acao (mesma informacao que EmployeeRoom.vue
  *   mostrava, so que na linguagem visual nova).
  */
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import OperationalHeader from "@/components/shell/OperationalHeader.vue";
 import { findFloor, floorIdFromPath } from "@/data/office-floors";
@@ -34,23 +34,38 @@ import { employeesForFloor } from "@/lib/office-floor";
 import { createOfficeWorldProvider } from "@/modules/office-domain/office-world-data-provider";
 import VirtualWorld from "@/modules/virtual-world/vue/VirtualWorld.vue";
 import { useOffice } from "@/composables/useOffice";
+import { createEmployeeStatsClient, type EmployeeStats } from "@/data/adapters/employee-stats-client";
 
 const route = useRoute();
 const floor = computed(() => findFloor(floorIdFromPath(route.path)));
 const office = useOffice();
 const worldProvider = createOfficeWorldProvider();
+const statsClient = createEmployeeStatsClient();
 
 const floorEmployees = computed(() =>
   employeesForFloor(office.employees.value, floor.value.id),
 );
 
+const statsByEmployee = ref(new Map<string, EmployeeStats>());
+
+async function loadStats(): Promise<void> {
+  try {
+    const stats = await statsClient.listStats();
+    statsByEmployee.value = new Map(stats.map((s) => [s.employeeId, s]));
+  } catch (error) {
+    console.log("[team-view] falha ao carregar desempenho da equipe", error);
+  }
+}
+
 async function load(force = false): Promise<void> {
-  await office.load(force);
+  await Promise.all([office.load(force), loadStats()]);
 }
 
 onMounted(() => {
   if (!office.loaded.value) {
     void load();
+  } else {
+    void loadStats();
   }
 });
 
@@ -68,6 +83,29 @@ function involvedProjects(employeeId: string): readonly string[] {
   return office.projects.value
     .filter((p) => p.teamIds.includes(employeeId))
     .map((p) => p.name);
+}
+
+const CONFIDENCE_LABEL: Record<EmployeeStats["confidence"], string> = {
+  CONFIANTE: "Confiante",
+  PRECISA_REVISAO: "Precisa de revisão",
+  SEM_DADOS: "Sem histórico ainda",
+};
+
+function stats(employeeId: string): EmployeeStats | undefined {
+  return statsByEmployee.value.get(employeeId);
+}
+
+function successRateLabel(stat: EmployeeStats | undefined): string {
+  if (!stat || stat.successRate === null) return "—";
+  return `${Math.round(stat.successRate * 100)}%`;
+}
+
+function avgDurationLabel(stat: EmployeeStats | undefined): string {
+  if (!stat || stat.avgDurationMs === null) return "—";
+  const min = stat.avgDurationMs / 60000;
+  if (min < 1) return `${Math.round(stat.avgDurationMs / 1000)}s`;
+  if (min < 60) return `${Math.round(min)}min`;
+  return `${(min / 60).toFixed(1)}h`;
 }
 
 const viewState = computed<"loading" | "error" | "empty" | "ready">(() => {
@@ -131,7 +169,29 @@ const viewState = computed<"loading" | "error" | "empty" | "ready">(() => {
           <div class="op-employee-card__state">
             <span class="op-dot" :class="e.status === 'WORKING' ? 'is-on' : 'is-off'" />
             <span>{{ STATUS_LABEL[e.status] ?? e.status }}</span>
+            <span
+              class="op-confidence-pill"
+              :class="`is-${(stats(e.id)?.confidence ?? 'SEM_DADOS').toLowerCase()}`"
+            >
+              {{ CONFIDENCE_LABEL[stats(e.id)?.confidence ?? "SEM_DADOS"] }}
+            </span>
           </div>
+
+          <div class="op-kpi-row">
+            <div class="op-kpi-tile">
+              <span class="op-kpi-tile__value">{{ stats(e.id)?.missionsCompleted ?? "—" }}</span>
+              <span class="op-kpi-tile__label">missões</span>
+            </div>
+            <div class="op-kpi-tile">
+              <span class="op-kpi-tile__value">{{ successRateLabel(stats(e.id)) }}</span>
+              <span class="op-kpi-tile__label">sucesso</span>
+            </div>
+            <div class="op-kpi-tile">
+              <span class="op-kpi-tile__value">{{ avgDurationLabel(stats(e.id)) }}</span>
+              <span class="op-kpi-tile__label">tempo médio</span>
+            </div>
+          </div>
+
           <p v-if="e.mission" class="op-employee-card__mission">{{ e.mission }}</p>
           <p v-else class="op-employee-card__mission is-empty">Atividade atual não disponível.</p>
 
@@ -326,6 +386,56 @@ const viewState = computed<"loading" | "error" | "empty" | "ready">(() => {
 
 .op-dot.is-off {
   background: var(--op-muted-5);
+}
+
+.op-confidence-pill {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--op-radius-full);
+  background: var(--op-raise);
+  color: var(--op-muted-3);
+}
+
+.op-confidence-pill.is-confiante {
+  background: var(--op-halo);
+  color: var(--op-green);
+}
+
+.op-confidence-pill.is-precisa_revisao {
+  color: var(--op-amber);
+}
+
+.op-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.op-kpi-tile {
+  text-align: center;
+  padding: 6px 4px;
+  border-radius: var(--op-radius-sm);
+  background: var(--op-raise);
+}
+
+.op-kpi-tile__value {
+  display: block;
+  font-family: var(--op-font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--op-ink-2);
+}
+
+.op-kpi-tile__label {
+  display: block;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--op-muted-4);
+  margin-top: 2px;
 }
 
 .op-employee-card__mission {

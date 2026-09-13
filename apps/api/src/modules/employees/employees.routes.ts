@@ -6,9 +6,11 @@ import {
   employeeIdParamsSchema,
   employeeProfileSchema,
   employeeReplySchema,
+  employeeStatsSchema,
   employeeStatusSchema,
   httpErrorSchema,
 } from "./employees.schema.js";
+import { listEmployeeStats } from "./employee-stats.service.js";
 
 /**
  * Rotas HTTP da Equipe Digital. Controllers apenas delegam a
@@ -38,6 +40,17 @@ export function createEmployeeRoutes(
         },
       },
       async () => application.listStatuses(),
+    );
+
+    app.get(
+      "/stats",
+      {
+        schema: {
+          tags: ["employees"],
+          response: { 200: z.array(employeeStatsSchema) },
+        },
+      },
+      async () => [...(await listEmployeeStats())],
     );
 
     app.get(

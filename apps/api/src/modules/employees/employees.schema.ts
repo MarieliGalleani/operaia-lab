@@ -44,6 +44,16 @@ export const employeeStatusSchema = z.object({
   lastActivity: z.string(),
 });
 
+export const employeeStatsSchema = z.object({
+  employeeId: z.string(),
+  missionsCompleted: z.number(),
+  missionsFailed: z.number(),
+  totalFinished: z.number(),
+  successRate: z.number().nullable(),
+  avgDurationMs: z.number().nullable(),
+  confidence: z.enum(["CONFIANTE", "PRECISA_REVISAO", "SEM_DADOS"]),
+});
+
 export const employeeReplySchema = z.object({
   employeeId: z.string(),
   content: z.string(),
