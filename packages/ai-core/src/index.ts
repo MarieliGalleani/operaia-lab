@@ -1,6 +1,7 @@
 export type {
   LLMRole,
   LLMMessage,
+  LLMImageAttachment,
   LLMCompletionOptions,
   LLMCompletion,
   LLMProvider,

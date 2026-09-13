@@ -37,9 +37,18 @@ export function stripCodeFence(content: string): string {
 export async function createCampaign(input: {
   niche: string;
   briefing: string;
+  attachmentName?: string;
+  attachmentMimeType?: string;
+  attachmentBase64?: string;
 }): Promise<MarketingCampaign> {
   const campaign = await prisma.marketingCampaign.create({
-    data: { niche: input.niche, briefing: input.briefing },
+    data: {
+      niche: input.niche,
+      briefing: input.briefing,
+      attachmentName: input.attachmentName,
+      attachmentMimeType: input.attachmentMimeType,
+      attachmentBase64: input.attachmentBase64,
+    },
   });
   void runPipeline(campaign.id).catch((error) => {
     console.error("[marketing-office] pipeline falhou de forma inesperada", error);
@@ -55,8 +64,27 @@ export async function getCampaignById(id: string): Promise<MarketingCampaign | n
   return prisma.marketingCampaign.findUnique({ where: { id } });
 }
 
+export interface MarketingAttachment {
+  readonly name: string;
+  readonly mimeType: string;
+  readonly base64: string;
+}
+
+export async function getCampaignAttachment(id: string): Promise<MarketingAttachment | null> {
+  const campaign = await prisma.marketingCampaign.findUnique({
+    where: { id },
+    select: { attachmentName: true, attachmentMimeType: true, attachmentBase64: true },
+  });
+  if (!campaign?.attachmentBase64 || !campaign.attachmentMimeType) return null;
+  return {
+    name: campaign.attachmentName ?? "anexo",
+    mimeType: campaign.attachmentMimeType,
+    base64: campaign.attachmentBase64,
+  };
+}
+
 /**
- * Roda as 6 etapas do Mercurio em sequencia, persistindo o resultado de
+ * Roda as etapas do Mercurio em sequencia, persistindo o resultado de
  * cada uma assim que fica pronta — a tela pode ir mostrando ao vivo por
  * polling, sem esperar a campanha inteira terminar.
  */

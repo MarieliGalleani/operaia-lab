@@ -2,10 +2,12 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import {
   createCampaignBodySchema,
+  marketingAttachmentSchema,
   marketingCampaignSchema,
 } from "./marketing-office.schemas.js";
 import {
   createCampaign,
+  getCampaignAttachment,
   getCampaignById,
   listCampaigns,
 } from "./marketing-campaign.service.js";
@@ -58,6 +60,27 @@ export const createMarketingOfficeRoutes: FastifyPluginAsyncZod = async (app) =>
         return reply.status(404).send({ message: "Campanha nao encontrada." });
       }
       return JSON.parse(JSON.stringify(campaign));
+    },
+  );
+
+  app.get(
+    "/office/marketing/campaigns/:id/attachment",
+    {
+      schema: {
+        tags: ["marketing-office"],
+        params: z.object({ id: z.string().min(1) }),
+        response: {
+          200: marketingAttachmentSchema,
+          404: z.object({ message: z.string() }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const attachment = await getCampaignAttachment(request.params.id);
+      if (!attachment) {
+        return reply.status(404).send({ message: "Anexo nao encontrado." });
+      }
+      return attachment;
     },
   );
 };

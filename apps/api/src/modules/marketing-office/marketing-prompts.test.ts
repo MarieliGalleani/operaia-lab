@@ -57,3 +57,51 @@ describe("buildStageMessages", () => {
     expect(messages[1]!.content).not.toContain("Contexto ja produzido");
   });
 });
+
+describe("buildStageMessages — etapas novas (Fase 6)", () => {
+  it("pede JSON de roteiro de video com gancho e cenas", () => {
+    const messages = buildStageMessages(
+      "VIDEO_ROTEIRO",
+      baseCampaign({ creatives: "## Headline\nAgenda cheia pela pele tratada" }),
+    );
+    expect(messages[1]!.content).toContain("gancho");
+    expect(messages[1]!.content).toContain("cenas");
+  });
+
+  it("pede plano de trafego com distribuicao percentual, nunca valor absoluto", () => {
+    const messages = buildStageMessages("PLANO_TRAFEGO", baseCampaign());
+    expect(messages[1]!.content).toContain("percentual");
+    expect(messages[1]!.content).toContain("nunca invente valor absoluto");
+  });
+
+  it("framework de performance nunca pede numero real de campanha", () => {
+    const messages = buildStageMessages("FRAMEWORK_PERFORMANCE", baseCampaign());
+    expect(messages[1]!.content).toContain("nunca invente numero de uma campanha");
+  });
+});
+
+describe("buildStageMessages — anexo do briefing", () => {
+  it("anexa imagem como LLMImageAttachment quando o mimetype e image/*", () => {
+    const messages = buildStageMessages(
+      "MAPA_NICHO",
+      baseCampaign({ attachmentName: "logo.png", attachmentMimeType: "image/png", attachmentBase64: "ZmFrZQ==" }),
+    );
+    expect(messages[1]!.images).toEqual([{ mimeType: "image/png", base64: "ZmFrZQ==" }]);
+  });
+
+  it("decodifica anexo de texto puro direto no prompt", () => {
+    const texto = Buffer.from("Publico ja pesquisado: mulheres 30-45").toString("base64");
+    const messages = buildStageMessages(
+      "MAPA_NICHO",
+      baseCampaign({ attachmentName: "notas.txt", attachmentMimeType: "text/plain", attachmentBase64: texto }),
+    );
+    expect(messages[1]!.content).toContain("Publico ja pesquisado: mulheres 30-45");
+    expect(messages[1]!.images).toBeUndefined();
+  });
+
+  it("sem anexo, nao ha campo images nem nota de anexo", () => {
+    const messages = buildStageMessages("MAPA_NICHO", baseCampaign());
+    expect(messages[1]!.images).toBeUndefined();
+    expect(messages[1]!.content).not.toContain("anexou");
+  });
+});
