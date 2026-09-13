@@ -21,8 +21,9 @@ describe("toGeminiRequestParts", () => {
       { role: "assistant", content: "Como posso ajudar?" },
     ]);
     expect(parts.contents[1]?.role).toBe("model");
-    expect(parts.contents[1]?.parts[0]?.text).toContain("Ola");
-    expect(parts.contents[1]?.parts[0]?.text).toContain("Como posso ajudar?");
+    const merged = parts.contents[1]?.parts[0] as { text?: string } | undefined;
+    expect(merged?.text).toContain("Ola");
+    expect(merged?.text).toContain("Como posso ajudar?");
   });
 });
 
@@ -42,13 +43,16 @@ describe("createLLMProvider", () => {
     ).toThrow(/GEMINI_API_KEY/);
   });
 
-  it("reserva slots openai/anthropic/openrouter sem quebrar o contrato", () => {
+  it("reserva slots openai/openrouter sem quebrar o contrato", () => {
     expect(() => createLLMProvider({ provider: "openai" })).toThrow(/OpenAI/);
-    expect(() => createLLMProvider({ provider: "anthropic" })).toThrow(
-      /Anthropic/,
-    );
     expect(() => createLLMProvider({ provider: "openrouter" })).toThrow(
       /OpenRouter/,
+    );
+  });
+
+  it("exige ANTHROPIC_API_KEY para anthropic", () => {
+    expect(() => createLLMProvider({ provider: "anthropic" })).toThrow(
+      /ANTHROPIC_API_KEY/,
     );
   });
 

@@ -1,9 +1,13 @@
 import type { LLMMessage } from "../llm-provider.js";
 
 /** Conteudo no formato esperado pelo Google Gen AI SDK. */
+export type GeminiPart =
+  | { readonly text: string }
+  | { readonly inlineData: { readonly mimeType: string; readonly data: string } };
+
 export interface GeminiContent {
   readonly role: "user" | "model";
-  readonly parts: readonly { readonly text: string }[];
+  readonly parts: readonly GeminiPart[];
 }
 
 export interface GeminiRequestParts {
@@ -31,16 +35,23 @@ export function toGeminiRequestParts(
       continue;
     }
     const role = message.role === "assistant" ? "model" : "user";
+    const imageParts: GeminiPart[] = (message.images ?? []).map((image) => ({
+      inlineData: { mimeType: image.mimeType, data: image.base64 },
+    }));
     const previous = contents[contents.length - 1];
     if (previous && previous.role === role) {
-      const merged = `${previous.parts[0]?.text ?? ""}\n\n${message.content}`;
+      const previousText = previous.parts.find(
+        (part): part is { text: string } => "text" in part,
+      )?.text ?? "";
+      const previousImages = previous.parts.filter((part) => "inlineData" in part);
+      const merged = `${previousText}\n\n${message.content}`;
       contents[contents.length - 1] = {
         role,
-        parts: [{ text: merged }],
+        parts: [{ text: merged }, ...previousImages, ...imageParts],
       };
       continue;
     }
-    contents.push({ role, parts: [{ text: message.content }] });
+    contents.push({ role, parts: [{ text: message.content }, ...imageParts] });
   }
 
   if (contents.length === 0) {

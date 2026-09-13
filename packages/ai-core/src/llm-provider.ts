@@ -8,9 +8,17 @@
 
 export type LLMRole = "system" | "user" | "assistant";
 
+export interface LLMImageAttachment {
+  readonly mimeType: string;
+  /** Base64 puro, sem prefixo data: URI. */
+  readonly base64: string;
+}
+
 export interface LLMMessage {
   readonly role: LLMRole;
   readonly content: string;
+  /** Anexos de imagem (multimodal) — providers sem suporte os ignoram. */
+  readonly images?: readonly LLMImageAttachment[];
 }
 
 export interface LLMCompletionOptions {

@@ -40,9 +40,11 @@ export class GeminiProvider implements LLMProvider {
 
     const geminiContents = contents.map((content) => ({
       role: content.role,
-      parts: content.parts.map((part) => ({
-        text: part.text,
-      })),
+      parts: content.parts.map((part) =>
+        "inlineData" in part
+          ? { inlineData: part.inlineData }
+          : { text: part.text },
+      ),
     }));
     
     const response = await this.client.models.generateContent({
