@@ -1,28 +1,36 @@
 <script setup lang="ts">
 /**
- * O Mural (P1.X — plano "O Mural do Escritório", Fase 1).
+ * O Mural (P1.X — plano "O Mural do Escritório", Fase 1+2).
  *
  * Feed cronológico de atividade real do andar: aprovações que precisam
- * de decisão (com Aprovar/Rejeitar ali mesmo, sem trocar de tela) e
- * execuções de automação já concluídas. Nenhuma tabela nova — só
- * combina o que /office/approvals e /office/executions já retornam,
- * e escuta o WebSocket de status ao vivo pra se atualizar sozinho
- * quando algo novo acontece.
+ * de decisão (com Aprovar/Rejeitar ali mesmo, sem trocar de tela) mais
+ * uma fonte de "o que já aconteceu" especifica de cada andar — execuções
+ * de automação, decisões da Opera, ou campanhas do Mercúrio. Nenhuma
+ * tabela nova — só combina o que as APIs de cada andar já retornam, e
+ * escuta o WebSocket de status ao vivo pra se atualizar sozinho quando
+ * algo novo acontece.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { officeCommandClient } from "@/data/adapters/office-client";
-import type { ApprovalListItem, ExecutionListItem } from "@/data/office-command";
+import type { ApprovalListItem, DecisionTraceDto, ExecutionListItem } from "@/data/office-command";
 import { RISK_LABEL } from "@/data/office-command";
 import { connectLiveStatusSocket } from "@/modules/office-domain/live-status-socket";
+import { createMarketingOfficeClient, type MarketingCampaign } from "@/data/adapters/marketing-office-client";
 
-const props = defineProps<{ workspaceId?: string }>();
+const props = defineProps<{ floorId: "dev" | "automation" | "marketing"; workspaceId?: string }>();
 
 type MuralItem =
   | { kind: "approval"; id: string; at: string; data: ApprovalListItem }
-  | { kind: "execution"; id: string; at: string; data: ExecutionListItem };
+  | { kind: "execution"; id: string; at: string; data: ExecutionListItem }
+  | { kind: "decision"; id: string; at: string; data: DecisionTraceDto }
+  | { kind: "campaign"; id: string; at: string; data: MarketingCampaign };
+
+const marketingClient = createMarketingOfficeClient();
 
 const approvals = ref<readonly ApprovalListItem[]>([]);
 const executions = ref<readonly ExecutionListItem[]>([]);
+const decisions = ref<readonly DecisionTraceDto[]>([]);
+const campaigns = ref<readonly MarketingCampaign[]>([]);
 const state = ref<"idle" | "loading" | "ready" | "error">("idle");
 const error = ref<string | null>(null);
 const acting = ref<string | null>(null);
@@ -34,12 +42,31 @@ async function load(): Promise<void> {
   if (state.value === "idle") state.value = "loading";
   error.value = null;
   try {
-    const [a, e] = await Promise.all([
-      officeCommandClient.listApprovals(props.workspaceId),
-      officeCommandClient.listExecutions(props.workspaceId),
-    ]);
-    approvals.value = a;
-    executions.value = e;
+    const calls: Promise<unknown>[] = [
+      officeCommandClient.listApprovals(props.workspaceId).then((v) => {
+        approvals.value = v;
+      }),
+    ];
+    if (props.floorId === "automation") {
+      calls.push(
+        officeCommandClient.listExecutions(props.workspaceId).then((v) => {
+          executions.value = v;
+        }),
+      );
+    } else if (props.floorId === "dev") {
+      calls.push(
+        officeCommandClient.listDecisions(props.workspaceId).then((v) => {
+          decisions.value = v;
+        }),
+      );
+    } else {
+      calls.push(
+        marketingClient.listCampaigns().then((v) => {
+          campaigns.value = v;
+        }),
+      );
+    }
+    await Promise.all(calls);
     state.value = "ready";
   } catch (err) {
     error.value = err instanceof Error ? err.message : "Não foi possível carregar o mural.";
@@ -47,6 +74,19 @@ async function load(): Promise<void> {
     console.log("[mural] falha ao carregar", err);
   }
 }
+
+const CONFIDENCE_LABEL: Record<DecisionTraceDto["confidence"], string> = {
+  LOW: "baixa",
+  MEDIUM: "média",
+  HIGH: "alta",
+};
+
+const CAMPAIGN_STATUS_LABEL: Record<MarketingCampaign["status"], string> = {
+  PENDING: "na fila",
+  RUNNING: "trabalhando",
+  DONE: "concluída",
+  ERROR: "falhou",
+};
 
 const items = computed<MuralItem[]>(() => {
   const approvalItems: MuralItem[] = approvals.value.map((a) => ({
@@ -61,7 +101,19 @@ const items = computed<MuralItem[]>(() => {
     at: e.finishedAt ?? e.startedAt,
     data: e,
   }));
-  return [...approvalItems, ...executionItems]
+  const decisionItems: MuralItem[] = decisions.value.map((d) => ({
+    kind: "decision",
+    id: `dec-${d.decisionId}`,
+    at: d.createdAt,
+    data: d,
+  }));
+  const campaignItems: MuralItem[] = campaigns.value.map((c) => ({
+    kind: "campaign",
+    id: `camp-${c.id}`,
+    at: c.updatedAt,
+    data: c,
+  }));
+  return [...approvalItems, ...executionItems, ...decisionItems, ...campaignItems]
     .sort((x, y) => new Date(y.at).getTime() - new Date(x.at).getTime())
     .slice(0, 20);
 });
@@ -149,23 +201,51 @@ onBeforeUnmount(() => {
     <ul v-else class="op-mural__list">
       <li v-for="item in items" :key="item.id" class="op-mural-card">
         <span class="op-mural-card__avatar">{{
-          item.kind === "approval" ? "AT" : initials(item.data.automationName)
+          item.kind === "approval"
+            ? "OP"
+            : item.kind === "execution"
+              ? initials(item.data.automationName)
+              : item.kind === "decision"
+                ? initials(item.data.responsibleLabel)
+                : "ME"
         }}</span>
 
         <div class="op-mural-card__body">
           <div class="op-mural-card__head">
-            <strong>{{ item.kind === "approval" ? "Atlas" : item.data.automationName }}</strong>
+            <strong>{{
+              item.kind === "approval"
+                ? "Opera"
+                : item.kind === "execution"
+                  ? item.data.automationName
+                  : item.kind === "decision"
+                    ? item.data.responsibleLabel
+                    : "Mercúrio"
+            }}</strong>
             <span v-if="item.kind === 'approval'" class="op-mural-card__badge">
               risco {{ RISK_LABEL[item.data.risk] }}
             </span>
-            <span v-else class="op-mural-card__badge">
+            <span v-else-if="item.kind === 'execution'" class="op-mural-card__badge">
               {{ executionStatusLabel(item.data.status) }} · {{ duration(item.data.startedAt, item.data.finishedAt) }}
+            </span>
+            <span v-else-if="item.kind === 'decision'" class="op-mural-card__badge">
+              confiança {{ CONFIDENCE_LABEL[item.data.confidence] }}
+            </span>
+            <span v-else class="op-mural-card__badge">
+              {{ CAMPAIGN_STATUS_LABEL[item.data.status] }}
             </span>
             <span class="op-mural-card__time">{{ timeAgo(item.at) }}</span>
           </div>
 
           <p class="op-mural-card__summary">
-            {{ item.kind === "approval" ? item.data.actionSummary : `Workspace ${item.data.workspaceName}` }}
+            {{
+              item.kind === "approval"
+                ? item.data.actionSummary
+                : item.kind === "execution"
+                  ? `Workspace ${item.data.workspaceName}`
+                  : item.kind === "decision"
+                    ? item.data.objective
+                    : `Campanha "${item.data.niche}"`
+            }}
           </p>
 
           <div v-if="item.kind === 'approval' && item.data.status === 'PENDING'" class="op-mural-card__actions">
@@ -186,7 +266,7 @@ onBeforeUnmount(() => {
               Rejeitar
             </button>
             <router-link
-              :to="`/app/floor/automation/command/approvals/${item.data.id}`"
+              :to="`/app/floor/${props.floorId}/command/approvals/${item.data.id}`"
               class="op-mural-btn op-mural-btn--link"
             >
               Ver detalhes
@@ -195,6 +275,21 @@ onBeforeUnmount(() => {
           <p v-else-if="item.kind === 'approval'" class="op-mural-card__resolved">
             {{ item.data.status === "APPROVED" ? "Aprovada" : item.data.status === "REJECTED" ? "Rejeitada" : item.data.status }}
           </p>
+
+          <router-link
+            v-else-if="item.kind === 'decision'"
+            :to="`/app/floor/${props.floorId}/decisions/${item.data.decisionId}`"
+            class="op-mural-btn op-mural-btn--link"
+          >
+            Ver decisão
+          </router-link>
+          <router-link
+            v-else-if="item.kind === 'campaign'"
+            to="/app/floor/marketing/work"
+            class="op-mural-btn op-mural-btn--link"
+          >
+            Ver campanha
+          </router-link>
         </div>
       </li>
     </ul>

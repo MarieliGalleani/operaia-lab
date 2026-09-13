@@ -238,7 +238,7 @@ const ariaSummary = computed(() => {
         </div>
       </div>
 
-      <MuralFeed v-if="floor.id === 'automation'" class="op-mural-slot" />
+      <MuralFeed :floor-id="floor.id" class="op-mural-slot" />
 
       <div class="op-section-head">
         <h3>Acontecendo agora</h3>
