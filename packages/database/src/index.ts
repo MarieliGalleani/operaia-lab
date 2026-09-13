@@ -46,4 +46,7 @@ export {
   CoordinationLatchStatus,
   UserRole,
   Prisma,
+  type MarketingCampaign,
+  MarketingCampaignStatus,
+  MarketingStage,
 } from "@prisma/client";

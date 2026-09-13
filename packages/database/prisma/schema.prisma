@@ -790,3 +790,39 @@ model OfficeAutomation {
   @@index([workspaceId, status])
   @@map("office_automations")
 }
+
+enum MarketingCampaignStatus {
+  PENDING
+  RUNNING
+  DONE
+  ERROR
+}
+
+enum MarketingStage {
+  MAPA_NICHO
+  CRIATIVOS
+  LANDING_PAGE
+  PITCH_DECK
+  PLANO_GTM
+  PLAYBOOK_VENDAS
+}
+
+model MarketingCampaign {
+  id              String                  @id @default(uuid())
+  niche           String
+  briefing        String
+  status          MarketingCampaignStatus @default(PENDING)
+  currentStage    MarketingStage?
+  nicheMap        String?
+  creatives       String?
+  landingPageHtml String?
+  pitchDeck       String?
+  gtmPlan         String?
+  salesPlaybook   String?
+  errorMessage    String?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@index([status])
+  @@map("marketing_campaigns")
+}

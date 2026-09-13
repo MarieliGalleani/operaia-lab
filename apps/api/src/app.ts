@@ -19,6 +19,7 @@ import { infraRoutes } from "./modules/infra/vps.routes.js";
 import { knowledgeRoutes } from "./modules/knowledge/knowledge.routes.js";
 import { createOfficeStatusRoutes } from "./modules/office/office-status.routes.js";
 import { createAutomationOfficeRoutes } from "./modules/automation-office/index.js";
+import { createMarketingOfficeRoutes } from "./modules/marketing-office/index.js";
 import { scheduleRuleRoutes } from "./modules/schedule-rules/schedule-rules.routes.js";
 import { createProductLabRuntime } from "./modules/operations/product-lab-runtime.js";
 import { createOperationsRoutes } from "./modules/operations/operations.routes.js";
@@ -111,6 +112,7 @@ export function buildApp(): AppBundle {
       }),
       { prefix: "/api/v1" },
     );
+    protectedApi.register(createMarketingOfficeRoutes, { prefix: "/api/v1" });
     protectedApi.register(scheduleRuleRoutes, { prefix: "/api/v1" });
     protectedApi.register(liveStatusRoutes, { prefix: "/api/v1/ws" });
   });
