@@ -18,6 +18,8 @@ import {
   type MarketingStageId,
 } from "@/data/adapters/marketing-office-client";
 
+const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
+
 const route = useRoute();
 const floor = computed(() => findFloor(floorIdFromPath(route.path)));
 const client = createMarketingOfficeClient();
@@ -32,6 +34,102 @@ const niche = ref("");
 const briefing = ref("");
 const submitting = ref(false);
 const submitError = ref<string | null>(null);
+
+const attachmentFile = ref<File | null>(null);
+const attachmentBase64 = ref<string | null>(null);
+const fileInputRef = ref<HTMLInputElement | null>(null);
+
+function onAttachmentChange(event: Event): void {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0] ?? null;
+  submitError.value = null;
+  if (!file) {
+    attachmentFile.value = null;
+    attachmentBase64.value = null;
+    return;
+  }
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    submitError.value = "Anexo muito grande — o limite é 4MB.";
+    input.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const result = reader.result as string;
+    // "data:image/png;base64,AAAA..." → so a parte depois da virgula.
+    attachmentBase64.value = result.split(",")[1] ?? null;
+  };
+  reader.onerror = () => {
+    submitError.value = "Não foi possível ler o anexo.";
+  };
+  reader.readAsDataURL(file);
+  attachmentFile.value = file;
+}
+
+function removeAttachment(): void {
+  attachmentFile.value = null;
+  attachmentBase64.value = null;
+  if (fileInputRef.value) fileInputRef.value.value = "";
+}
+
+function triggerDownload(filename: string, content: string, mimeType: string): void {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mimeType });
+}
+
+async function downloadCampaignAttachment(campaign: MarketingCampaign): Promise<void> {
+  try {
+    const attachment = await client.getAttachment(campaign.id);
+    const blob = base64ToBlob(attachment.base64, attachment.mimeType);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = attachment.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.log("[marketing-work] falha ao baixar anexo", error);
+  }
+}
+
+const STAGE_DOWNLOAD_EXT: Record<MarketingStageId, { ext: string; mime: string }> = {
+  MAPA_NICHO: { ext: "md", mime: "text/markdown" },
+  CRIATIVOS: { ext: "md", mime: "text/markdown" },
+  LANDING_PAGE: { ext: "html", mime: "text/html" },
+  PITCH_DECK: { ext: "md", mime: "text/markdown" },
+  PLANO_GTM: { ext: "json", mime: "application/json" },
+  PLAYBOOK_VENDAS: { ext: "json", mime: "application/json" },
+  VIDEO_ROTEIRO: { ext: "json", mime: "application/json" },
+  PLANO_TRAFEGO: { ext: "json", mime: "application/json" },
+  FRAMEWORK_PERFORMANCE: { ext: "json", mime: "application/json" },
+};
+
+function downloadStage(campaign: MarketingCampaign, stage: MarketingStageId): void {
+  const content = campaign[STAGE_FIELD[stage]] as string | null;
+  if (!content) return;
+  const { ext, mime } = STAGE_DOWNLOAD_EXT[stage];
+  const slug = campaign.niche.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40);
+  const stageSlug = MARKETING_STAGE_LABEL[stage].toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  triggerDownload(`${slug}-${stageSlug}.${ext}`, content, mime);
+}
 
 let pollHandle: ReturnType<typeof setInterval> | null = null;
 
@@ -91,11 +189,19 @@ async function submitBriefing(): Promise<void> {
     const created = await client.createCampaign({
       niche: niche.value.trim(),
       briefing: briefing.value.trim(),
+      ...(attachmentFile.value && attachmentBase64.value
+        ? {
+            attachmentName: attachmentFile.value.name,
+            attachmentMimeType: attachmentFile.value.type || "application/octet-stream",
+            attachmentBase64: attachmentBase64.value,
+          }
+        : {}),
     });
     campaigns.value = [created, ...campaigns.value];
     activeId.value = created.id;
     niche.value = "";
     briefing.value = "";
+    removeAttachment();
     startPolling();
   } catch (error) {
     submitError.value =
@@ -133,6 +239,9 @@ const STAGE_FIELD = {
   PITCH_DECK: "pitchDeck",
   PLANO_GTM: "gtmPlan",
   PLAYBOOK_VENDAS: "salesPlaybook",
+  VIDEO_ROTEIRO: "videoRoteiro",
+  PLANO_TRAFEGO: "planoTrafego",
+  FRAMEWORK_PERFORMANCE: "frameworkPerformance",
 } as const satisfies Record<MarketingStageId, keyof MarketingCampaign>;
 
 const openStage = ref<MarketingStageId | null>(null);
@@ -156,6 +265,42 @@ interface SalesPlaybook {
   fechamento: string;
 }
 
+interface VideoRoteiro {
+  formato: string;
+  duracaoTotalSeg: number;
+  gancho: string;
+  cenas: readonly {
+    ordem: number;
+    duracaoSeg: number;
+    oQueAparece: string;
+    textoNaTela: string;
+    narracaoOuAudio: string;
+  }[];
+  ctaFinal: string;
+}
+
+interface PlanoTrafego {
+  objetivoCampanha: string;
+  plataformaPrincipal: string;
+  motivoPlataforma: string;
+  publicos: readonly { nome: string; descricao: string }[];
+  conjuntosDeAnuncio: readonly { nome: string; publicoAlvo: string; criativosNecessarios: number }[];
+  distribuicaoOrcamento: readonly { conjunto: string; percentual: number }[];
+  estrategiaDeLance: string;
+  sinaisParaOtimizar: readonly string[];
+}
+
+interface FrameworkPerformance {
+  metricas: readonly {
+    nome: string;
+    canal: string;
+    frequencia: string;
+    referenciaDeMercado: string;
+    seAbaixoDoEsperado: string;
+  }[];
+  notaImportante: string;
+}
+
 function parseJson<T>(raw: string | null | undefined): T | null {
   if (!raw) return null;
   try {
@@ -168,6 +313,15 @@ function parseJson<T>(raw: string | null | undefined): T | null {
 const activeGtm = computed<GtmPlan | null>(() => parseJson<GtmPlan>(active.value?.gtmPlan));
 const activePlaybook = computed<SalesPlaybook | null>(() =>
   parseJson<SalesPlaybook>(active.value?.salesPlaybook),
+);
+const activeVideo = computed<VideoRoteiro | null>(() =>
+  parseJson<VideoRoteiro>(active.value?.videoRoteiro),
+);
+const activeTrafego = computed<PlanoTrafego | null>(() =>
+  parseJson<PlanoTrafego>(active.value?.planoTrafego),
+);
+const activePerformance = computed<FrameworkPerformance | null>(() =>
+  parseJson<FrameworkPerformance>(active.value?.frameworkPerformance),
 );
 
 /** Markdown minimo e seguro (sem libs): escapa tudo, depois aplica so os
@@ -266,6 +420,26 @@ onBeforeUnmount(() => {
         placeholder="Descreva o briefing: publico, objetivo, oferta, o que já sabe sobre o cliente..."
         :disabled="submitting"
       ></textarea>
+
+      <div class="op-attach-row">
+        <input
+          ref="fileInputRef"
+          type="file"
+          class="op-attach-input"
+          accept="image/*,text/plain,.md,.pdf"
+          :disabled="submitting"
+          @change="onAttachmentChange"
+        />
+        <span v-if="attachmentFile" class="op-attach-chip">
+          📎 {{ attachmentFile.name }}
+          <button type="button" class="op-attach-remove" title="Remover anexo" @click="removeAttachment">✕</button>
+        </span>
+      </div>
+      <p class="op-attach-hint">
+        Opcional: anexe uma imagem (logo, print de anúncio) ou um arquivo de texto — até 4MB.
+        Imagem entra de verdade na análise do Mercúrio; PDF fica só guardado, ainda sem leitura automática.
+      </p>
+
       <p v-if="submitError" class="op-error-inline">{{ submitError }}</p>
       <button type="button" class="op-btn op-btn--cta" :disabled="submitting" @click="submitBriefing">
         {{ submitting ? "Enviando…" : "Gerar campanha" }}
@@ -310,6 +484,14 @@ onBeforeUnmount(() => {
           <div>
             <h3 class="op-panel__title">{{ active.niche }}</h3>
             <p class="op-mono op-muted-line">{{ active.briefing }}</p>
+            <button
+              v-if="active.attachmentName"
+              type="button"
+              class="op-attach-link"
+              @click="downloadCampaignAttachment(active)"
+            >
+              📎 {{ active.attachmentName }} · baixar
+            </button>
           </div>
           <span
             class="op-work-card__status"
@@ -341,6 +523,14 @@ onBeforeUnmount(() => {
                 <template v-else>•</template>
               </span>
               <span class="op-stage__label">{{ MARKETING_STAGE_LABEL[stage] }}</span>
+              <span
+                v-if="stageStatus(active, stage) === 'done'"
+                class="op-stage__download"
+                title="Baixar esta etapa"
+                @click.stop="downloadStage(active, stage)"
+              >
+                ⬇
+              </span>
               <span v-if="stageStatus(active, stage) === 'done'" class="op-stage__toggle">
                 {{ openStage === stage ? "ocultar" : "ver" }}
               </span>
@@ -425,6 +615,96 @@ onBeforeUnmount(() => {
                 <div class="op-structured__section">
                   <h4>Fechamento</h4>
                   <p>{{ activePlaybook.fechamento }}</p>
+                </div>
+              </div>
+
+              <div v-else-if="stage === 'VIDEO_ROTEIRO' && activeVideo" class="op-structured">
+                <div class="op-structured__section">
+                  <h4>Formato e gancho</h4>
+                  <p><strong>{{ activeVideo.formato }}</strong> · {{ activeVideo.duracaoTotalSeg }}s</p>
+                  <p class="op-video__gancho">"{{ activeVideo.gancho }}"</p>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Storyboard</h4>
+                  <ol class="op-storyboard">
+                    <li v-for="cena in activeVideo.cenas" :key="cena.ordem" class="op-storyboard__cena">
+                      <span class="op-storyboard__num">{{ cena.ordem }}</span>
+                      <div>
+                        <p class="op-storyboard__meta">{{ cena.duracaoSeg }}s · {{ cena.oQueAparece }}</p>
+                        <p v-if="cena.textoNaTela" class="op-storyboard__texto">📝 {{ cena.textoNaTela }}</p>
+                        <p v-if="cena.narracaoOuAudio" class="op-storyboard__audio">🔊 {{ cena.narracaoOuAudio }}</p>
+                      </div>
+                    </li>
+                  </ol>
+                </div>
+                <div class="op-structured__section">
+                  <h4>CTA final</h4>
+                  <p>{{ activeVideo.ctaFinal }}</p>
+                </div>
+              </div>
+
+              <div v-else-if="stage === 'PLANO_TRAFEGO' && activeTrafego" class="op-structured">
+                <div class="op-structured__section">
+                  <h4>Objetivo e plataforma</h4>
+                  <p><strong>{{ activeTrafego.objetivoCampanha }}</strong></p>
+                  <p>{{ activeTrafego.plataformaPrincipal }} — {{ activeTrafego.motivoPlataforma }}</p>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Públicos</h4>
+                  <ul>
+                    <li v-for="p in activeTrafego.publicos" :key="p.nome">
+                      <strong>{{ p.nome }}</strong> — {{ p.descricao }}
+                    </li>
+                  </ul>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Conjuntos de anúncio</h4>
+                  <div class="op-kanban">
+                    <div v-for="c in activeTrafego.conjuntosDeAnuncio" :key="c.nome" class="op-kanban__col">
+                      <div class="op-kanban__head">{{ c.nome }}</div>
+                      <p class="op-kanban__focus">{{ c.publicoAlvo }}</p>
+                      <p class="op-mono" style="font-size: 11px; color: var(--op-muted-3);">
+                        {{ c.criativosNecessarios }} criativo(s)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Distribuição de orçamento</h4>
+                  <div class="op-budget">
+                    <div v-for="b in activeTrafego.distribuicaoOrcamento" :key="b.conjunto" class="op-budget__row">
+                      <span class="op-budget__label">{{ b.conjunto }}</span>
+                      <div class="op-budget__bar">
+                        <div class="op-budget__fill" :style="{ width: b.percentual + '%' }" />
+                      </div>
+                      <span class="op-budget__pct">{{ b.percentual }}%</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Estratégia de lance</h4>
+                  <p>{{ activeTrafego.estrategiaDeLance }}</p>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Sinais para otimizar</h4>
+                  <ul>
+                    <li v-for="(s, i) in activeTrafego.sinaisParaOtimizar" :key="i">{{ s }}</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div v-else-if="stage === 'FRAMEWORK_PERFORMANCE' && activePerformance" class="op-structured">
+                <p class="op-perf__note">⚠️ {{ activePerformance.notaImportante }}</p>
+                <div class="op-perf-grid">
+                  <div v-for="(m, i) in activePerformance.metricas" :key="i" class="op-perf-card">
+                    <div class="op-perf-card__head">
+                      <strong>{{ m.nome }}</strong>
+                      <span class="op-mono">{{ m.canal }}</span>
+                    </div>
+                    <p class="op-perf-card__freq">Acompanhar {{ m.frequencia }}</p>
+                    <p class="op-perf-card__ref">{{ m.referenciaDeMercado }}</p>
+                    <p class="op-perf-card__action">Se abaixo: {{ m.seAbaixoDoEsperado }}</p>
+                  </div>
                 </div>
               </div>
 
@@ -677,6 +957,178 @@ onBeforeUnmount(() => {
   font-size: 11px;
   color: var(--op-cta);
   font-weight: 600;
+}
+
+.op-stage__download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--op-radius-sm);
+  color: var(--op-muted-3);
+  font-size: 12px;
+}
+
+.op-stage__download:hover {
+  background: var(--op-hover);
+  color: var(--op-ink-2);
+}
+
+.op-attach-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.op-attach-input {
+  font-size: 12px;
+  color: var(--op-muted-2);
+  max-width: 100%;
+}
+
+.op-attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: var(--op-radius-full);
+  background: var(--op-sel);
+  color: var(--op-ink-2);
+}
+
+.op-attach-remove {
+  border: none;
+  background: none;
+  color: var(--op-muted-3);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0;
+}
+
+.op-attach-remove:hover {
+  color: var(--op-red);
+}
+
+.op-attach-hint {
+  font-size: 11px;
+  color: var(--op-muted-4);
+  margin-bottom: 12px;
+}
+
+.op-attach-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 11.5px;
+  color: var(--op-cta);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.op-video__gancho {
+  font-style: italic;
+  color: var(--op-ink-3);
+  margin-top: 4px;
+}
+
+.op-storyboard {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.op-storyboard__cena {
+  display: flex;
+  gap: 10px;
+}
+
+.op-storyboard__num {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--op-sel);
+  color: var(--op-ink-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.op-storyboard__meta {
+  font-weight: 600;
+  color: var(--op-ink-3);
+  font-size: 12.5px;
+}
+
+.op-storyboard__texto,
+.op-storyboard__audio {
+  font-size: 12px;
+  color: var(--op-muted-2);
+  margin-top: 2px;
+}
+
+.op-perf__note {
+  font-size: 12.5px;
+  color: var(--op-amber);
+  background: color-mix(in srgb, var(--op-amber) 12%, transparent);
+  border-radius: var(--op-radius-sm);
+  padding: 10px 12px;
+}
+
+.op-perf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.op-perf-card {
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius-sm);
+  background: var(--op-raise);
+  padding: 12px;
+}
+
+.op-perf-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--op-ink-2);
+}
+
+.op-perf-card__head .op-mono {
+  font-size: 10px;
+  color: var(--op-muted-4);
+}
+
+.op-perf-card__freq {
+  font-size: 11.5px;
+  color: var(--op-muted-3);
+  margin-bottom: 4px;
+}
+
+.op-perf-card__ref {
+  font-size: 12px;
+  color: var(--op-ink-4);
+  margin-bottom: 6px;
+}
+
+.op-perf-card__action {
+  font-size: 11.5px;
+  color: var(--op-muted-2);
 }
 
 .op-stage__body {

@@ -7,7 +7,10 @@ export type MarketingStageId =
   | "LANDING_PAGE"
   | "PITCH_DECK"
   | "PLANO_GTM"
-  | "PLAYBOOK_VENDAS";
+  | "PLAYBOOK_VENDAS"
+  | "VIDEO_ROTEIRO"
+  | "PLANO_TRAFEGO"
+  | "FRAMEWORK_PERFORMANCE";
 
 export const MARKETING_STAGE_ORDER: readonly MarketingStageId[] = [
   "MAPA_NICHO",
@@ -16,6 +19,9 @@ export const MARKETING_STAGE_ORDER: readonly MarketingStageId[] = [
   "PITCH_DECK",
   "PLANO_GTM",
   "PLAYBOOK_VENDAS",
+  "VIDEO_ROTEIRO",
+  "PLANO_TRAFEGO",
+  "FRAMEWORK_PERFORMANCE",
 ];
 
 export const MARKETING_STAGE_LABEL: Readonly<Record<MarketingStageId, string>> = {
@@ -25,6 +31,9 @@ export const MARKETING_STAGE_LABEL: Readonly<Record<MarketingStageId, string>> =
   PITCH_DECK: "Pitch Deck",
   PLANO_GTM: "Plano de GTM",
   PLAYBOOK_VENDAS: "Playbook de Vendas",
+  VIDEO_ROTEIRO: "Roteiro de Vídeo",
+  PLANO_TRAFEGO: "Plano de Tráfego Pago",
+  FRAMEWORK_PERFORMANCE: "Framework de Performance",
 };
 
 export interface MarketingCampaign {
@@ -39,15 +48,35 @@ export interface MarketingCampaign {
   readonly pitchDeck: string | null;
   readonly gtmPlan: string | null;
   readonly salesPlaybook: string | null;
+  readonly videoRoteiro: string | null;
+  readonly planoTrafego: string | null;
+  readonly frameworkPerformance: string | null;
+  readonly attachmentName: string | null;
+  readonly attachmentMimeType: string | null;
   readonly errorMessage: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
 
+export interface MarketingAttachment {
+  readonly name: string;
+  readonly mimeType: string;
+  readonly base64: string;
+}
+
+export interface CreateCampaignInput {
+  readonly niche: string;
+  readonly briefing: string;
+  readonly attachmentName?: string;
+  readonly attachmentMimeType?: string;
+  readonly attachmentBase64?: string;
+}
+
 export interface MarketingOfficeClient {
   listCampaigns(): Promise<readonly MarketingCampaign[]>;
-  createCampaign(input: { niche: string; briefing: string }): Promise<MarketingCampaign>;
+  createCampaign(input: CreateCampaignInput): Promise<MarketingCampaign>;
   getCampaign(id: string): Promise<MarketingCampaign>;
+  getAttachment(id: string): Promise<MarketingAttachment>;
 }
 
 export function createMarketingOfficeClient(): MarketingOfficeClient {
@@ -61,6 +90,9 @@ export function createMarketingOfficeClient(): MarketingOfficeClient {
     },
     async getCampaign(id) {
       return http.get<MarketingCampaign>(`/office/marketing/campaigns/${id}`);
+    },
+    async getAttachment(id) {
+      return http.get<MarketingAttachment>(`/office/marketing/campaigns/${id}/attachment`);
     },
   };
 }
