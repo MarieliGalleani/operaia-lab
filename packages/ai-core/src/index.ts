@@ -18,6 +18,7 @@ export {
 } from "./providers/create-llm-stack.js";
 export { FallbackLLMProvider } from "./providers/fallback-llm-provider.js";
 export { GeminiProvider } from "./providers/gemini-provider.js";
+export { AnthropicProvider } from "./providers/anthropic-provider.js";
 export {
   GeminiEmbeddingsProvider,
   cosineSimilarity,

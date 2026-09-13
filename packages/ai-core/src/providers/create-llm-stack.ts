@@ -19,7 +19,7 @@ import { FallbackLLMProvider } from "./fallback-llm-provider.js";
 
 /** Providers com implementacao concreta disponivel hoje. */
 export function isLLMProviderImplemented(id: LLMProviderId): boolean {
-  return id === "gemini" || id === "deterministic";
+  return id === "gemini" || id === "anthropic" || id === "deterministic";
 }
 
 /**

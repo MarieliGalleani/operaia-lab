@@ -2,6 +2,7 @@ import type { LLMProviderConfig } from "../llm-config.js";
 import type { LLMProvider } from "../llm-provider.js";
 import { DeterministicLLMProvider } from "./deterministic-llm-provider.js";
 import { GeminiProvider } from "./gemini-provider.js";
+import { AnthropicProvider } from "./anthropic-provider.js";
 
 /**
  * Composition factory: escolhe a implementacao concreta por configuracao.
@@ -32,10 +33,18 @@ export function createLLMProvider(config: LLMProviderConfig): LLMProvider {
         "OpenAIProvider ainda nao implementado. Use LLM_PROVIDER=gemini ou implemente providers/openai-provider.",
       );
 
-    case "anthropic":
-      throw new Error(
-        "AnthropicProvider ainda nao implementado. Use LLM_PROVIDER=gemini ou implemente providers/anthropic-provider.",
-      );
+    case "anthropic": {
+      const apiKey = config.anthropicApiKey?.trim();
+      if (!apiKey) {
+        throw new Error(
+          "LLM_PROVIDER=anthropic exige ANTHROPIC_API_KEY nas variaveis de ambiente.",
+        );
+      }
+      return new AnthropicProvider({
+        apiKey,
+        model: config.model,
+      });
+    }
 
     case "openrouter":
       throw new Error(
