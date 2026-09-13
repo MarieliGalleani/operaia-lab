@@ -266,7 +266,7 @@ onBeforeUnmount(() => {
               Rejeitar
             </button>
             <router-link
-              :to="`/app/floor/${props.floorId}/command/approvals/${item.data.id}`"
+              :to="`/app/floor/dev/command/approvals/${item.data.id}`"
               class="op-mural-btn op-mural-btn--link"
             >
               Ver detalhes
