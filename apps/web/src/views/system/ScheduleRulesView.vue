@@ -1,8 +1,14 @@
 <script setup lang="ts">
+/** Fase 5 — O Mural do Escritório: migra pro sistema visual atual (--op-*). */
 import { computed, onMounted, ref } from "vue";
-import LoadingState from "@/components/command/LoadingState.vue";
+import { useRoute } from "vue-router";
+import OperationalHeader from "@/components/shell/OperationalHeader.vue";
+import { findFloor, floorIdFromPath } from "@/data/office-floors";
 import { scheduleRulesClient } from "@/data/adapters/schedule-rules-client";
 import type { ScheduleRuleDto } from "@/data/schedule-rules";
+
+const route = useRoute();
+const floor = computed(() => findFloor(floorIdFromPath(route.path)));
 
 const rules = ref<readonly ScheduleRuleDto[]>([]);
 const state = ref<"idle" | "loading" | "ready" | "error">("idle");
@@ -97,186 +103,297 @@ function formatWhen(iso: string | null): string {
 </script>
 
 <template>
-  <div class="studio">
-    <header class="studio__topbar">
-      <div class="topbar__left">
-        <p class="page__kicker">Sistema</p>
-        <h1 class="page__title">Gatilhos automáticos</h1>
-      </div>
-      <div class="topbar__right">
-        <router-link to="/app/command" class="btn btn--ghost">
-          Command Center
-        </router-link>
-      </div>
-    </header>
+  <OperationalHeader
+    :floor="floor"
+    scope-line="Automação · Gatilhos"
+    title="Gatilhos automáticos"
+    lede="A cada intervalo, o escritório dispara uma missão sozinho — sem você precisar pedir."
+    :show-cta="false"
+    :refreshing="state === 'loading'"
+    @refresh="load"
+  />
+  <div class="op-content">
+    <section class="op-panel op-form-card">
+      <p class="op-eyebrow-sm">Novo gatilho</p>
+      <h2 class="op-panel__title">Fazer o escritório trabalhar sozinho</h2>
+      <p class="op-hint">
+        A cada intervalo definido, o escritório dispara uma missão de
+        coordenação com o objetivo abaixo.
+      </p>
 
-    <div class="studio__stage">
-      <section class="panel form-card">
-        <p class="eyebrow">Novo gatilho</p>
-        <h2 class="section__title">Fazer o escritório trabalhar sozinho</h2>
-        <p class="hint">
-          A cada intervalo definido, o escritório dispara uma missão de
-          coordenação com o objetivo abaixo — sem você precisar pedir.
-        </p>
+      <form class="op-form" @submit.prevent="createRule">
+        <label class="op-field">
+          <span>Workspace</span>
+          <input v-model="workspaceId" type="text" class="op-input" placeholder="operaia-lab" />
+          <small>ex: operaia-lab, nexo, infra, deploy</small>
+        </label>
 
-        <form class="form" @submit.prevent="createRule">
-          <label class="field">
-            <span>Workspace</span>
-            <input v-model="workspaceId" type="text" placeholder="operaia-lab" />
-            <small>ex: operaia-lab, nexo, infra, deploy</small>
-          </label>
+        <label class="op-field">
+          <span>Objetivo</span>
+          <textarea
+            v-model="objective"
+            class="op-textarea"
+            rows="2"
+            placeholder="Ex: revisar pendências e reportar o que precisa de atenção"
+          />
+        </label>
 
-          <label class="field">
-            <span>Objetivo</span>
-            <textarea
-              v-model="objective"
-              rows="2"
-              placeholder="Ex: revisar pendências e reportar o que precisa de atenção"
-            />
-          </label>
+        <label class="op-field op-field--narrow">
+          <span>Intervalo (minutos)</span>
+          <input v-model.number="intervalMin" type="number" class="op-input" min="1" max="1440" />
+        </label>
 
-          <label class="field field--narrow">
-            <span>Intervalo (minutos)</span>
-            <input v-model.number="intervalMin" type="number" min="1" max="1440" />
-          </label>
+        <p v-if="submitError" class="op-error-inline">{{ submitError }}</p>
 
-          <p v-if="submitError" class="form-error">{{ submitError }}</p>
+        <button type="submit" class="op-btn op-btn--cta" :disabled="!canSubmit || submitting">
+          {{ submitting ? "Criando…" : "Criar gatilho" }}
+        </button>
+      </form>
+    </section>
 
-          <button
-            type="submit"
-            class="btn btn--primary"
-            :disabled="!canSubmit || submitting"
-          >
-            {{ submitting ? "Criando..." : "Criar gatilho" }}
-          </button>
-        </form>
-      </section>
+    <p v-if="state === 'loading' && !rules.length" class="op-loading">Carregando gatilhos…</p>
 
-      <LoadingState v-if="state === 'loading' && !rules.length" label="Carregando gatilhos" />
-
-      <div v-else-if="state === 'error' && !rules.length" class="panel" role="alert">
-        <p class="empty-state__title">Não consegui carregar</p>
-        <p>{{ errorMessage }}</p>
-        <button type="button" class="btn btn--primary" @click="load">Tentar de novo</button>
-      </div>
-
-      <section v-else class="rules">
-        <p v-if="!rules.length" class="quiet">
-          Nenhum gatilho cadastrado ainda — crie um acima.
-        </p>
-        <article v-for="rule in rules" :key="rule.id" class="panel rule">
-          <div class="rule__main">
-            <p class="rule__objective">{{ rule.objective ?? "(sem objetivo)" }}</p>
-            <p class="rule__meta">
-              {{ rule.workspaceName ?? rule.workspaceId ?? "sem workspace" }}
-              · {{ intervalLabel(rule.intervalSec) }}
-              · última execução: {{ formatWhen(rule.lastEnqueuedAt) }}
-            </p>
-          </div>
-          <div class="rule__actions">
-            <button
-              type="button"
-              class="btn btn--ghost"
-              @click="toggleEnabled(rule)"
-            >
-              {{ rule.enabled ? "Pausar" : "Ativar" }}
-            </button>
-            <button type="button" class="btn btn--ghost btn--remove" @click="removeRule(rule)">
-              Remover
-            </button>
-          </div>
-        </article>
-      </section>
+    <div v-else-if="state === 'error' && !rules.length" class="op-error" role="alert">
+      <p class="op-error__title">Não consegui carregar</p>
+      <p class="op-error__body">{{ errorMessage }}</p>
+      <button type="button" class="op-btn-retry" @click="load">Tentar de novo</button>
     </div>
+
+    <section v-else class="op-rules">
+      <p v-if="!rules.length" class="op-empty-inline">Nenhum gatilho cadastrado ainda — crie um acima.</p>
+      <article v-for="rule in rules" :key="rule.id" class="op-rule">
+        <div class="op-rule__main">
+          <p class="op-rule__objective">{{ rule.objective ?? "(sem objetivo)" }}</p>
+          <p class="op-rule__meta">
+            {{ rule.workspaceName ?? rule.workspaceId ?? "sem workspace" }}
+            · {{ intervalLabel(rule.intervalSec) }}
+            · última execução: {{ formatWhen(rule.lastEnqueuedAt) }}
+          </p>
+        </div>
+        <div class="op-rule__actions">
+          <button type="button" class="op-btn" @click="toggleEnabled(rule)">
+            {{ rule.enabled ? "Pausar" : "Ativar" }}
+          </button>
+          <button type="button" class="op-btn op-btn--danger" @click="removeRule(rule)">Remover</button>
+        </div>
+      </article>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.form-card {
+.op-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 34px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.op-panel {
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
   padding: 20px;
-  margin-bottom: var(--space-3);
 }
-.hint {
-  margin-top: 6px;
-  margin-bottom: 14px;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
+
+.op-panel__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--op-ink-2);
+  margin-top: 4px;
 }
-.form {
+
+.op-eyebrow-sm {
+  font-family: var(--op-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--op-muted-5);
+}
+
+.op-hint {
+  margin: 8px 0 16px;
+  font-size: 12.5px;
+  color: var(--op-muted-3);
+}
+
+.op-form {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
   align-items: flex-end;
 }
-.field {
+
+.op-field {
   display: flex;
   flex-direction: column;
   flex: 1 1 260px;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--op-muted-4);
 }
-.field--narrow {
+
+.op-field--narrow {
   flex: 0 1 160px;
 }
-.field input,
-.field textarea {
-  margin-top: 6px;
+
+.op-input,
+.op-textarea {
+  margin-top: 8px;
+  width: 100%;
+  background: var(--op-raise);
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius-sm);
   padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-  font-size: var(--text-sm);
+  font-size: 13px;
+  color: var(--op-ink-2);
   font-family: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
 }
-.field small {
+
+.op-input:focus,
+.op-textarea:focus {
+  outline: none;
+  border-color: var(--op-cta);
+}
+
+.op-field small {
   margin-top: 4px;
-  color: var(--text-soft);
+  color: var(--op-muted-5);
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
 }
-.form-error {
+
+.op-error-inline {
   flex-basis: 100%;
-  color: #f87171;
-  font-size: var(--text-sm);
+  color: var(--op-red);
+  font-size: 12px;
 }
-.rules {
+
+.op-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--op-radius-sm);
+  border: 1px solid var(--op-bd-btn);
+  background: var(--op-raise);
+  color: var(--op-ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.op-btn:hover:not(:disabled) {
+  border-color: var(--op-bd-btn-h);
+}
+
+.op-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.op-btn--cta {
+  background: var(--op-cta);
+  border-color: var(--op-cta);
+  color: #fff;
+}
+
+.op-btn--cta:hover:not(:disabled) {
+  background: var(--op-cta-h);
+}
+
+.op-btn--danger {
+  color: var(--op-red);
+}
+
+.op-btn--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--op-red) 14%, transparent);
+  border-color: var(--op-red);
+}
+
+.op-loading,
+.op-empty-inline {
+  font-size: 13px;
+  color: var(--op-muted-3);
+}
+
+.op-error {
+  max-width: 480px;
+  padding: 24px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
+}
+
+.op-error__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--op-ink-2);
+  margin-bottom: 6px;
+}
+
+.op-error__body {
+  font-size: 12.5px;
+  color: var(--op-muted-3);
+  margin-bottom: 14px;
+}
+
+.op-btn-retry {
+  padding: 8px 14px;
+  border-radius: var(--op-radius-sm);
+  border: 1px solid var(--op-bd-btn);
+  background: var(--op-raise);
+  color: var(--op-ink-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.op-rules {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.rule {
+
+.op-rule {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px;
   gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
 }
-.rule__objective {
+
+.op-rule__objective {
   font-weight: 600;
+  font-size: 13.5px;
+  color: var(--op-ink-2);
 }
-.rule__meta {
+
+.op-rule__meta {
   margin-top: 4px;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
+  font-size: 11.5px;
+  color: var(--op-muted-3);
 }
-.rule__actions {
+
+.op-rule__actions {
   display: flex;
   gap: 8px;
   flex-shrink: 0;
 }
-.btn--remove {
-  color: var(--danger);
-  border-color: rgba(248, 113, 113, 0.25);
-}
-.btn--remove:hover:not(:disabled) {
-  background: var(--danger-soft);
-  color: var(--danger);
-}
-.quiet {
-  color: var(--text-soft);
-  font-size: var(--text-sm);
-}
+
 @media (max-width: 720px) {
-  .rule {
+  .op-rule {
     flex-direction: column;
     align-items: flex-start;
   }

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/** Fase 5 — O Mural do Escritório: migra pro sistema visual atual (--op-*). */
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import CommandInput from "@/components/command/CommandInput.vue";
@@ -6,6 +7,8 @@ import RiskBadge from "@/components/command/RiskBadge.vue";
 import AutonomyBadge from "@/components/command/AutonomyBadge.vue";
 import WorkspaceContext from "@/components/command/WorkspaceContext.vue";
 import LoadingState from "@/components/command/LoadingState.vue";
+import OperationalHeader from "@/components/shell/OperationalHeader.vue";
+import { findFloor, floorIdFromPath } from "@/data/office-floors";
 import { useOffice } from "@/composables/useOffice";
 import { officeCommandClient } from "@/data/adapters/office-client";
 import {
@@ -19,6 +22,7 @@ type Step = "input" | "understood" | "plan" | "result";
 
 const route = useRoute();
 const router = useRouter();
+const floor = computed(() => findFloor(floorIdFromPath(route.path)));
 const { projects, load } = useOffice();
 void load();
 
@@ -40,7 +44,6 @@ onMounted(() => {
     workspaceId.value = String(route.query.workspace);
   }
 });
-
 
 const workspaceName = computed(() => {
   const p = projects.value.find((x) => x.id === workspaceId.value);
@@ -129,265 +132,319 @@ function setAutonomy(level: AutonomyLevel) {
 </script>
 
 <template>
-  <div class="studio">
-    <header class="studio__topbar">
-      <div class="topbar__left">
-        <p class="page__kicker">Trabalho › Nova demanda</p>
-        <h1 class="page__title">Nova demanda</h1>
-      </div>
-      <router-link to="/app/command" class="btn btn--ghost">Voltar</router-link>
-    </header>
+  <OperationalHeader
+    :floor="floor"
+    scope-line="Trabalho · Nova demanda"
+    title="Nova demanda"
+    lede="Descreva o trabalho com suas palavras — o escritório organiza o pedido antes de propor os próximos passos."
+    :show-cta="false"
+    :show-refresh="false"
+  />
+  <div class="op-content">
+    <p v-if="mockMode" class="op-note" role="status">
+      Modo mock explícito — interpretação/execução não são operações reais.
+    </p>
+    <p v-if="error" class="op-error-inline" role="alert">{{ error }}</p>
 
-    <div class="studio__stage demand">
-      <p v-if="mockMode" class="backend-note" role="status">
-        Modo mock explícito — interpretação/execução não são operações reais.
-      </p>
+    <section v-if="step === 'input'" class="op-panel op-demand">
+      <p class="op-eyebrow-sm">Comece pelo resultado que você deseja</p>
+      <h2 class="op-demand__question">O que você precisa?</h2>
+      <CommandInput
+        v-model="text"
+        :disabled="interpreting"
+        placeholder="Descreva o trabalho que você quer realizar."
+        @submit="interpret"
+      />
+      <label class="op-demand__ws">
+        <span>Onde esse trabalho acontece?</span>
+        <select v-model="workspaceId" class="op-select" :disabled="interpreting" required>
+          <option disabled value="">Selecione um cliente ou workspace</option>
+          <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
+        </select>
+      </label>
+      <WorkspaceContext
+        v-if="workspaceId"
+        :name="workspaceName"
+        :kind="workspaceId.includes('opera') || workspaceId === 'nexo' ? 'lab' : 'client'"
+      />
+      <button type="button" class="op-btn op-btn--cta" :disabled="!canInterpret || interpreting" @click="interpret">
+        {{ interpreting ? "Organizando…" : "Continuar" }}
+      </button>
+    </section>
 
-      <p v-if="error" class="demand__error" role="alert">{{ error }}</p>
+    <LoadingState v-if="interpreting" label="Interpretando demanda" />
 
-      <section v-if="step === 'input'" class="panel demand__panel">
-        <p class="eyebrow">Comece pelo resultado que você deseja</p>
-        <h2 class="demand__question">O que você precisa?</h2>
-        <p class="demand__intro">
-          Descreva o trabalho com suas palavras. A OperaIA organiza o pedido antes de propor os próximos passos.
-        </p>
-        <CommandInput
-          v-model="text"
-          :disabled="interpreting"
-          placeholder="Descreva o trabalho que você quer realizar."
-          @submit="interpret"
-        />
-        <label class="demand__ws">
-          <span>Onde esse trabalho acontece?</span>
-          <select v-model="workspaceId" :disabled="interpreting" required>
-            <option disabled value="">Selecione um cliente ou workspace</option>
-            <option v-for="p in projects" :key="p.id" :value="p.id">
-              {{ p.name }}
-            </option>
-          </select>
-        </label>
-        <WorkspaceContext
-          v-if="workspaceId"
-          :name="workspaceName"
-          :kind="workspaceId.includes('opera') || workspaceId === 'nexo' ? 'lab' : 'client'"
-        />
-        <button
-          type="button"
-          class="btn btn--primary"
-          :disabled="!canInterpret || interpreting"
-          @click="interpret"
-        >
-          {{ interpreting ? "Organizando…" : "Continuar" }}
-        </button>
-      </section>
-
-      <LoadingState v-if="interpreting" label="Interpretando demanda" />
-
-      <section v-else-if="step === 'understood' && brief" class="panel demand__panel">
-        <p class="eyebrow">Entendi</p>
-        <h2 class="section__title">Interpretação</h2>
-        <p class="demand__help">
-          Triagem automática por regras de risco — revise antes de confirmar.
-        </p>
-        <dl class="demand__dl">
-          <div><dt>Cliente</dt><dd>{{ brief.workspaceName }}</dd></div>
-          <div><dt>Objetivo</dt><dd>{{ brief.objective }}</dd></div>
-          <div><dt>Resultado esperado</dt><dd>{{ brief.expectedOutcome }}</dd></div>
-          <div><dt>Dependências</dt><dd>{{ brief.dependencies.join(", ") }}</dd></div>
-          <div>
-            <dt>Risco</dt>
-            <dd><RiskBadge :risk="brief.risk" /></dd>
-          </div>
-          <div>
-            <dt>Autonomia</dt>
-            <dd>
-              <div class="demand__auto">
-                <button
-                  v-for="level in (['READ_PLAN','CONTROLLED','AUTONOMOUS','HUMAN_APPROVAL'] as AutonomyLevel[])"
-                  :key="level"
-                  type="button"
-                  class="btn btn--ghost"
-                  :class="{ 'demand__auto--on': brief.autonomy === level }"
-                  @click="setAutonomy(level)"
-                >
-                  {{ AUTONOMY_LABEL[level] }}
-                </button>
-              </div>
-              <AutonomyBadge :autonomy="brief.autonomy" />
-              <p class="demand__help">{{ autonomyHelp[brief.autonomy] }}</p>
-            </dd>
-          </div>
-        </dl>
-        <div class="demand__actions">
-          <button type="button" class="btn btn--primary" @click="goPlan">
-            Continuar para o plano
-          </button>
-          <button type="button" class="btn btn--ghost" @click="editObjective">
-            Editar objetivo
-          </button>
+    <section v-else-if="step === 'understood' && brief" class="op-panel op-demand">
+      <p class="op-eyebrow-sm">Entendi</p>
+      <h2 class="op-demand__title">Interpretação</h2>
+      <p class="op-demand__help">Triagem automática por regras de risco — revise antes de confirmar.</p>
+      <dl class="op-demand__dl">
+        <div><dt>Cliente</dt><dd>{{ brief.workspaceName }}</dd></div>
+        <div><dt>Objetivo</dt><dd>{{ brief.objective }}</dd></div>
+        <div><dt>Resultado esperado</dt><dd>{{ brief.expectedOutcome }}</dd></div>
+        <div><dt>Dependências</dt><dd>{{ brief.dependencies.join(", ") }}</dd></div>
+        <div>
+          <dt>Risco</dt>
+          <dd><RiskBadge :risk="brief.risk" /></dd>
         </div>
-      </section>
-
-      <section v-else-if="step === 'plan' && brief && plan" class="panel demand__panel">
-        <p class="eyebrow">Plano inicial</p>
-        <h2 class="section__title">O que será feito</h2>
-        <ol class="demand__plan">
-          <li v-for="(s, i) in plan.steps" :key="s.id">
-            <span class="demand__n">{{ i + 1 }}</span>
-            <div>
-              <strong>{{ s.title }}</strong>
-              <p v-if="s.assigneeLabel">{{ s.assigneeLabel }}</p>
+        <div>
+          <dt>Autonomia</dt>
+          <dd>
+            <div class="op-demand__auto">
+              <button
+                v-for="level in (['READ_PLAN','CONTROLLED','AUTONOMOUS','HUMAN_APPROVAL'] as AutonomyLevel[])"
+                :key="level"
+                type="button"
+                class="op-btn op-btn--sm"
+                :class="{ 'is-on': brief.autonomy === level }"
+                @click="setAutonomy(level)"
+              >
+                {{ AUTONOMY_LABEL[level] }}
+              </button>
             </div>
-          </li>
-        </ol>
-        <p class="demand__help">
-          Autonomia {{ AUTONOMY_LABEL[brief.autonomy] }} —
-          {{ autonomyHelp[brief.autonomy] }}
-        </p>
-        <div class="demand__actions">
-          <button
-            type="button"
-            class="btn btn--primary"
-            :disabled="executing"
-            @click="executePlan"
-          >
-            {{
-              brief.autonomy === "READ_PLAN"
-                ? "Encerrar no plano"
-                : brief.autonomy === "HUMAN_APPROVAL"
-                  ? "Ir para aprovações"
-                  : executing
-                    ? "Solicitando…"
-                    : "Executar plano"
-            }}
-          </button>
-          <button type="button" class="btn btn--ghost" @click="editObjective">
-            Editar objetivo
-          </button>
+            <AutonomyBadge :autonomy="brief.autonomy" />
+            <p class="op-demand__help">{{ autonomyHelp[brief.autonomy] }}</p>
+          </dd>
         </div>
-      </section>
+      </dl>
+      <div class="op-demand__actions">
+        <button type="button" class="op-btn op-btn--cta" @click="goPlan">Continuar para o plano</button>
+        <button type="button" class="op-btn" @click="editObjective">Editar objetivo</button>
+      </div>
+    </section>
 
-      <section v-else-if="step === 'result'" class="panel demand__panel">
-        <p class="eyebrow">Resultado</p>
-        <h2 class="section__title">
-          {{ resultAccepted ? "Execução aceita" : "Execução não iniciada" }}
-        </h2>
-        <p>{{ resultMessage }}</p>
-        <div class="demand__actions">
-          <router-link to="/app/command" class="btn btn--primary">
-            Voltar ao Command Center
-          </router-link>
-        </div>
-      </section>
-    </div>
+    <section v-else-if="step === 'plan' && brief && plan" class="op-panel op-demand">
+      <p class="op-eyebrow-sm">Plano inicial</p>
+      <h2 class="op-demand__title">O que será feito</h2>
+      <ol class="op-demand__plan">
+        <li v-for="(s, i) in plan.steps" :key="s.id">
+          <span class="op-demand__n">{{ i + 1 }}</span>
+          <div>
+            <strong>{{ s.title }}</strong>
+            <p v-if="s.assigneeLabel">{{ s.assigneeLabel }}</p>
+          </div>
+        </li>
+      </ol>
+      <p class="op-demand__help">
+        Autonomia {{ AUTONOMY_LABEL[brief.autonomy] }} — {{ autonomyHelp[brief.autonomy] }}
+      </p>
+      <div class="op-demand__actions">
+        <button type="button" class="op-btn op-btn--cta" :disabled="executing" @click="executePlan">
+          {{
+            brief.autonomy === "READ_PLAN"
+              ? "Encerrar no plano"
+              : brief.autonomy === "HUMAN_APPROVAL"
+                ? "Ir para aprovações"
+                : executing
+                  ? "Solicitando…"
+                  : "Executar plano"
+          }}
+        </button>
+        <button type="button" class="op-btn" @click="editObjective">Editar objetivo</button>
+      </div>
+    </section>
+
+    <section v-else-if="step === 'result'" class="op-panel op-demand">
+      <p class="op-eyebrow-sm">Resultado</p>
+      <h2 class="op-demand__title">{{ resultAccepted ? "Execução aceita" : "Execução não iniciada" }}</h2>
+      <p class="op-demand__help">{{ resultMessage }}</p>
+      <div class="op-demand__actions">
+        <router-link to="/app/command" class="op-btn op-btn--cta">Voltar ao Command Center</router-link>
+      </div>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.demand__panel {
+.op-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 34px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.op-note {
+  font-size: 12px;
+  color: var(--op-amber);
+}
+
+.op-error-inline {
+  font-size: 12.5px;
+  color: var(--op-red);
+}
+
+.op-panel {
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
   padding: 22px;
   max-width: 720px;
 }
-.demand__question {
-  margin-top: 8px;
-  font-size: var(--text-2xl);
+
+.op-eyebrow-sm {
+  font-family: var(--op-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--op-muted-5);
 }
-.demand__intro {
-  max-width: 580px;
-  margin: 8px 0 22px;
-  color: var(--text-muted);
+
+.op-demand__question {
+  margin: 8px 0 18px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--op-ink);
 }
-.demand__ws {
+
+.op-demand__title {
+  margin: 8px 0 4px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--op-ink);
+}
+
+.op-demand__ws {
   display: block;
   margin: 16px 0;
 }
-.demand__ws span {
+
+.op-demand__ws span {
   display: block;
-  font-size: var(--text-sm);
+  font-size: 12px;
   font-weight: 600;
+  color: var(--op-ink-3);
   margin-bottom: 6px;
 }
-.demand__ws select {
+
+.op-select {
   width: 100%;
   padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-strong);
-  background: var(--surface);
-  color: var(--text);
+  border-radius: var(--op-radius-sm);
+  border: 1px solid var(--op-line);
+  background: var(--op-raise);
+  color: var(--op-ink-2);
   font: inherit;
 }
-.demand__dl > div {
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+
+.op-select:focus {
+  outline: none;
+  border-color: var(--op-cta);
 }
-.demand__dl dt {
-  font-size: var(--text-xs);
+
+.op-demand__dl > div {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--op-line);
+}
+
+.op-demand__dl dt {
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-soft);
+  color: var(--op-muted-5);
 }
-.demand__dl dd {
+
+.op-demand__dl dd {
   margin: 4px 0 0;
-  color: var(--text);
+  color: var(--op-ink-3);
+  font-size: 13px;
 }
-.demand__actions {
+
+.op-demand__actions {
   display: flex;
   flex-wrap: wrap;
+  gap: 10px;
   margin-top: 20px;
 }
-.demand__actions .btn {
-  margin-right: 10px;
-  margin-bottom: 8px;
-}
-.demand__auto {
+
+.op-demand__auto {
   display: flex;
   flex-wrap: wrap;
+  gap: 6px;
   margin-bottom: 8px;
 }
-.demand__auto .btn {
-  margin-right: 6px;
-  margin-bottom: 6px;
-  padding: 6px 10px;
-}
-.demand__auto--on {
-  border-color: var(--brand-line);
-  color: var(--text);
-  background: var(--brand-soft);
-}
-.demand__help {
+
+.op-demand__help {
   margin-top: 8px;
-  font-size: var(--text-sm);
+  font-size: 12.5px;
+  color: var(--op-muted-3);
 }
-.demand__plan {
+
+.op-demand__plan {
   list-style: none;
   margin: 16px 0 0;
   padding: 0;
 }
-.demand__plan li {
+
+.op-demand__plan li {
   display: flex;
   padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--op-line);
 }
-.demand__n {
-  width: 28px;
-  height: 28px;
+
+.op-demand__n {
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  background: var(--brand-soft);
-  color: var(--brand);
+  background: var(--op-halo);
+  color: var(--op-green);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: var(--text-sm);
+  font-size: 12px;
   font-weight: 700;
   margin-right: 12px;
   flex-shrink: 0;
 }
-.demand__error {
-  color: var(--danger);
-  margin-bottom: 12px;
+
+.op-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--op-radius-sm);
+  border: 1px solid var(--op-bd-btn);
+  background: var(--op-raise);
+  color: var(--op-ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
 }
+
+.op-btn:hover:not(:disabled) {
+  border-color: var(--op-bd-btn-h);
+}
+
+.op-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.op-btn--sm {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.op-btn.is-on {
+  border-color: var(--op-cta);
+  color: var(--op-cta);
+  background: var(--op-sel);
+}
+
+.op-btn--cta {
+  background: var(--op-cta);
+  border-color: var(--op-cta);
+  color: #fff;
+}
+
+.op-btn--cta:hover:not(:disabled) {
+  background: var(--op-cta-h);
+}
+
 @media (max-width: 768px) {
-  .demand__panel {
+  .op-panel {
     max-width: none;
   }
 }
