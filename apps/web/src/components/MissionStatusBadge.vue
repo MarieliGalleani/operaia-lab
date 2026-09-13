@@ -14,46 +14,51 @@ const LABEL: Record<string, string> = {
 };
 
 const CLASS: Record<string, string> = {
-  CREATED: "st--created",
-  QUEUED: "st--queued",
-  RUNNING: "st--running",
-  WAITING: "st--waiting",
-  COMPLETED: "st--completed",
-  FAILED: "st--failed",
-  CANCELLED: "st--created",
+  CREATED: "is-muted",
+  QUEUED: "is-blue",
+  RUNNING: "is-amber",
+  WAITING: "is-amber",
+  COMPLETED: "is-green",
+  FAILED: "is-red",
+  CANCELLED: "is-muted",
 };
 
 const label = computed(() => LABEL[props.status] ?? props.status);
-const cls = computed(() => CLASS[props.status] ?? "st--created");
+const cls = computed(() => CLASS[props.status] ?? "is-muted");
 </script>
 
 <template>
-  <span class="st badge badge--dot" :class="cls">{{ label }}</span>
+  <span class="op-status-badge" :class="cls">{{ label }}</span>
 </template>
 
 <style scoped>
-.st--created {
-  color: var(--text-muted);
-  background: var(--surface-2);
+.op-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--op-radius-full);
+  background: var(--op-raise);
+  color: var(--op-muted-2);
+  white-space: nowrap;
 }
-.st--queued {
-  color: var(--info);
-  background: var(--info-soft);
+
+.op-status-badge.is-green {
+  color: var(--op-green);
+  background: var(--op-halo);
 }
-.st--running {
-  color: var(--success);
-  background: var(--success-soft);
+
+.op-status-badge.is-amber {
+  color: var(--op-amber);
 }
-.st--waiting {
-  color: var(--warning);
-  background: var(--warning-soft);
+
+.op-status-badge.is-blue {
+  color: var(--op-blue);
 }
-.st--completed {
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-.st--failed {
-  color: var(--danger);
-  background: var(--danger-soft);
+
+.op-status-badge.is-red {
+  color: var(--op-red);
 }
 </style>

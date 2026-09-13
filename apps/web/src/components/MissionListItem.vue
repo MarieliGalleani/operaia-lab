@@ -46,17 +46,13 @@ function specialists(root: MissionTreeNodeDTO): readonly string[] {
 </script>
 
 <template>
-  <router-link
-    :to="`/app/missions/${props.item.id}`"
-    class="card panel card-motion"
-    :style="{ '--d': props.index + 1 }"
-  >
-    <header class="card__head">
+  <router-link :to="`/app/missions/${props.item.id}`" class="op-mission-card">
+    <header class="op-mission-card__head">
       <MissionStatusBadge :status="props.item.status" />
-      <time>{{ formatDateTime(props.item.createdAt) }}</time>
+      <time class="op-mono">{{ formatDateTime(props.item.createdAt) }}</time>
     </header>
     <h2>{{ cleanMissionObjective(props.item.objective) }}</h2>
-    <p class="card__next">
+    <p class="op-mission-card__next">
       {{
         props.item.status === "COMPLETED"
           ? "Resultado disponível no detalhe"
@@ -65,7 +61,7 @@ function specialists(root: MissionTreeNodeDTO): readonly string[] {
             : "O escritório está conduzindo este trabalho"
       }}
     </p>
-    <dl class="meta">
+    <dl class="op-mission-card__meta">
       <div>
         <dt>Responsável</dt>
         <dd>{{ ownerEmoji(props.item.ownerEmployeeId) }} {{ ownerName(props.item.ownerEmployeeId) }}</dd>
@@ -87,67 +83,70 @@ function specialists(root: MissionTreeNodeDTO): readonly string[] {
 </template>
 
 <style scoped>
-.card {
+.op-mission-card {
   display: block;
   padding: 16px 18px;
   margin-bottom: 12px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
   color: inherit;
   text-decoration: none;
-  transition: border-color 0.2s var(--ease), transform 0.2s var(--ease);
+  transition: border-color 0.16s ease, background 0.16s ease;
 }
 
-.card:hover {
-  border-color: var(--brand-line);
-  transform: translateY(-1px);
+.op-mission-card:hover {
+  border-color: var(--op-line-strong);
+  background: var(--op-hover);
 }
 
-.card__head {
+.op-mission-card__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.card__head time {
-  font-size: var(--text-xs);
-  color: var(--text-soft);
+.op-mission-card__head time {
+  font-size: 11px;
+  color: var(--op-muted-4);
 }
 
-.card h2 {
-  margin-top: 10px;
-  font-size: var(--text-md);
-  font-weight: 600;
+.op-mission-card h2 {
+  margin: 10px 0 0;
+  font-size: 14px;
+  font-weight: 700;
   line-height: 1.4;
+  color: var(--op-ink-2);
 }
 
-.card__next {
-  margin-top: 6px;
-  color: var(--text-muted);
-  font-size: var(--text-sm);
+.op-mission-card__next {
+  margin: 6px 0 0;
+  color: var(--op-muted-2);
+  font-size: 12.5px;
 }
 
-.meta {
+.op-mission-card__meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-column-gap: 12px;
-  grid-row-gap: 10px;
+  gap: 10px 12px;
   margin-top: 14px;
 }
 
-.meta dt {
-  font-size: var(--text-xs);
-  color: var(--text-soft);
+.op-mission-card__meta dt {
+  font-size: 10px;
+  color: var(--op-muted-5);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.meta dd {
-  margin-top: 4px;
-  font-size: var(--text-sm);
-  color: var(--text-muted);
+.op-mission-card__meta dd {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--op-muted-2);
 }
 
 @media (max-width: 900px) {
-  .meta {
+  .op-mission-card__meta {
     grid-template-columns: 1fr;
   }
 }

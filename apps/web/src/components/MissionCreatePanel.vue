@@ -54,28 +54,29 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <section class="create panel">
-    <header class="create__head">
+  <section class="op-create">
+    <header class="op-create__head">
       <div>
-        <p class="eyebrow">Pedido ao escritório</p>
+        <p class="op-eyebrow-sm">Pedido ao escritório</p>
         <h2>Nova missão</h2>
       </div>
-      <button type="button" class="btn btn--ghost" @click="emit('closed')">Fechar</button>
+      <button type="button" class="op-btn" @click="emit('closed')">Fechar</button>
     </header>
 
-    <label class="field">
+    <label class="op-field">
       <span>O que você quer que o escritório faça?</span>
       <textarea
         v-model="objective"
+        class="op-textarea"
         rows="5"
         maxlength="4000"
         placeholder="Descreva o trabalho em linguagem natural. O objetivo vai para a Opera como COORDINATE."
       />
     </label>
 
-    <label class="field">
+    <label class="op-field">
       <span>Workspace</span>
-      <select v-model="workspaceId">
+      <select v-model="workspaceId" class="op-select">
         <option v-for="item in options" :key="item.id" :value="item.id">
           {{ item.name }}
         </option>
@@ -83,20 +84,15 @@ async function submit(): Promise<void> {
       </select>
     </label>
 
-    <p class="hint">
+    <p class="op-hint">
       Modo avançado: envia direto para a fila, sem passar pela triagem de risco nem
       pedir aprovação. Para o caminho normal, use
-      <router-link to="/app/command/new" class="hint__link" @click="emit('closed')">Nova demanda</router-link>.
+      <router-link to="/app/command/new" class="op-hint__link" @click="emit('closed')">Nova demanda</router-link>.
     </p>
-    <p v-if="error" class="error">{{ error }}</p>
+    <p v-if="error" class="op-error-inline">{{ error }}</p>
 
-    <div class="create__actions">
-      <button
-        type="button"
-        class="btn btn--primary"
-        :disabled="submitting"
-        @click="submit"
-      >
+    <div class="op-create__actions">
+      <button type="button" class="op-btn op-btn--cta" :disabled="submitting" @click="submit">
         {{ submitting ? "Enviando…" : "Enviar missão" }}
       </button>
     </div>
@@ -104,72 +100,125 @@ async function submit(): Promise<void> {
 </template>
 
 <style scoped>
-.create {
-  padding: 18px;
+.op-create {
+  padding: 20px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
   margin-bottom: 20px;
 }
 
-.create__head {
+.op-create__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 16px;
 }
 
-.create__head h2 {
-  margin-top: 4px;
-  font-size: var(--text-lg);
+.op-create__head h2 {
+  margin: 4px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--op-ink-2);
 }
 
-.field {
+.op-eyebrow-sm {
+  font-family: var(--op-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--op-muted-5);
+}
+
+.op-field {
   display: flex;
   flex-direction: column;
   margin-bottom: 14px;
 }
 
-.field span {
-  font-size: var(--text-xs);
+.op-field span {
+  font-size: 10.5px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--text-soft);
+  color: var(--op-muted-4);
   margin-bottom: 8px;
 }
 
-.field textarea,
-.field select {
+.op-textarea,
+.op-select {
   width: 100%;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
-  font: inherit;
-  padding: 12px 14px;
+  background: var(--op-raise);
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius-sm);
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--op-ink-2);
+  font-family: inherit;
 }
 
-.field textarea {
+.op-textarea {
   resize: vertical;
   min-height: 120px;
 }
 
-.hint {
-  font-size: var(--text-xs);
-  color: var(--text-soft);
+.op-textarea:focus,
+.op-select:focus {
+  outline: none;
+  border-color: var(--op-cta);
 }
 
-.hint__link {
-  color: var(--brand);
+.op-hint {
+  font-size: 11.5px;
+  color: var(--op-muted-4);
+}
+
+.op-hint__link {
+  color: var(--op-cta);
   font-weight: 600;
   text-decoration: underline;
 }
 
-.error {
+.op-error-inline {
   margin-top: 8px;
-  font-size: var(--text-sm);
-  color: var(--danger);
+  font-size: 12px;
+  color: var(--op-red);
 }
 
-.create__actions {
+.op-create__actions {
   margin-top: 16px;
+}
+
+.op-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--op-radius-sm);
+  border: 1px solid var(--op-bd-btn);
+  background: var(--op-raise);
+  color: var(--op-ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.op-btn:hover:not(:disabled) {
+  border-color: var(--op-bd-btn-h);
+}
+
+.op-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.op-btn--cta {
+  background: var(--op-cta);
+  border-color: var(--op-cta);
+  color: #fff;
+}
+
+.op-btn--cta:hover:not(:disabled) {
+  background: var(--op-cta-h);
 }
 </style>
