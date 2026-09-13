@@ -829,6 +829,8 @@ model MarketingCampaign {
   attachmentMimeType String?
   attachmentBase64   String?
   errorMessage    String?
+  /** Ids das etapas cujo conteudo veio do fallback deterministico (IA indisponivel), nao de uma geracao real. */
+  fallbackStagesJson Json?
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
 

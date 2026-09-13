@@ -54,6 +54,8 @@ export interface MarketingCampaign {
   readonly attachmentName: string | null;
   readonly attachmentMimeType: string | null;
   readonly errorMessage: string | null;
+  /** Etapas cujo conteudo veio do fallback (IA indisponivel no momento), nao de uma geracao real. */
+  readonly fallbackStages: readonly MarketingStageId[];
   readonly createdAt: string;
   readonly updatedAt: string;
 }

@@ -232,6 +232,11 @@ function stageStatus(
   return "pending";
 }
 
+/** true quando essa etapa saiu do fallback de seguranca (IA indisponivel), nao de uma geracao real. */
+function isStageFallback(campaign: MarketingCampaign, stage: MarketingStageId): boolean {
+  return campaign.fallbackStages.includes(stage);
+}
+
 const STAGE_FIELD = {
   MAPA_NICHO: "nicheMap",
   CRIATIVOS: "creatives",
@@ -465,7 +470,10 @@ onBeforeUnmount(() => {
           :class="{ 'is-active': c.id === activeId }"
           @click="selectCampaign(c.id)"
         >
-          <span class="op-list__niche">{{ c.niche }}</span>
+          <span class="op-list__niche">
+            {{ c.niche }}
+            <span v-if="c.fallbackStages.length > 0" title="Alguma etapa saiu com conteúdo genérico">⚠️</span>
+          </span>
           <span
             class="op-work-card__status"
             :class="{
@@ -517,12 +525,19 @@ onBeforeUnmount(() => {
               :disabled="stageStatus(active, stage) !== 'done'"
               @click="toggleStage(stage)"
             >
-              <span class="op-stage__icon" :class="`is-${stageStatus(active, stage)}`">
-                <template v-if="stageStatus(active, stage) === 'done'">✓</template>
+              <span
+                class="op-stage__icon"
+                :class="isStageFallback(active, stage) ? 'is-fallback' : `is-${stageStatus(active, stage)}`"
+              >
+                <template v-if="stageStatus(active, stage) === 'done' && isStageFallback(active, stage)">⚠</template>
+                <template v-else-if="stageStatus(active, stage) === 'done'">✓</template>
                 <template v-else-if="stageStatus(active, stage) === 'running'">⋯</template>
                 <template v-else>•</template>
               </span>
               <span class="op-stage__label">{{ MARKETING_STAGE_LABEL[stage] }}</span>
+              <span v-if="isStageFallback(active, stage)" class="op-stage__fallback-tag">
+                conteúdo genérico
+              </span>
               <span
                 v-if="stageStatus(active, stage) === 'done'"
                 class="op-stage__download"
@@ -537,6 +552,10 @@ onBeforeUnmount(() => {
             </button>
 
             <div v-if="openStage === stage && stageStatus(active, stage) === 'done'" class="op-stage__body">
+              <p v-if="isStageFallback(active, stage)" class="op-stage__fallback-warning">
+                ⚠️ Esta etapa não foi gerada pela IA — o conteúdo abaixo é um texto genérico de segurança, usado
+                quando o modelo fica indisponível. Rode a campanha novamente para tentar gerar o conteúdo real.
+              </p>
               <iframe
                 v-if="stage === 'LANDING_PAGE' && active.landingPageHtml"
                 class="op-landing-preview"
@@ -946,11 +965,39 @@ onBeforeUnmount(() => {
   color: var(--op-amber);
 }
 
+.op-stage__icon.is-fallback {
+  background: color-mix(in srgb, var(--op-red) 16%, transparent);
+  color: var(--op-red);
+}
+
 .op-stage__label {
   flex: 1;
   font-size: 13px;
   font-weight: 600;
   color: var(--op-ink-2);
+}
+
+.op-stage__fallback-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--op-red);
+  border: 1px solid color-mix(in srgb, var(--op-red) 40%, transparent);
+  border-radius: var(--op-radius-sm);
+  padding: 2px 6px;
+}
+
+.op-stage__fallback-warning {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--op-radius-sm);
+  background: color-mix(in srgb, var(--op-red) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--op-red) 30%, transparent);
+  color: var(--op-red);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 .op-stage__toggle {

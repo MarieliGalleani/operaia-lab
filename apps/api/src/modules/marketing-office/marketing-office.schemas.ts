@@ -37,6 +37,8 @@ export const marketingCampaignSchema = z.object({
   attachmentName: z.string().nullable(),
   attachmentMimeType: z.string().nullable(),
   errorMessage: z.string().nullable(),
+  /** Ids das etapas cujo conteudo veio do fallback deterministico (IA indisponivel no momento). */
+  fallbackStages: z.array(marketingStageIdSchema),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

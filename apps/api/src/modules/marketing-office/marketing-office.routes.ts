@@ -10,6 +10,7 @@ import {
   getCampaignAttachment,
   getCampaignById,
   listCampaigns,
+  toApiCampaign,
 } from "./marketing-campaign.service.js";
 
 export const createMarketingOfficeRoutes: FastifyPluginAsyncZod = async (app) => {
@@ -23,7 +24,7 @@ export const createMarketingOfficeRoutes: FastifyPluginAsyncZod = async (app) =>
     },
     async () => {
       const campaigns = await listCampaigns();
-      return JSON.parse(JSON.stringify(campaigns));
+      return JSON.parse(JSON.stringify(campaigns.map(toApiCampaign)));
     },
   );
 
@@ -38,7 +39,7 @@ export const createMarketingOfficeRoutes: FastifyPluginAsyncZod = async (app) =>
     },
     async (request) => {
       const campaign = await createCampaign(request.body);
-      return JSON.parse(JSON.stringify(campaign));
+      return JSON.parse(JSON.stringify(toApiCampaign(campaign)));
     },
   );
 
@@ -59,7 +60,7 @@ export const createMarketingOfficeRoutes: FastifyPluginAsyncZod = async (app) =>
       if (!campaign) {
         return reply.status(404).send({ message: "Campanha nao encontrada." });
       }
-      return JSON.parse(JSON.stringify(campaign));
+      return JSON.parse(JSON.stringify(toApiCampaign(campaign)));
     },
   );
 

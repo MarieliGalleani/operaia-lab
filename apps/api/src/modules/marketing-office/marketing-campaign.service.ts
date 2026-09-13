@@ -28,6 +28,17 @@ function getLlm(): LLMProvider {
   return cachedLlm;
 }
 
+/** Mapeia o registro do Prisma para o formato exposto na API (fallbackStagesJson -> fallbackStages). */
+export function toApiCampaign(campaign: MarketingCampaign): Omit<MarketingCampaign, "fallbackStagesJson"> & {
+  fallbackStages: string[];
+} {
+  const { fallbackStagesJson, ...rest } = campaign;
+  return {
+    ...rest,
+    fallbackStages: Array.isArray(fallbackStagesJson) ? (fallbackStagesJson as string[]) : [],
+  };
+}
+
 export function stripCodeFence(content: string): string {
   const trimmed = content.trim();
   const fenced = trimmed.match(/^```[a-zA-Z]*\n([\s\S]*)\n```$/);
@@ -109,9 +120,17 @@ async function runPipeline(campaignId: string): Promise<void> {
       const completion = await llm.complete(messages, { temperature: 0.7 });
       const field = MARKETING_STAGE_FIELD[stage];
 
+      const data: Record<string, unknown> = { [field]: stripCodeFence(completion.content) };
+      if (completion.model === "deterministic") {
+        const priorFallbacks = Array.isArray(campaign.fallbackStagesJson)
+          ? (campaign.fallbackStagesJson as string[])
+          : [];
+        data.fallbackStagesJson = [...priorFallbacks, stage];
+      }
+
       await prisma.marketingCampaign.update({
         where: { id: campaignId },
-        data: { [field]: stripCodeFence(completion.content) },
+        data,
       });
     }
 
