@@ -805,6 +805,9 @@ enum MarketingStage {
   PITCH_DECK
   PLANO_GTM
   PLAYBOOK_VENDAS
+  VIDEO_ROTEIRO
+  PLANO_TRAFEGO
+  FRAMEWORK_PERFORMANCE
 }
 
 model MarketingCampaign {
@@ -819,6 +822,12 @@ model MarketingCampaign {
   pitchDeck       String?
   gtmPlan         String?
   salesPlaybook   String?
+  videoRoteiro    String?
+  planoTrafego    String?
+  frameworkPerformance String?
+  attachmentName     String?
+  attachmentMimeType String?
+  attachmentBase64   String?
   errorMessage    String?
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
@@ -826,3 +835,5 @@ model MarketingCampaign {
   @@index([status])
   @@map("marketing_campaigns")
 }
+
+// P1.X Marketing — Fase 6: 3 etapas novas + anexo no briefing.
