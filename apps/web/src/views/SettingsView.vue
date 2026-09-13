@@ -1,5 +1,8 @@
 <script setup lang="ts">
+/** Fase 5 — O Mural do Escritório: migra pro sistema visual atual (--op-*). */
 import { computed } from "vue";
+import OperationalHeader from "@/components/shell/OperationalHeader.vue";
+import { findFloor } from "@/data/office-floors";
 
 const envHint = import.meta.env.VITE_USE_REAL_API === "false" ? "Mock local" : "API real";
 
@@ -22,184 +25,163 @@ const shortcuts = [
 </script>
 
 <template>
-  <div class="studio">
-    <header class="studio__topbar">
-      <div class="topbar__left">
-        <p class="page__kicker">Preferências</p>
-        <h1 class="page__title">Configurações</h1>
-      </div>
-      <div class="topbar__right">
-        <router-link to="/app/command" class="btn btn--primary">Command Center</router-link>
-      </div>
-    </header>
+  <OperationalHeader
+    :floor="findFloor('dev')"
+    scope-line="Compartilhado · todos os andares"
+    title="Configurações"
+    lede="Identidade do escritório e atalhos rápidos — preferências avançadas entram em fases futuras."
+    :show-cta="false"
+    :show-refresh="false"
+  />
+  <div class="op-content">
+    <div class="op-layout">
+      <section class="op-panel op-settings">
+        <p class="op-eyebrow-sm">Identidade</p>
+        <h2 class="op-panel__title">Identidade do escritório</h2>
+        <div v-for="row in rows" :key="row.label" class="op-settings__row">
+          <span class="op-settings__label">{{ row.label }}</span>
+          <span class="op-settings__value">{{ row.value }}</span>
+        </div>
+      </section>
 
-    <div class="studio__stage">
-      <div class="layout">
-        <section class="panel settings card-motion" style="--d: 1">
-          <p class="eyebrow">Identidade</p>
-          <h2 class="section__title">Identidade do escritório</h2>
-          <div v-for="row in rows" :key="row.label" class="settings__row">
-            <span class="settings__label">{{ row.label }}</span>
-            <span class="settings__value">{{ row.value }}</span>
-          </div>
-        </section>
-
-        <aside class="side">
-          <article class="panel side__card card-motion" style="--d: 2">
-            <p class="eyebrow">Navegação</p>
-            <h2 class="section__title">Atalhos rápidos</h2>
-            <p class="side__lead">Não saia do fluxo — pule direto para o que importa.</p>
-            <router-link
-              v-for="item in shortcuts"
-              :key="item.to"
-              :to="item.to"
-              class="shortcut"
-            >
-              <span class="shortcut__label">{{ item.label }}</span>
-              <span class="shortcut__desc">{{ item.desc }}</span>
-            </router-link>
-          </article>
-          <article class="panel side__card side__card--note card-motion" style="--d: 3">
-            <p class="eyebrow">Roadmap</p>
-            <h2 class="section__title">Nota</h2>
-            <p class="side__lead">
-              Preferências avançadas (auth, billing do provedor, multiplayer) entram em fases futuras.
-              Por enquanto o valor está em operar o Campus com clareza.
-            </p>
-          </article>
-        </aside>
-      </div>
+      <aside class="op-side">
+        <article class="op-panel op-side__card">
+          <p class="op-eyebrow-sm">Navegação</p>
+          <h2 class="op-panel__title">Atalhos rápidos</h2>
+          <p class="op-side__lead">Não saia do fluxo — pule direto para o que importa.</p>
+          <router-link v-for="item in shortcuts" :key="item.to" :to="item.to" class="op-shortcut">
+            <span class="op-shortcut__label">{{ item.label }}</span>
+            <span class="op-shortcut__desc">{{ item.desc }}</span>
+          </router-link>
+        </article>
+        <article class="op-panel op-side__card">
+          <p class="op-eyebrow-sm">Roadmap</p>
+          <h2 class="op-panel__title">Nota</h2>
+          <p class="op-side__lead">
+            Preferências avançadas (auth, billing do provedor, multiplayer) entram em fases futuras.
+            Por enquanto o valor está em operar o Campus com clareza.
+          </p>
+        </article>
+      </aside>
     </div>
   </div>
 </template>
 
 <style scoped>
-.topbar__left {
-  min-width: 200px;
-  margin-right: 16px;
+.op-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 34px 40px;
 }
 
-.topbar__right {
-  margin-left: auto;
+.op-eyebrow-sm {
+  font-family: var(--op-font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--op-muted-5);
 }
 
-.layout {
+.op-panel {
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius);
+  background: var(--op-panel);
+  padding: 20px;
+}
+
+.op-panel__title {
+  margin: 4px 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--op-ink-2);
+}
+
+.op-layout {
   display: flex;
   align-items: flex-start;
+  gap: 16px;
 }
 
-.settings {
+.op-settings {
   flex: 1.4;
-  padding: 16px 20px 18px;
-  max-width: none;
 }
 
-.settings .section__title {
-  margin-top: 6px;
-  margin-bottom: 8px;
-}
-
-.settings__row {
+.op-settings__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 14px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--op-line);
 }
 
-.settings__row:last-child {
+.op-settings__row:last-child {
   border-bottom: none;
 }
 
-.settings__label {
+.op-settings__label {
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--op-muted-3);
   margin-right: 16px;
 }
 
-.settings__value {
+.op-settings__value {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--op-ink-2);
   text-align: right;
 }
 
-.side {
+.op-side {
   width: 320px;
-  margin-left: 16px;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.side__card {
-  padding: 16px;
-}
-
-.side__card + .side__card {
-  margin-top: 14px;
-}
-
-.side__card .section__title {
-  margin-top: 6px;
-}
-
-.side__lead {
-  margin-top: 8px;
-  margin-bottom: 12px;
+.op-side__lead {
+  margin: 8px 0 12px;
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--op-muted-3);
   line-height: 1.45;
 }
 
-.shortcut {
+.op-shortcut {
   display: block;
   margin-top: 8px;
   padding: 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: var(--glass);
-  transition: border-color 0.2s var(--ease), background 0.2s var(--ease), transform 0.2s var(--ease);
+  border-radius: var(--op-radius-sm);
+  border: 1px solid var(--op-line);
+  background: var(--op-raise);
+  text-decoration: none;
+  transition: border-color 0.16s ease, background 0.16s ease;
 }
 
-.shortcut:hover {
-  border-color: var(--brand-line);
-  background: var(--surface-2);
-  transform: translateX(2px);
+.op-shortcut:hover {
+  border-color: var(--op-line-strong);
+  background: var(--op-hover);
 }
 
-.shortcut__label {
+.op-shortcut__label {
   display: block;
   font-size: 13px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--op-ink-2);
 }
 
-.shortcut__desc {
+.op-shortcut__desc {
   display: block;
   margin-top: 3px;
   font-size: 11px;
-  color: var(--text-muted);
-}
-
-.side__card--note {
-  border-color: rgba(56, 189, 248, 0.2);
+  color: var(--op-muted-4);
 }
 
 @media (max-width: 960px) {
-  .layout {
+  .op-layout {
     flex-direction: column;
   }
-  .side {
+  .op-side {
     width: 100%;
-    margin-left: 0;
-    margin-top: 14px;
-  }
-  .studio__topbar {
-    flex-wrap: wrap;
-  }
-  .topbar__right {
-    width: 100%;
-    margin-left: 0;
-    margin-top: 12px;
   }
 }
 </style>
