@@ -141,6 +141,35 @@ function toggleStage(stage: MarketingStageId): void {
   openStage.value = openStage.value === stage ? null : stage;
 }
 
+interface GtmPlan {
+  canais: readonly { nome: string; motivo: string }[];
+  cronograma: readonly { semana: number; foco: string; acoes: readonly string[] }[];
+  orcamento: readonly { canal: string; percentual: number }[];
+  kpis: readonly string[];
+}
+
+interface SalesPlaybook {
+  scriptAbordagem: string;
+  perguntasQualificacao: readonly string[];
+  objecoes: readonly { objecao: string; resposta: string }[];
+  followUp: readonly { tentativa: number; canal: string; mensagem: string }[];
+  fechamento: string;
+}
+
+function parseJson<T>(raw: string | null | undefined): T | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+const activeGtm = computed<GtmPlan | null>(() => parseJson<GtmPlan>(active.value?.gtmPlan));
+const activePlaybook = computed<SalesPlaybook | null>(() =>
+  parseJson<SalesPlaybook>(active.value?.salesPlaybook),
+);
+
 /** Markdown minimo e seguro (sem libs): escapa tudo, depois aplica so os
  * padroes que o proprio Mercurio usa nos prompts (#, ##, -, **negrito**). */
 function renderMarkdown(source: string): string {
@@ -324,6 +353,81 @@ onBeforeUnmount(() => {
                 sandbox=""
                 :srcdoc="active.landingPageHtml"
               />
+
+              <div v-else-if="stage === 'PLANO_GTM' && activeGtm" class="op-structured">
+                <div class="op-structured__section">
+                  <h4>Canais prioritários</h4>
+                  <ul>
+                    <li v-for="c in activeGtm.canais" :key="c.nome">
+                      <strong>{{ c.nome }}</strong> — {{ c.motivo }}
+                    </li>
+                  </ul>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Cronograma</h4>
+                  <div class="op-kanban">
+                    <div v-for="w in activeGtm.cronograma" :key="w.semana" class="op-kanban__col">
+                      <div class="op-kanban__head">Semana {{ w.semana }}</div>
+                      <p class="op-kanban__focus">{{ w.foco }}</p>
+                      <ul>
+                        <li v-for="(a, i) in w.acoes" :key="i">{{ a }}</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Orçamento (distribuição)</h4>
+                  <div class="op-budget">
+                    <div v-for="b in activeGtm.orcamento" :key="b.canal" class="op-budget__row">
+                      <span class="op-budget__label">{{ b.canal }}</span>
+                      <div class="op-budget__bar">
+                        <div class="op-budget__fill" :style="{ width: b.percentual + '%' }" />
+                      </div>
+                      <span class="op-budget__pct">{{ b.percentual }}%</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="op-structured__section">
+                  <h4>KPIs de acompanhamento</h4>
+                  <ul>
+                    <li v-for="(k, i) in activeGtm.kpis" :key="i">{{ k }}</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div v-else-if="stage === 'PLAYBOOK_VENDAS' && activePlaybook" class="op-structured">
+                <div class="op-structured__section">
+                  <h4>Script de abordagem</h4>
+                  <p>{{ activePlaybook.scriptAbordagem }}</p>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Perguntas de qualificação</h4>
+                  <ul>
+                    <li v-for="(q, i) in activePlaybook.perguntasQualificacao" :key="i">{{ q }}</li>
+                  </ul>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Objeções</h4>
+                  <div v-for="(o, i) in activePlaybook.objecoes" :key="i" class="op-objection">
+                    <p class="op-objection__q">"{{ o.objecao }}"</p>
+                    <p class="op-objection__a">{{ o.resposta }}</p>
+                  </div>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Sequência de follow-up</h4>
+                  <div class="op-chat">
+                    <div v-for="f in activePlaybook.followUp" :key="f.tentativa" class="op-chat__bubble">
+                      <span class="op-chat__meta">Tentativa {{ f.tentativa }} · {{ f.canal }}</span>
+                      <p>{{ f.mensagem }}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Fechamento</h4>
+                  <p>{{ activePlaybook.fechamento }}</p>
+                </div>
+              </div>
+
               <div
                 v-else
                 class="op-md"
@@ -617,6 +721,158 @@ onBeforeUnmount(() => {
 
 .op-md :deep(ul) {
   margin: 4px 0 4px 18px;
+}
+
+.op-structured {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  font-size: 13px;
+  color: var(--op-ink-4);
+}
+
+.op-structured__section h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--op-ink-2);
+  margin-bottom: 8px;
+}
+
+.op-structured__section ul {
+  margin: 0 0 0 18px;
+  line-height: 1.6;
+}
+
+.op-structured__section p {
+  line-height: 1.6;
+}
+
+.op-kanban {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 10px;
+  overflow-x: auto;
+}
+
+.op-kanban__col {
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius-sm);
+  background: var(--op-raise);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.op-kanban__head {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--op-cta);
+}
+
+.op-kanban__focus {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--op-ink-3);
+}
+
+.op-kanban__col ul {
+  margin: 4px 0 0 16px;
+  font-size: 12px;
+  color: var(--op-muted-2);
+}
+
+.op-budget {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.op-budget__row {
+  display: grid;
+  grid-template-columns: 120px 1fr 40px;
+  align-items: center;
+  gap: 10px;
+}
+
+.op-budget__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--op-ink-3);
+}
+
+.op-budget__bar {
+  height: 8px;
+  border-radius: var(--op-radius-full);
+  background: var(--op-track);
+  overflow: hidden;
+}
+
+.op-budget__fill {
+  height: 100%;
+  background: var(--op-cta);
+  border-radius: var(--op-radius-full);
+}
+
+.op-budget__pct {
+  font-size: 11px;
+  color: var(--op-muted-3);
+  text-align: right;
+}
+
+.op-objection {
+  border-left: 2px solid var(--op-bd-chip);
+  padding: 4px 0 4px 12px;
+  margin-bottom: 10px;
+}
+
+.op-objection__q {
+  font-style: italic;
+  color: var(--op-muted-2);
+  margin-bottom: 2px;
+}
+
+.op-objection__a {
+  color: var(--op-ink-3);
+}
+
+.op-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.op-chat__bubble {
+  align-self: flex-start;
+  max-width: 420px;
+  background: var(--op-halo);
+  border: 1px solid var(--op-green);
+  border-radius: var(--op-radius-sm) var(--op-radius-sm) var(--op-radius-sm) 2px;
+  padding: 8px 12px;
+}
+
+.op-chat__meta {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--op-green);
+  margin-bottom: 4px;
+}
+
+.op-chat__bubble p {
+  font-size: 13px;
+  color: var(--op-ink-2);
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .op-kanban {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 720px) {

@@ -128,23 +128,43 @@ passos.`;
     case "PLANO_GTM":
       return `${header}
 
-Tarefa: escreva o Plano de Go-to-Market, em markdown, com:
-## Canais prioritarios (e por que)
-## Cronograma 30/60/90 dias
-## Orcamento sugerido por canal (proporcional, sem inventar numeros
-  absolutos de reais — use percentuais)
-## KPIs de acompanhamento`;
+Tarefa: monte o Plano de Go-to-Market. Responda APENAS com um objeto
+JSON valido (sem markdown, sem \`\`\`, sem texto antes ou depois),
+exatamente neste formato:
+
+{
+  "canais": [{ "nome": string, "motivo": string }],
+  "cronograma": [
+    { "semana": number, "foco": string, "acoes": string[] }
+  ],
+  "orcamento": [{ "canal": string, "percentual": number }],
+  "kpis": string[]
+}
+
+Regras: 4 semanas no cronograma (semana 1 a 4). "orcamento" e uma
+distribuicao percentual entre os canais listados em "canais" (soma
+100). Nao invente numeros absolutos de reais. Tudo em portugues do
+Brasil, especifico para o nicho.`;
 
     case "PLAYBOOK_VENDAS":
       return `${header}
 
-Tarefa: escreva o Playbook de Vendas, em markdown, com:
-## Script de abordagem inicial
-## Perguntas de qualificacao
-## Quebra das 3 objecoes mais comuns deste nicho (da secao Objecoes do
-  Mapa de Nicho)
-## Sequencia de follow-up (o que falar em cada tentativa)
-## Frase de fechamento`;
+Tarefa: monte o Playbook de Vendas. Responda APENAS com um objeto JSON
+valido (sem markdown, sem \`\`\`, sem texto antes ou depois), exatamente
+neste formato:
+
+{
+  "scriptAbordagem": string,
+  "perguntasQualificacao": string[],
+  "objecoes": [{ "objecao": string, "resposta": string }],
+  "followUp": [{ "tentativa": number, "canal": string, "mensagem": string }],
+  "fechamento": string
+}
+
+Regras: 3 objecoes (baseadas na secao Objecoes do Mapa de Nicho acima).
+4 tentativas de follow-up, cada uma como se fosse uma mensagem real de
+WhatsApp (curta, direta, sem formalidade excessiva). Tudo em portugues
+do Brasil, especifico para o nicho.`;
   }
 }
 
