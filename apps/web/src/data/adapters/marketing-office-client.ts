@@ -66,6 +66,13 @@ export interface MarketingAttachment {
   readonly base64: string;
 }
 
+/** Nicho/setor atendido — agrupa campanhas do mesmo setor. */
+export interface NicheSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly campaignCount: number;
+}
+
 export interface CreateCampaignInput {
   readonly niche: string;
   readonly briefing: string;
@@ -79,6 +86,7 @@ export interface MarketingOfficeClient {
   createCampaign(input: CreateCampaignInput): Promise<MarketingCampaign>;
   getCampaign(id: string): Promise<MarketingCampaign>;
   getAttachment(id: string): Promise<MarketingAttachment>;
+  listNiches(): Promise<readonly NicheSummary[]>;
 }
 
 export function createMarketingOfficeClient(): MarketingOfficeClient {
@@ -95,6 +103,9 @@ export function createMarketingOfficeClient(): MarketingOfficeClient {
     },
     async getAttachment(id) {
       return http.get<MarketingAttachment>(`/office/marketing/campaigns/${id}/attachment`);
+    },
+    async listNiches() {
+      return http.get<readonly NicheSummary[]>("/office/marketing/niches");
     },
   };
 }

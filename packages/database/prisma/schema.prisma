@@ -810,9 +810,30 @@ enum MarketingStage {
   FRAMEWORK_PERFORMANCE
 }
 
+/// Nicho/setor atendido (P1.X Fase 1 — Cerebro do Nicho). Agrupa campanhas do
+/// mesmo setor para permitir reaproveitamento de conhecimento entre clientes
+/// (ver NicheMemoryNote na Fase 2).
+model Niche {
+  id          String              @id @default(uuid())
+  name        String
+  /// Normalizado (lower + trim + espacos colapsados) para deduplicar nichos
+  /// digitados com grafia levemente diferente.
+  slug        String              @unique
+  description String?
+  campaigns   MarketingCampaign[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@map("niches")
+}
+
 model MarketingCampaign {
   id              String                  @id @default(uuid())
+  /// Texto exatamente como digitado no briefing — preservado para os prompts,
+  /// que continuam usando esta string (nao a entidade Niche).
   niche           String
+  nicheId         String
+  nicheRef        Niche                   @relation(fields: [nicheId], references: [id])
   briefing        String
   status          MarketingCampaignStatus @default(PENDING)
   currentStage    MarketingStage?
@@ -835,6 +856,7 @@ model MarketingCampaign {
   updatedAt       DateTime                @updatedAt
 
   @@index([status])
+  @@index([nicheId])
   @@map("marketing_campaigns")
 }
 

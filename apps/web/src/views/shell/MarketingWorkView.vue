@@ -16,6 +16,7 @@ import {
   createMarketingOfficeClient,
   type MarketingCampaign,
   type MarketingStageId,
+  type NicheSummary,
 } from "@/data/adapters/marketing-office-client";
 
 const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
@@ -32,6 +33,7 @@ const active = computed(() => campaigns.value.find((c) => c.id === activeId.valu
 
 const niche = ref("");
 const briefing = ref("");
+const niches = ref<readonly NicheSummary[]>([]);
 const submitting = ref(false);
 const submitError = ref<string | null>(null);
 
@@ -178,6 +180,14 @@ async function loadCampaigns(): Promise<void> {
   }
 }
 
+async function loadNiches(): Promise<void> {
+  try {
+    niches.value = await client.listNiches();
+  } catch (error) {
+    console.log("[marketing-work] falha ao carregar nichos", error);
+  }
+}
+
 async function submitBriefing(): Promise<void> {
   if (niche.value.trim().length < 2 || briefing.value.trim().length < 10) {
     submitError.value = "Preencha o nicho e um briefing com pelo menos 10 caracteres.";
@@ -203,6 +213,7 @@ async function submitBriefing(): Promise<void> {
     briefing.value = "";
     removeAttachment();
     startPolling();
+    void loadNiches();
   } catch (error) {
     submitError.value =
       error instanceof Error ? error.message : "Não foi possível criar a campanha.";
@@ -388,6 +399,7 @@ function statusLabel(status: MarketingCampaign["status"]): string {
 
 onMounted(() => {
   void loadCampaigns();
+  void loadNiches();
 });
 
 onBeforeUnmount(() => {
@@ -414,9 +426,13 @@ onBeforeUnmount(() => {
           v-model="niche"
           type="text"
           class="op-input"
+          list="op-niche-options"
           placeholder="Nicho (ex: dermatologia, foco em agenda cheia)"
           :disabled="submitting"
         />
+        <datalist id="op-niche-options">
+          <option v-for="n in niches" :key="n.id" :value="n.name" />
+        </datalist>
       </div>
       <textarea
         v-model="briefing"

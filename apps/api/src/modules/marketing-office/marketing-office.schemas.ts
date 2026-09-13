@@ -59,3 +59,9 @@ export const marketingAttachmentSchema = z.object({
   mimeType: z.string(),
   base64: z.string(),
 });
+
+export const nicheSummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  campaignCount: z.number(),
+});

@@ -45,6 +45,40 @@ export function stripCodeFence(content: string): string {
   return fenced ? fenced[1]!.trim() : trimmed;
 }
 
+/** Normaliza o texto do nicho para deduplicar grafias levemente diferentes do mesmo setor. */
+function slugifyNiche(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/** Encontra ou cria o Nicho correspondente ao texto digitado, agrupando campanhas do mesmo setor. */
+async function resolveNicheId(nicheText: string): Promise<string> {
+  const slug = slugifyNiche(nicheText);
+  const niche = await prisma.niche.upsert({
+    where: { slug },
+    update: {},
+    create: { name: nicheText.trim(), slug },
+  });
+  return niche.id;
+}
+
+export interface NicheSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly campaignCount: number;
+}
+
+export async function listNiches(): Promise<readonly NicheSummary[]> {
+  const niches = await prisma.niche.findMany({
+    orderBy: { name: "asc" },
+    include: { _count: { select: { campaigns: true } } },
+  });
+  return niches.map((niche) => ({
+    id: niche.id,
+    name: niche.name,
+    campaignCount: niche._count.campaigns,
+  }));
+}
+
 export async function createCampaign(input: {
   niche: string;
   briefing: string;
@@ -52,9 +86,11 @@ export async function createCampaign(input: {
   attachmentMimeType?: string;
   attachmentBase64?: string;
 }): Promise<MarketingCampaign> {
+  const nicheId = await resolveNicheId(input.niche);
   const campaign = await prisma.marketingCampaign.create({
     data: {
       niche: input.niche,
+      nicheId,
       briefing: input.briefing,
       attachmentName: input.attachmentName,
       attachmentMimeType: input.attachmentMimeType,

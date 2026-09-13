@@ -4,12 +4,14 @@ import {
   createCampaignBodySchema,
   marketingAttachmentSchema,
   marketingCampaignSchema,
+  nicheSummarySchema,
 } from "./marketing-office.schemas.js";
 import {
   createCampaign,
   getCampaignAttachment,
   getCampaignById,
   listCampaigns,
+  listNiches,
   toApiCampaign,
 } from "./marketing-campaign.service.js";
 
@@ -61,6 +63,20 @@ export const createMarketingOfficeRoutes: FastifyPluginAsyncZod = async (app) =>
         return reply.status(404).send({ message: "Campanha nao encontrada." });
       }
       return JSON.parse(JSON.stringify(toApiCampaign(campaign)));
+    },
+  );
+
+  app.get(
+    "/office/marketing/niches",
+    {
+      schema: {
+        tags: ["marketing-office"],
+        response: { 200: z.array(nicheSummarySchema) },
+      },
+    },
+    async () => {
+      const niches = await listNiches();
+      return JSON.parse(JSON.stringify(niches));
     },
   );
 
