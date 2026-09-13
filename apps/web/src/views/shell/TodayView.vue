@@ -29,6 +29,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import OperationalHeader from "@/components/shell/OperationalHeader.vue";
+import MuralFeed from "@/components/shell/MuralFeed.vue";
 import { findFloor, floorIdFromPath } from "@/data/office-floors";
 import { createOfficeStatusClient, type OfficeStatusDto } from "@/data/adapters/office-status-client";
 import { createHttpClient } from "@/data/adapters/http-client";
@@ -236,6 +237,8 @@ const ariaSummary = computed(() => {
           <p v-if="pendingApprovals.length === 0" class="op-ask-empty">Nada aguarda sua decisão agora.</p>
         </div>
       </div>
+
+      <MuralFeed v-if="floor.id === 'automation'" class="op-mural-slot" />
 
       <div class="op-section-head">
         <h3>Acontecendo agora</h3>
@@ -532,6 +535,11 @@ const ariaSummary = computed(() => {
   font-size: 13px;
   line-height: 1.55;
   color: var(--op-muted-3);
+}
+
+.op-mural-slot {
+  display: block;
+  margin: 24px 0;
 }
 
 .op-section-head {
