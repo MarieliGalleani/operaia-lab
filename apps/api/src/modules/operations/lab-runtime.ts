@@ -60,6 +60,8 @@ export interface LabRuntimeOptions {
   readonly preferQueue?: boolean;
   readonly missionWait?: OperationalMissionServiceOptions["wait"];
   readonly workGovernanceGate?: OperationalMissionServiceOptions["workGovernanceGate"];
+  /** Override de provedor LLM por funcionario (ver DigitalOfficeConfig.llmOverrides). */
+  readonly llmOverrides?: Readonly<Record<string, import("@operaia/ai-core").LLMProvider>>;
 }
 
 /**
@@ -100,7 +102,7 @@ export function createLabRuntime(
       : {}),
   });
   const store = new OperationalRunStore();
-  const office = createDigitalOffice({ llm });
+  const office = createDigitalOffice({ llm, llmOverrides: options.llmOverrides });
   const service = new OperationalMissionService(
     office,
     workspaces,

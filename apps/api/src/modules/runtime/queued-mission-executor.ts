@@ -340,8 +340,8 @@ export class QueuedMissionExecutor {
     context: MissionContext,
     workerEmployeeId: string,
   ): Promise<void> {
-    const { registry, runner, matcher, llm } = this.office;
-    const ceo = registry.require(CEO_EMPLOYEE_ID).create({ llm });
+    const { registry, runner, matcher, llmFor } = this.office;
+    const ceo = registry.require(CEO_EMPLOYEE_ID).create({ llm: llmFor(CEO_EMPLOYEE_ID) });
     const initial = await runner.run(ceo, {
       workspace: context.workspace,
       objective: context.objective,
@@ -533,8 +533,8 @@ export class QueuedMissionExecutor {
     workerEmployeeId: string,
   ): Promise<void> {
     const started = Date.now();
-    const { registry, runner, llm } = this.office;
-    const employee = registry.require(workerEmployeeId).create({ llm });
+    const { registry, runner, llmFor } = this.office;
+    const employee = registry.require(workerEmployeeId).create({ llm: llmFor(workerEmployeeId) });
     const tools = await this.toolsFactory(
       workerEmployeeId,
       mission.workspaceId,
@@ -749,8 +749,8 @@ export class QueuedMissionExecutor {
       return acc + (child.finishedAt.getTime() - child.startedAt.getTime());
     }, 0);
 
-    const { registry, runner, llm } = this.office;
-    const ceo = registry.require(CEO_EMPLOYEE_ID).create({ llm });
+    const { registry, runner, llmFor } = this.office;
+    const ceo = registry.require(CEO_EMPLOYEE_ID).create({ llm: llmFor(CEO_EMPLOYEE_ID) });
 
     const consolidationStart = Date.now();
     const final = await runner.run(ceo, {

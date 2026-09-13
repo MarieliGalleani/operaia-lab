@@ -261,6 +261,7 @@ describe("ADR-007 Fase 0 — contrato Mission System (MissionQueue)", () => {
             create: () => ({}),
           }),
         },
+        llmFor: () => undefined,
         runner: {
           async run() {
             return {
@@ -373,6 +374,7 @@ describe("ADR-007 Fase 0 — contrato Mission System (MissionQueue)", () => {
             create: () => ({}),
           }),
         },
+        llmFor: () => undefined,
         runner: {
           async run() {
             return {
@@ -497,6 +499,7 @@ describe("ADR-007 Fase 0 — contrato Mission System (MissionQueue)", () => {
         registry: {
           require: () => ({ create: () => ({}) }),
         },
+        llmFor: () => undefined,
         runner: {
           async run() {
             return {
@@ -708,7 +711,7 @@ describe("ADR-007 Fase 0 — contrato Mission System (MissionQueue)", () => {
             },
           },
           matcher: { match: () => ({ profile: { id: "cto-mag" } }) },
-          llm: {},
+          llmFor: () => ({}),
         } as never,
         {
           async toSnapshot() {

@@ -18,10 +18,18 @@ export interface DigitalOffice {
   readonly runner: EmployeeRunner;
   readonly matcher: EmployeeMatcher;
   readonly delegation: DelegationService;
+  /** LLM efetivo para um funcionario: override quando configurado, senao o padrao da equipe. */
+  readonly llmFor: (employeeId: string) => LLMProvider;
 }
 
 export interface DigitalOfficeConfig {
   readonly llm: LLMProvider;
+  /**
+   * Override de provedor por funcionario (ex.: cargos que exigem
+   * raciocinio mais cauteloso usam Claude em vez do Gemini padrao da
+   * equipe). Ausente ou sem entrada para o id = usa o llm padrao.
+   */
+  readonly llmOverrides?: Readonly<Record<string, LLMProvider>>;
 }
 
 /**
@@ -32,12 +40,14 @@ export interface DigitalOfficeConfig {
 export function createDigitalOffice(
   config: DigitalOfficeConfig,
 ): DigitalOffice {
-  const { llm } = config;
+  const { llm, llmOverrides } = config;
 
   const registry = registerDigitalTeam();
   const runner = new EmployeeRunner();
   const matcher = new EmployeeMatcher(registry);
   const delegation = new DelegationService(matcher, runner, { llm });
+  const llmFor = (employeeId: string): LLMProvider =>
+    llmOverrides?.[employeeId] ?? llm;
 
-  return { llm, registry, runner, matcher, delegation };
+  return { llm, registry, runner, matcher, delegation, llmFor };
 }

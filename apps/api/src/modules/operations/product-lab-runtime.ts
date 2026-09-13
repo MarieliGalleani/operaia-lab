@@ -1,4 +1,4 @@
-import { parseLLMProviderList } from "@operaia/ai-core";
+import { createLLMStack, parseLLMProviderList, type LLMProvider } from "@operaia/ai-core";
 import { DIGITAL_TEAM_EMPLOYEES } from "@operaia/digital-team";
 import { DomainSignalService } from "@operaia/domain-signals";
 import {
@@ -55,7 +55,28 @@ export function createProductLabRuntime(): ProductRuntime {
 
   const workGovernanceGate = createPrismaAlreadyDoneGate();
 
+  /**
+   * Cargos que exigem raciocinio mais cauteloso (CEO/estrategia, CTO/
+   * engenharia, Legal) usam Claude dedicado quando a chave existir;
+   * sem ANTHROPIC_API_KEY, caem no comportamento padrao (Gemini da
+   * equipe) — nunca quebra por falta de credencial opcional.
+   */
+  let llmOverrides: Readonly<Record<string, LLMProvider>> | undefined;
+  if (env.ANTHROPIC_API_KEY) {
+    const claude = createLLMStack({
+      provider: "anthropic",
+      anthropicApiKey: env.ANTHROPIC_API_KEY,
+      enableConsoleObservability: env.LLM_OBSERVABILITY,
+    });
+    llmOverrides = {
+      "operaia-ceo": claude,
+      "cto-mag": claude,
+      themis: claude,
+    };
+  }
+
   const lab = createLabRuntime({
+    llmOverrides,
     stack: {
       provider: env.LLM_PROVIDER,
       model: env.LLM_MODEL,
