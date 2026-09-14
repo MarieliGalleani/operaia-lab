@@ -94,6 +94,33 @@ export interface ClientSummary {
   readonly recurringActive: boolean;
 }
 
+export interface ClientPlans {
+  readonly planoTrafego: string | null;
+  readonly frameworkPerformance: string | null;
+}
+
+export type ClientMetricKind = "TRAFEGO" | "PERFORMANCE";
+
+export interface MetricEntry {
+  readonly id: string;
+  readonly kind: ClientMetricKind;
+  readonly metric: string;
+  readonly channel: string | null;
+  readonly period: string;
+  readonly value: number;
+  readonly note: string | null;
+  readonly createdAt: string;
+}
+
+export interface CreateMetricEntryInput {
+  readonly kind: ClientMetricKind;
+  readonly metric: string;
+  readonly channel?: string;
+  readonly period: string;
+  readonly value: number;
+  readonly note?: string;
+}
+
 export interface CreateCampaignInput {
   readonly niche: string;
   readonly briefing: string;
@@ -110,6 +137,10 @@ export interface MarketingOfficeClient {
   getAttachment(id: string): Promise<MarketingAttachment>;
   listNiches(): Promise<readonly NicheSummary[]>;
   listClients(): Promise<readonly ClientSummary[]>;
+  getClientPlans(id: string): Promise<ClientPlans>;
+  listMetricEntries(clientId: string, kind: ClientMetricKind): Promise<readonly MetricEntry[]>;
+  createMetricEntry(clientId: string, input: CreateMetricEntryInput): Promise<MetricEntry>;
+  deleteMetricEntry(id: string): Promise<void>;
 }
 
 export function createMarketingOfficeClient(): MarketingOfficeClient {
@@ -132,6 +163,20 @@ export function createMarketingOfficeClient(): MarketingOfficeClient {
     },
     async listClients() {
       return http.get<readonly ClientSummary[]>("/office/marketing/clients");
+    },
+    async getClientPlans(id) {
+      return http.get<ClientPlans>(`/office/marketing/clients/${id}/plans`);
+    },
+    async listMetricEntries(clientId, kind) {
+      return http.get<readonly MetricEntry[]>(
+        `/office/marketing/clients/${clientId}/metrics?kind=${kind}`,
+      );
+    },
+    async createMetricEntry(clientId, input) {
+      return http.post<MetricEntry>(`/office/marketing/clients/${clientId}/metrics`, input);
+    },
+    async deleteMetricEntry(id) {
+      await http.delete<{ ok: boolean }>(`/office/marketing/metrics/${id}`);
     },
   };
 }

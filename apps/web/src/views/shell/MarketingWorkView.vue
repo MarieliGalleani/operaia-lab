@@ -9,6 +9,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import OperationalHeader from "@/components/shell/OperationalHeader.vue";
+import ClientMetricsPanel from "@/components/shell/ClientMetricsPanel.vue";
 import { findFloor, floorIdFromPath } from "@/data/office-floors";
 import {
   MARKETING_STAGE_LABEL,
@@ -25,6 +26,9 @@ const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
 const route = useRoute();
 const floor = computed(() => findFloor(floorIdFromPath(route.path)));
 const client = createMarketingOfficeClient();
+
+type WorkTab = "campanhas" | "trafego" | "performance";
+const activeTab = ref<WorkTab>("campanhas");
 
 const listState = ref<"idle" | "loading" | "ready" | "error">("idle");
 const listError = ref<string | null>(null);
@@ -474,7 +478,34 @@ onBeforeUnmount(() => {
     @refresh="loadCampaigns"
   />
 
-  <div class="op-content">
+  <div class="op-tabs">
+    <button
+      type="button"
+      class="op-tab"
+      :class="{ 'is-active': activeTab === 'campanhas' }"
+      @click="activeTab = 'campanhas'"
+    >
+      Campanhas
+    </button>
+    <button
+      type="button"
+      class="op-tab"
+      :class="{ 'is-active': activeTab === 'trafego' }"
+      @click="activeTab = 'trafego'"
+    >
+      Tráfego Pago
+    </button>
+    <button
+      type="button"
+      class="op-tab"
+      :class="{ 'is-active': activeTab === 'performance' }"
+      @click="activeTab = 'performance'"
+    >
+      Performance
+    </button>
+  </div>
+
+  <div v-if="activeTab === 'campanhas'" class="op-content">
     <section class="op-panel op-brief">
       <h3 class="op-panel__title">Briefing para o Mercúrio</h3>
       <div class="op-brief__row">
@@ -888,9 +919,57 @@ onBeforeUnmount(() => {
       </section>
     </div>
   </div>
+
+  <div v-else-if="activeTab === 'trafego'" class="op-content op-content--single">
+    <section class="op-panel">
+      <ClientMetricsPanel
+        kind="TRAFEGO"
+        title="Tráfego Pago"
+        hint="Acompanhamento contínuo por cliente — o plano que o Mercúrio definiu ao lado dos números reais de investimento e resultado, lançados aqui enquanto não há integração direta com a conta de anúncios."
+      />
+    </section>
+  </div>
+
+  <div v-else-if="activeTab === 'performance'" class="op-content op-content--single">
+    <section class="op-panel">
+      <ClientMetricsPanel
+        kind="PERFORMANCE"
+        title="Performance"
+        hint="As métricas que o Mercúrio definiu como framework de acompanhamento, comparadas aos números reais lançados aqui a cada período."
+      />
+    </section>
+  </div>
 </template>
 
 <style scoped>
+.op-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 0 34px;
+  border-bottom: 1px solid var(--op-line);
+}
+
+.op-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 12px 4px;
+  margin-bottom: -1px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--op-muted-3);
+  cursor: pointer;
+}
+
+.op-tab + .op-tab {
+  margin-left: 14px;
+}
+
+.op-tab.is-active {
+  color: var(--op-ink-2);
+  border-bottom-color: var(--op-cta);
+}
+
 .op-content {
   flex: 1;
   overflow-y: auto;
@@ -898,6 +977,10 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.op-content--single {
+  max-width: 920px;
 }
 
 .op-panel {

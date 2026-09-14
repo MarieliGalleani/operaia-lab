@@ -1,10 +1,13 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import {
+  clientPlansSchema,
   clientSummarySchema,
   createCampaignBodySchema,
+  createMetricEntryBodySchema,
   marketingAttachmentSchema,
   marketingCampaignSchema,
+  metricEntrySchema,
   nicheSummarySchema,
 } from "./marketing-office.schemas.js";
 import {
@@ -16,6 +19,12 @@ import {
   listNiches,
   toApiCampaign,
 } from "./marketing-campaign.service.js";
+import {
+  createMetricEntry,
+  deleteMetricEntry,
+  getClientLatestPlans,
+  listMetricEntries,
+} from "./client-metrics.service.js";
 
 export const createMarketingOfficeRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get(
@@ -93,6 +102,67 @@ export const createMarketingOfficeRoutes: FastifyPluginAsyncZod = async (app) =>
     async () => {
       const clients = await listClients();
       return JSON.parse(JSON.stringify(clients));
+    },
+  );
+
+  app.get(
+    "/office/marketing/clients/:id/plans",
+    {
+      schema: {
+        tags: ["marketing-office"],
+        params: z.object({ id: z.string().min(1) }),
+        response: { 200: clientPlansSchema },
+      },
+    },
+    async (request) => {
+      return getClientLatestPlans(request.params.id);
+    },
+  );
+
+  app.get(
+    "/office/marketing/clients/:id/metrics",
+    {
+      schema: {
+        tags: ["marketing-office"],
+        params: z.object({ id: z.string().min(1) }),
+        querystring: z.object({ kind: z.enum(["TRAFEGO", "PERFORMANCE"]) }),
+        response: { 200: z.array(metricEntrySchema) },
+      },
+    },
+    async (request) => {
+      const entries = await listMetricEntries(request.params.id, request.query.kind);
+      return JSON.parse(JSON.stringify(entries));
+    },
+  );
+
+  app.post(
+    "/office/marketing/clients/:id/metrics",
+    {
+      schema: {
+        tags: ["marketing-office"],
+        params: z.object({ id: z.string().min(1) }),
+        body: createMetricEntryBodySchema,
+        response: { 200: metricEntrySchema },
+      },
+    },
+    async (request) => {
+      const entry = await createMetricEntry({ clientId: request.params.id, ...request.body });
+      return JSON.parse(JSON.stringify(entry));
+    },
+  );
+
+  app.delete(
+    "/office/marketing/metrics/:id",
+    {
+      schema: {
+        tags: ["marketing-office"],
+        params: z.object({ id: z.string().min(1) }),
+        response: { 200: z.object({ ok: z.boolean() }) },
+      },
+    },
+    async (request) => {
+      await deleteMetricEntry(request.params.id);
+      return { ok: true };
     },
   );
 

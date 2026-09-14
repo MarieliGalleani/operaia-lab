@@ -847,12 +847,41 @@ model Client {
   /// Mensalidade que sustenta a operacao continua.
   recurringActive Boolean             @default(false)
   campaigns       MarketingCampaign[]
+  metricEntries   ClientMetricEntry[]
   createdAt       DateTime            @default(now())
   updatedAt       DateTime            @updatedAt
 
   @@unique([nicheId, slug])
   @@index([nicheId])
   @@map("clients")
+}
+
+/// P1.X Fase 7 — acompanhamento continuo por cliente (Trafego Pago e
+/// Performance), depois que a campanha inicial do Mercurio ja definiu o
+/// Plano de Trafego e o Framework de Performance. Sem integracao real com
+/// conta de anuncios ainda — os valores sao lancados manualmente aqui.
+enum ClientMetricKind {
+  TRAFEGO
+  PERFORMANCE
+}
+
+model ClientMetricEntry {
+  id       String           @id @default(uuid())
+  clientId String
+  client   Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  kind     ClientMetricKind
+  /// Ex: "Investimento", "CPA", "CTR", "Conversoes".
+  metric   String
+  /// Ex: "Meta Ads", "Google Ads" — nulo quando a metrica nao e por canal.
+  channel  String?
+  /// Data de referencia do lancamento (semana/mes que o numero representa).
+  period   DateTime
+  value    Float
+  note     String?
+  createdAt DateTime        @default(now())
+
+  @@index([clientId, kind, period])
+  @@map("client_metric_entries")
 }
 
 /// Cerebro do Nicho (P1.X Fase 2) — memoria vetorial cross-cliente: cada
