@@ -821,10 +821,33 @@ model Niche {
   slug        String              @unique
   description String?
   campaigns   MarketingCampaign[]
+  memoryNotes NicheMemoryNote[]
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
   @@map("niches")
+}
+
+/// Cerebro do Nicho (P1.X Fase 2) — memoria vetorial cross-cliente: cada
+/// etapa de uma campanha bem-sucedida (nao fallback) vira uma nota aqui,
+/// reaproveitada por campanhas futuras do MESMO nicho via busca por
+/// similaridade de cosseno (mesmo padrao ja usado em OperationalMemoryNote,
+/// so que escopado por nicho em vez de workspace interno).
+model NicheMemoryNote {
+  id         String         @id @default(uuid())
+  nicheId    String
+  niche      Niche          @relation(fields: [nicheId], references: [id], onDelete: Cascade)
+  campaignId String
+  stage      MarketingStage
+  content    String
+  /// Embedding Gemini (text-embedding-004, 768 dims) — vazio se a chave nao
+  /// estiver configurada ou a geracao falhar; busca cai pra mais recentes.
+  embedding  Float[]        @default([])
+  createdAt  DateTime       @default(now())
+
+  @@unique([nicheId, campaignId, stage])
+  @@index([nicheId, stage, createdAt])
+  @@map("niche_memory_notes")
 }
 
 model MarketingCampaign {

@@ -2,6 +2,7 @@ import { createLLMStack, type LLMProvider, type LLMStackConfig } from "@operaia/
 import { prisma } from "@operaia/database";
 import { env } from "../../config/env.js";
 import { buildStageMessages } from "./marketing-prompts.js";
+import { recallNicheMemory, recordNicheMemory } from "./niche-memory-store.js";
 import {
   MARKETING_STAGE_FIELD,
   MARKETING_STAGE_ORDER,
@@ -152,16 +153,43 @@ async function runPipeline(campaignId: string): Promise<void> {
       const campaign = await prisma.marketingCampaign.findUniqueOrThrow({
         where: { id: campaignId },
       });
-      const messages = buildStageMessages(stage, campaign);
+
+      let nicheMemory: Awaited<ReturnType<typeof recallNicheMemory>> = [];
+      try {
+        nicheMemory = await recallNicheMemory({
+          nicheId: campaign.nicheId,
+          stage,
+          queryText: `${campaign.niche} ${campaign.briefing}`,
+          excludeCampaignId: campaignId,
+          embeddingsApiKey: env.GEMINI_API_KEY,
+        });
+      } catch (error) {
+        console.error("[marketing-office] falha ao recuperar memoria do nicho (segue sem contexto)", error);
+      }
+
+      const messages = buildStageMessages(stage, campaign, nicheMemory);
       const completion = await llm.complete(messages, { temperature: 0.7 });
       const field = MARKETING_STAGE_FIELD[stage];
+      const strippedContent = stripCodeFence(completion.content);
 
-      const data: Record<string, unknown> = { [field]: stripCodeFence(completion.content) };
+      const data: Record<string, unknown> = { [field]: strippedContent };
       if (completion.model === "deterministic") {
         const priorFallbacks = Array.isArray(campaign.fallbackStagesJson)
           ? (campaign.fallbackStagesJson as string[])
           : [];
         data.fallbackStagesJson = [...priorFallbacks, stage];
+      } else {
+        try {
+          await recordNicheMemory({
+            nicheId: campaign.nicheId,
+            campaignId,
+            stage,
+            content: strippedContent,
+            embeddingsApiKey: env.GEMINI_API_KEY,
+          });
+        } catch (error) {
+          console.error("[marketing-office] falha ao gravar memoria do nicho (nao afeta a campanha)", error);
+        }
       }
 
       await prisma.marketingCampaign.update({

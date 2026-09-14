@@ -1,7 +1,9 @@
 import type { LLMImageAttachment, LLMMessage } from "@operaia/ai-core";
-import type { MarketingCampaign, MarketingStageId } from "./marketing-office.types.js";
+import type { NicheMemoryHit } from "./niche-memory-store.js";
+import { MARKETING_STAGE_LABEL, type MarketingCampaign, type MarketingStageId } from "./marketing-office.types.js";
 
 const IMAGE_MIME_PREFIX = "image/";
+const MAX_MEMORY_CONTENT_CHARS = 2000;
 
 /**
  * Prompts do Mercurio (Marketing Lead) para cada etapa do pipeline.
@@ -77,8 +79,22 @@ function attachmentTextNote(campaign: MarketingCampaign): string {
   return `\n\nO cliente anexou um arquivo (${campaign.attachmentName ?? "anexo"}, ${campaign.attachmentMimeType}) que ainda nao pode ser lido automaticamente — ignore o conteudo dele.`;
 }
 
-function buildUserPrompt(stage: MarketingStageId, campaign: MarketingCampaign): string {
-  const header = `Nicho: ${campaign.niche}\nBriefing do cliente: ${campaign.briefing}${attachmentTextNote(campaign)}${priorContext(campaign)}`;
+/** Conhecimento real de outras campanhas do MESMO nicho (Cerebro do Nicho, Fase 2) —
+ * e o que faz a 6a campanha de um setor sair mais rapida e melhor que a 1a. */
+function nicheMemoryContext(hits: readonly NicheMemoryHit[] | undefined): string {
+  if (!hits || hits.length === 0) return "";
+  const blocks = hits.map(
+    (hit) => `### ${MARKETING_STAGE_LABEL[hit.stage]}\n${hit.content.slice(0, MAX_MEMORY_CONTENT_CHARS)}`,
+  );
+  return `\n\nConhecimento acumulado de outras campanhas reais ja feitas neste MESMO nicho (use como referencia de padrao, qualidade e o que ja funcionou — adapte ao briefing atual, nunca copie literalmente nem repita nome/dado especifico de outro cliente):\n\n${blocks.join("\n\n")}`;
+}
+
+function buildUserPrompt(
+  stage: MarketingStageId,
+  campaign: MarketingCampaign,
+  nicheMemory?: readonly NicheMemoryHit[],
+): string {
+  const header = `Nicho: ${campaign.niche}\nBriefing do cliente: ${campaign.briefing}${attachmentTextNote(campaign)}${priorContext(campaign)}${nicheMemoryContext(nicheMemory)}`;
 
   switch (stage) {
     case "MAPA_NICHO":
@@ -276,12 +292,13 @@ e no Plano de Trafego. Tudo em portugues do Brasil.`;
 export function buildStageMessages(
   stage: MarketingStageId,
   campaign: MarketingCampaign,
+  nicheMemory?: readonly NicheMemoryHit[],
 ): readonly LLMMessage[] {
   return [
     { role: "system", content: MERCURIO_SYSTEM },
     {
       role: "user",
-      content: buildUserPrompt(stage, campaign),
+      content: buildUserPrompt(stage, campaign, nicheMemory),
       images: attachmentImages(campaign),
     },
   ];
