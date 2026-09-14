@@ -29,14 +29,19 @@ function getLlm(): LLMProvider {
   return cachedLlm;
 }
 
-/** Mapeia o registro do Prisma para o formato exposto na API (fallbackStagesJson -> fallbackStages). */
-export function toApiCampaign(campaign: MarketingCampaign): Omit<MarketingCampaign, "fallbackStagesJson"> & {
+type CampaignWithClient = MarketingCampaign & { client: { name: string } | null };
+
+/** Mapeia o registro do Prisma para o formato exposto na API (fallbackStagesJson -> fallbackStages,
+ * client -> clientName). */
+export function toApiCampaign(campaign: CampaignWithClient): Omit<MarketingCampaign, "fallbackStagesJson"> & {
   fallbackStages: string[];
+  clientName: string | null;
 } {
-  const { fallbackStagesJson, ...rest } = campaign;
+  const { fallbackStagesJson, client, ...rest } = campaign;
   return {
     ...rest,
     fallbackStages: Array.isArray(fallbackStagesJson) ? (fallbackStagesJson as string[]) : [],
+    clientName: client?.name ?? null,
   };
 }
 
@@ -46,20 +51,31 @@ export function stripCodeFence(content: string): string {
   return fenced ? fenced[1]!.trim() : trimmed;
 }
 
-/** Normaliza o texto do nicho para deduplicar grafias levemente diferentes do mesmo setor. */
-function slugifyNiche(text: string): string {
+/** Normaliza um texto (nicho ou cliente) para deduplicar grafias levemente diferentes. */
+function normalizeSlug(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 /** Encontra ou cria o Nicho correspondente ao texto digitado, agrupando campanhas do mesmo setor. */
 async function resolveNicheId(nicheText: string): Promise<string> {
-  const slug = slugifyNiche(nicheText);
+  const slug = normalizeSlug(nicheText);
   const niche = await prisma.niche.upsert({
     where: { slug },
     update: {},
     create: { name: nicheText.trim(), slug },
   });
   return niche.id;
+}
+
+/** Encontra ou cria o Cliente (dentro do nicho) correspondente ao nome digitado. */
+async function resolveClientId(nicheId: string, clientName: string): Promise<string> {
+  const slug = normalizeSlug(clientName);
+  const client = await prisma.client.upsert({
+    where: { nicheId_slug: { nicheId, slug } },
+    update: {},
+    create: { name: clientName.trim(), slug, nicheId },
+  });
+  return client.id;
 }
 
 export interface NicheSummary {
@@ -80,23 +96,55 @@ export async function listNiches(): Promise<readonly NicheSummary[]> {
   }));
 }
 
+export interface ClientSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly nicheName: string;
+  readonly campaignCount: number;
+  readonly setupPaid: boolean;
+  readonly recurringActive: boolean;
+}
+
+export async function listClients(): Promise<readonly ClientSummary[]> {
+  const clients = await prisma.client.findMany({
+    orderBy: { name: "asc" },
+    include: { niche: { select: { name: true } }, _count: { select: { campaigns: true } } },
+  });
+  return clients.map((client) => ({
+    id: client.id,
+    name: client.name,
+    nicheName: client.niche.name,
+    campaignCount: client._count.campaigns,
+    setupPaid: client.setupPaid,
+    recurringActive: client.recurringActive,
+  }));
+}
+
+const CAMPAIGN_WITH_CLIENT_INCLUDE = { client: { select: { name: true } } } as const;
+
 export async function createCampaign(input: {
   niche: string;
   briefing: string;
+  clientName?: string;
   attachmentName?: string;
   attachmentMimeType?: string;
   attachmentBase64?: string;
-}): Promise<MarketingCampaign> {
+}): Promise<CampaignWithClient> {
   const nicheId = await resolveNicheId(input.niche);
+  const clientId = input.clientName?.trim()
+    ? await resolveClientId(nicheId, input.clientName)
+    : undefined;
   const campaign = await prisma.marketingCampaign.create({
     data: {
       niche: input.niche,
       nicheId,
+      clientId,
       briefing: input.briefing,
       attachmentName: input.attachmentName,
       attachmentMimeType: input.attachmentMimeType,
       attachmentBase64: input.attachmentBase64,
     },
+    include: CAMPAIGN_WITH_CLIENT_INCLUDE,
   });
   void runPipeline(campaign.id).catch((error) => {
     console.error("[marketing-office] pipeline falhou de forma inesperada", error);
@@ -104,12 +152,18 @@ export async function createCampaign(input: {
   return campaign;
 }
 
-export async function listCampaigns(): Promise<readonly MarketingCampaign[]> {
-  return prisma.marketingCampaign.findMany({ orderBy: { createdAt: "desc" } });
+export async function listCampaigns(): Promise<readonly CampaignWithClient[]> {
+  return prisma.marketingCampaign.findMany({
+    orderBy: { createdAt: "desc" },
+    include: CAMPAIGN_WITH_CLIENT_INCLUDE,
+  });
 }
 
-export async function getCampaignById(id: string): Promise<MarketingCampaign | null> {
-  return prisma.marketingCampaign.findUnique({ where: { id } });
+export async function getCampaignById(id: string): Promise<CampaignWithClient | null> {
+  return prisma.marketingCampaign.findUnique({
+    where: { id },
+    include: CAMPAIGN_WITH_CLIENT_INCLUDE,
+  });
 }
 
 export interface MarketingAttachment {

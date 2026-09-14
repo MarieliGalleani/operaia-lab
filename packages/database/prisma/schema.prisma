@@ -822,10 +822,36 @@ model Niche {
   description String?
   campaigns   MarketingCampaign[]
   memoryNotes NicheMemoryNote[]
+  clients     Client[]
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
   @@map("niches")
+}
+
+/// Cliente/empresa atendida (P1.X Fase 3 — Cerebro do Nicho). Pertence a um
+/// Niche — e o que permite contar "cliente 2, 3, 4 do mesmo setor" (base do
+/// reaproveitamento composto) e, mais pra frente, cobrar setup + recorrencia
+/// de forma estruturada em vez de cada campanha ser um evento isolado.
+model Client {
+  id      String              @id @default(uuid())
+  name    String
+  /// Normalizado por nicho (um mesmo nome pode existir em nichos diferentes).
+  slug    String
+  nicheId String
+  niche   Niche               @relation(fields: [nicheId], references: [id])
+  /// Cobranca unica de implantacao/treinamento — ainda sem fluxo de
+  /// pagamento real, so o registro de status (Fase 4/5 constroem em cima).
+  setupPaid       Boolean             @default(false)
+  /// Mensalidade que sustenta a operacao continua.
+  recurringActive Boolean             @default(false)
+  campaigns       MarketingCampaign[]
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@unique([nicheId, slug])
+  @@index([nicheId])
+  @@map("clients")
 }
 
 /// Cerebro do Nicho (P1.X Fase 2) — memoria vetorial cross-cliente: cada
@@ -857,6 +883,9 @@ model MarketingCampaign {
   niche           String
   nicheId         String
   nicheRef        Niche                   @relation(fields: [nicheId], references: [id])
+  /// Opcional: nem toda campanha esta ligada a um Cliente rastreado ainda.
+  clientId        String?
+  client          Client?                 @relation(fields: [clientId], references: [id])
   briefing        String
   status          MarketingCampaignStatus @default(PENDING)
   currentStage    MarketingStage?
@@ -880,6 +909,7 @@ model MarketingCampaign {
 
   @@index([status])
   @@index([nicheId])
+  @@index([clientId])
   @@map("marketing_campaigns")
 }
 

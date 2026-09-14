@@ -56,6 +56,8 @@ export interface MarketingCampaign {
   readonly errorMessage: string | null;
   /** Etapas cujo conteudo veio do fallback (IA indisponivel no momento), nao de uma geracao real. */
   readonly fallbackStages: readonly MarketingStageId[];
+  /** Nome do Cliente rastreado, quando a campanha foi ligada a um. */
+  readonly clientName: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -73,9 +75,20 @@ export interface NicheSummary {
   readonly campaignCount: number;
 }
 
+/** Cliente/empresa atendida — pertence a um nicho, conta como "cliente N do setor". */
+export interface ClientSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly nicheName: string;
+  readonly campaignCount: number;
+  readonly setupPaid: boolean;
+  readonly recurringActive: boolean;
+}
+
 export interface CreateCampaignInput {
   readonly niche: string;
   readonly briefing: string;
+  readonly clientName?: string;
   readonly attachmentName?: string;
   readonly attachmentMimeType?: string;
   readonly attachmentBase64?: string;
@@ -87,6 +100,7 @@ export interface MarketingOfficeClient {
   getCampaign(id: string): Promise<MarketingCampaign>;
   getAttachment(id: string): Promise<MarketingAttachment>;
   listNiches(): Promise<readonly NicheSummary[]>;
+  listClients(): Promise<readonly ClientSummary[]>;
 }
 
 export function createMarketingOfficeClient(): MarketingOfficeClient {
@@ -106,6 +120,9 @@ export function createMarketingOfficeClient(): MarketingOfficeClient {
     },
     async listNiches() {
       return http.get<readonly NicheSummary[]>("/office/marketing/niches");
+    },
+    async listClients() {
+      return http.get<readonly ClientSummary[]>("/office/marketing/clients");
     },
   };
 }

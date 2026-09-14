@@ -14,6 +14,7 @@ import {
   MARKETING_STAGE_LABEL,
   MARKETING_STAGE_ORDER,
   createMarketingOfficeClient,
+  type ClientSummary,
   type MarketingCampaign,
   type MarketingStageId,
   type NicheSummary,
@@ -33,7 +34,9 @@ const active = computed(() => campaigns.value.find((c) => c.id === activeId.valu
 
 const niche = ref("");
 const briefing = ref("");
+const clientName = ref("");
 const niches = ref<readonly NicheSummary[]>([]);
+const clients = ref<readonly ClientSummary[]>([]);
 const submitting = ref(false);
 const submitError = ref<string | null>(null);
 
@@ -188,6 +191,14 @@ async function loadNiches(): Promise<void> {
   }
 }
 
+async function loadClients(): Promise<void> {
+  try {
+    clients.value = await client.listClients();
+  } catch (error) {
+    console.log("[marketing-work] falha ao carregar clientes", error);
+  }
+}
+
 async function submitBriefing(): Promise<void> {
   if (niche.value.trim().length < 2 || briefing.value.trim().length < 10) {
     submitError.value = "Preencha o nicho e um briefing com pelo menos 10 caracteres.";
@@ -199,6 +210,7 @@ async function submitBriefing(): Promise<void> {
     const created = await client.createCampaign({
       niche: niche.value.trim(),
       briefing: briefing.value.trim(),
+      ...(clientName.value.trim() ? { clientName: clientName.value.trim() } : {}),
       ...(attachmentFile.value && attachmentBase64.value
         ? {
             attachmentName: attachmentFile.value.name,
@@ -211,9 +223,11 @@ async function submitBriefing(): Promise<void> {
     activeId.value = created.id;
     niche.value = "";
     briefing.value = "";
+    clientName.value = "";
     removeAttachment();
     startPolling();
     void loadNiches();
+    void loadClients();
   } catch (error) {
     submitError.value =
       error instanceof Error ? error.message : "Não foi possível criar a campanha.";
@@ -400,6 +414,7 @@ function statusLabel(status: MarketingCampaign["status"]): string {
 onMounted(() => {
   void loadCampaigns();
   void loadNiches();
+  void loadClients();
 });
 
 onBeforeUnmount(() => {
@@ -432,6 +447,17 @@ onBeforeUnmount(() => {
         />
         <datalist id="op-niche-options">
           <option v-for="n in niches" :key="n.id" :value="n.name" />
+        </datalist>
+        <input
+          v-model="clientName"
+          type="text"
+          class="op-input"
+          list="op-client-options"
+          placeholder="Cliente (opcional — nome do negócio atendido)"
+          :disabled="submitting"
+        />
+        <datalist id="op-client-options">
+          <option v-for="c in clients" :key="c.id" :value="c.name" />
         </datalist>
       </div>
       <textarea
@@ -487,7 +513,8 @@ onBeforeUnmount(() => {
           @click="selectCampaign(c.id)"
         >
           <span class="op-list__niche">
-            {{ c.niche }}
+            <template v-if="c.clientName">{{ c.clientName }} · {{ c.niche }}</template>
+            <template v-else>{{ c.niche }}</template>
             <span v-if="c.fallbackStages.length > 0" title="Alguma etapa saiu com conteúdo genérico">⚠️</span>
           </span>
           <span
@@ -506,7 +533,10 @@ onBeforeUnmount(() => {
       <section v-if="active" class="op-panel op-pipeline">
         <div class="op-pipeline__head">
           <div>
-            <h3 class="op-panel__title">{{ active.niche }}</h3>
+            <h3 class="op-panel__title">
+              <template v-if="active.clientName">{{ active.clientName }} · {{ active.niche }}</template>
+              <template v-else>{{ active.niche }}</template>
+            </h3>
             <p class="op-mono op-muted-line">{{ active.briefing }}</p>
             <button
               v-if="active.attachmentName"
@@ -781,6 +811,9 @@ onBeforeUnmount(() => {
 }
 
 .op-brief__row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   margin-bottom: 10px;
 }
 

@@ -1,6 +1,7 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
 import {
+  clientSummarySchema,
   createCampaignBodySchema,
   marketingAttachmentSchema,
   marketingCampaignSchema,
@@ -11,6 +12,7 @@ import {
   getCampaignAttachment,
   getCampaignById,
   listCampaigns,
+  listClients,
   listNiches,
   toApiCampaign,
 } from "./marketing-campaign.service.js";
@@ -77,6 +79,20 @@ export const createMarketingOfficeRoutes: FastifyPluginAsyncZod = async (app) =>
     async () => {
       const niches = await listNiches();
       return JSON.parse(JSON.stringify(niches));
+    },
+  );
+
+  app.get(
+    "/office/marketing/clients",
+    {
+      schema: {
+        tags: ["marketing-office"],
+        response: { 200: z.array(clientSummarySchema) },
+      },
+    },
+    async () => {
+      const clients = await listClients();
+      return JSON.parse(JSON.stringify(clients));
     },
   );
 

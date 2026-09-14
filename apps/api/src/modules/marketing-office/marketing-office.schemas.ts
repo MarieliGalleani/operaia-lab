@@ -39,6 +39,8 @@ export const marketingCampaignSchema = z.object({
   errorMessage: z.string().nullable(),
   /** Ids das etapas cujo conteudo veio do fallback deterministico (IA indisponivel no momento). */
   fallbackStages: z.array(marketingStageIdSchema),
+  /** Nome do Cliente rastreado (Fase 3), quando a campanha foi ligada a um. */
+  clientName: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -49,6 +51,7 @@ const MAX_ATTACHMENT_BASE64_LENGTH = 6_000_000;
 export const createCampaignBodySchema = z.object({
   niche: z.string().min(2).max(160),
   briefing: z.string().min(10).max(4000),
+  clientName: z.string().min(1).max(160).optional(),
   attachmentName: z.string().max(200).optional(),
   attachmentMimeType: z.string().max(100).optional(),
   attachmentBase64: z.string().max(MAX_ATTACHMENT_BASE64_LENGTH).optional(),
@@ -64,4 +67,13 @@ export const nicheSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
   campaignCount: z.number(),
+});
+
+export const clientSummarySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  nicheName: z.string(),
+  campaignCount: z.number(),
+  setupPaid: z.boolean(),
+  recurringActive: z.boolean(),
 });
