@@ -22,6 +22,7 @@ export const marketingCampaignStatusSchema = z.enum([
 export const marketingCampaignSchema = z.object({
   id: z.string(),
   niche: z.string(),
+  nicheId: z.string(),
   briefing: z.string(),
   status: marketingCampaignStatusSchema,
   currentStage: marketingStageIdSchema.nullable(),
@@ -41,6 +42,10 @@ export const marketingCampaignSchema = z.object({
   fallbackStages: z.array(marketingStageIdSchema),
   /** Nome do Cliente rastreado (Fase 3), quando a campanha foi ligada a um. */
   clientName: z.string().nullable(),
+  /** Soma da duracao real (ms) das chamadas de LLM de cada etapa ja concluida. */
+  totalDurationMs: z.number().nullable(),
+  /** Fracao de etapas que reaproveitaram conhecimento de outra campanha do mesmo nicho (0 a 1). */
+  reuseRatio: z.number().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

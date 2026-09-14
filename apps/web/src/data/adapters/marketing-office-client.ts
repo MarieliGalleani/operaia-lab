@@ -39,6 +39,7 @@ export const MARKETING_STAGE_LABEL: Readonly<Record<MarketingStageId, string>> =
 export interface MarketingCampaign {
   readonly id: string;
   readonly niche: string;
+  readonly nicheId: string;
   readonly briefing: string;
   readonly status: "PENDING" | "RUNNING" | "DONE" | "ERROR";
   readonly currentStage: MarketingStageId | null;
@@ -58,6 +59,10 @@ export interface MarketingCampaign {
   readonly fallbackStages: readonly MarketingStageId[];
   /** Nome do Cliente rastreado, quando a campanha foi ligada a um. */
   readonly clientName: string | null;
+  /** Soma da duracao real (ms) das chamadas de LLM de cada etapa ja concluida. */
+  readonly totalDurationMs: number | null;
+  /** Fracao de etapas que reaproveitaram conhecimento de outra campanha do mesmo nicho (0 a 1). */
+  readonly reuseRatio: number | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

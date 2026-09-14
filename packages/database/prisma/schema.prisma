@@ -904,6 +904,13 @@ model MarketingCampaign {
   errorMessage    String?
   /** Ids das etapas cujo conteudo veio do fallback deterministico (IA indisponivel), nao de uma geracao real. */
   fallbackStagesJson Json?
+  /// P1.X Fase 4 — duracao real (ms) da chamada de LLM de cada etapa, por stage.
+  /// Base do dashboard de reaproveitamento (tempo de entrega caindo por nicho).
+  stageDurationsMsJson Json?
+  /// P1.X Fase 4 — quantas notas do Cerebro do Nicho foram injetadas no prompt
+  /// de cada etapa, por stage. >0 = essa etapa reaproveitou conhecimento real
+  /// de outra campanha do mesmo nicho.
+  nicheMemoryHitsJson  Json?
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
 

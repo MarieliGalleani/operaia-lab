@@ -31,17 +31,36 @@ function getLlm(): LLMProvider {
 
 type CampaignWithClient = MarketingCampaign & { client: { name: string } | null };
 
+function asNumberRecord(value: unknown): Record<string, number> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, number>;
+}
+
 /** Mapeia o registro do Prisma para o formato exposto na API (fallbackStagesJson -> fallbackStages,
- * client -> clientName). */
-export function toApiCampaign(campaign: CampaignWithClient): Omit<MarketingCampaign, "fallbackStagesJson"> & {
+ * client -> clientName, stageDurationsMsJson/nicheMemoryHitsJson -> totalDurationMs/reuseRatio). */
+export function toApiCampaign(
+  campaign: CampaignWithClient,
+): Omit<MarketingCampaign, "fallbackStagesJson" | "stageDurationsMsJson" | "nicheMemoryHitsJson"> & {
   fallbackStages: string[];
   clientName: string | null;
+  totalDurationMs: number | null;
+  reuseRatio: number | null;
 } {
-  const { fallbackStagesJson, client, ...rest } = campaign;
+  const { fallbackStagesJson, stageDurationsMsJson, nicheMemoryHitsJson, client, ...rest } = campaign;
+
+  const durations = asNumberRecord(stageDurationsMsJson);
+  const totalDurationMs = durations ? Object.values(durations).reduce((sum, ms) => sum + ms, 0) : null;
+
+  const hits = asNumberRecord(nicheMemoryHitsJson);
+  const hitValues = hits ? Object.values(hits) : [];
+  const reuseRatio = hitValues.length > 0 ? hitValues.filter((h) => h > 0).length / hitValues.length : null;
+
   return {
     ...rest,
     fallbackStages: Array.isArray(fallbackStagesJson) ? (fallbackStagesJson as string[]) : [],
     clientName: client?.name ?? null,
+    totalDurationMs,
+    reuseRatio,
   };
 }
 
@@ -222,11 +241,20 @@ async function runPipeline(campaignId: string): Promise<void> {
       }
 
       const messages = buildStageMessages(stage, campaign, nicheMemory);
+      const startedAt = Date.now();
       const completion = await llm.complete(messages, { temperature: 0.7 });
+      const durationMs = Date.now() - startedAt;
       const field = MARKETING_STAGE_FIELD[stage];
       const strippedContent = stripCodeFence(completion.content);
 
-      const data: Record<string, unknown> = { [field]: strippedContent };
+      const priorDurations = asNumberRecord(campaign.stageDurationsMsJson) ?? {};
+      const priorHits = asNumberRecord(campaign.nicheMemoryHitsJson) ?? {};
+
+      const data: Record<string, unknown> = {
+        [field]: strippedContent,
+        stageDurationsMsJson: { ...priorDurations, [stage]: durationMs },
+        nicheMemoryHitsJson: { ...priorHits, [stage]: nicheMemory.length },
+      };
       if (completion.model === "deterministic") {
         const priorFallbacks = Array.isArray(campaign.fallbackStagesJson)
           ? (campaign.fallbackStagesJson as string[])

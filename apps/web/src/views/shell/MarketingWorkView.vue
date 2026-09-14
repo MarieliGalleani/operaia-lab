@@ -411,6 +411,30 @@ function statusLabel(status: MarketingCampaign["status"]): string {
   }
 }
 
+/** Campanhas do MESMO nicho da campanha ativa, mais antiga primeiro — a base
+ * de comparacao do Cerebro do Nicho (Fase 4): tempo caindo e reaproveitamento
+ * subindo conforme mais clientes do mesmo setor entram na base. */
+const sameNicheCampaigns = computed(() => {
+  if (!active.value) return [];
+  return campaigns.value
+    .filter((c) => c.nicheId === active.value!.nicheId)
+    .slice()
+    .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+});
+
+function formatDuration(ms: number | null): string {
+  if (ms === null) return "—";
+  const totalSeconds = Math.round(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes > 0 ? `${minutes}min ${seconds}s` : `${seconds}s`;
+}
+
+function formatReuseRatio(ratio: number | null): string {
+  if (ratio === null) return "—";
+  return `${Math.round(ratio * 100)}%`;
+}
+
 onMounted(() => {
   void loadCampaigns();
   void loadNiches();
@@ -562,6 +586,35 @@ onBeforeUnmount(() => {
         <p v-if="active.status === 'ERROR'" class="op-error-inline">
           {{ active.errorMessage ?? "Falha desconhecida." }}
         </p>
+
+        <div v-if="sameNicheCampaigns.length > 1" class="op-reuse-panel">
+          <h4 class="op-reuse-panel__title">Cérebro do Nicho — {{ active.niche }}</h4>
+          <p class="op-reuse-panel__hint">
+            Tempo de geração e reaproveitamento de conhecimento entre as campanhas deste setor, na ordem em que foram criadas.
+          </p>
+          <table class="op-reuse-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Cliente</th>
+                <th>Tempo de geração</th>
+                <th>Reaproveitado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(c, index) in sameNicheCampaigns"
+                :key="c.id"
+                :class="{ 'is-current': c.id === active.id }"
+              >
+                <td>{{ index + 1 }}</td>
+                <td>{{ c.clientName ?? "sem cliente" }}</td>
+                <td class="op-mono">{{ formatDuration(c.totalDurationMs) }}</td>
+                <td class="op-mono">{{ formatReuseRatio(c.reuseRatio) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
 
         <ol class="op-stages">
           <li v-for="stage in MARKETING_STAGE_ORDER" :key="stage" class="op-stage">
@@ -965,6 +1018,54 @@ onBeforeUnmount(() => {
   color: var(--op-muted-3);
   font-size: 12px;
   margin-top: 4px;
+}
+
+.op-reuse-panel {
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius-sm);
+  background: var(--op-raise);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.op-reuse-panel__title {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.op-reuse-panel__hint {
+  font-size: 12px;
+  color: var(--op-muted-3);
+  margin: 0 0 12px;
+}
+
+.op-reuse-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.op-reuse-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--op-muted-3);
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--op-line);
+}
+
+.op-reuse-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--op-line);
+}
+
+.op-reuse-table tr:last-child td {
+  border-bottom: none;
+}
+
+.op-reuse-table tr.is-current td {
+  color: var(--op-cta);
+  font-weight: 600;
 }
 
 .op-stages {
