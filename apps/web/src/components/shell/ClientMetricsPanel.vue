@@ -164,8 +164,15 @@ async function removeEntry(id: string): Promise<void> {
   }
 }
 
+/** period e sempre meia-noite UTC do dia escolhido no input date — exibe em
+ * UTC pra nao voltar um dia em fusos atras (ex: Brasil, UTC-3). */
 function formatPeriod(iso: string): string {
-  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" });
+  return new Date(iso).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    timeZone: "UTC",
+  });
 }
 
 watch(selectedClientId, () => {
