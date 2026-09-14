@@ -1,6 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 
-const DEFAULT_EMBEDDING_MODEL = "text-embedding-004";
+/** text-embedding-004 foi descontinuado (404 na v1beta) — gemini-embedding-001 e o
+ * substituto estavel atual (3072 dims, nao 768). */
+const DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001";
 
 export interface GeminiEmbeddingsProviderOptions {
   readonly apiKey: string;
@@ -13,7 +15,7 @@ export interface EmbeddingsProvider {
 }
 
 /**
- * Embeddings via Gemini (text-embedding-004, 768 dims) — mesma chave
+ * Embeddings via Gemini (gemini-embedding-001, 3072 dims) — mesma chave
  * ja usada pro GeminiProvider de completions, sem credencial nova.
  * Falha nunca lanca: quem usa isso (busca semantica de memoria) cai
  * pra lexical em vez de quebrar a missao em execucao.

@@ -3,7 +3,7 @@
  * Indice derivado — Mission / MissionLearning continuam fonte de verdade.
  *
  * Busca semantica (P1.25): sem pgvector disponivel nesta instancia
- * Postgres, embeddings (Gemini text-embedding-004) ficam num Float[]
+ * Postgres, embeddings (Gemini gemini-embedding-001) ficam num Float[]
  * comum e a similaridade de cosseno e calculada em memoria sobre o
  * mesmo lote de candidatos que a busca lexical ja buscava — o corpus
  * por workspace e pequeno (quota M1), entao isso e barato. Sem

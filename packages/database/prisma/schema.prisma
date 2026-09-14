@@ -345,7 +345,7 @@ model OperationalMemoryNote {
   createdAt       DateTime  @default(now())
   expiresAt       DateTime?
   archivedAt      DateTime?
-  /// Embedding Gemini (text-embedding-004, 768 dims) — array nativo do
+  /// Embedding Gemini (gemini-embedding-001, 3072 dims) — array nativo do
   /// Postgres, sem pgvector (extensao indisponivel nesta instancia).
   /// Cosseno calculado em memoria no app; null = nota anterior a este
   /// campo ou geracao de embedding falhou, busca cai pra so lexical.
@@ -840,7 +840,7 @@ model NicheMemoryNote {
   campaignId String
   stage      MarketingStage
   content    String
-  /// Embedding Gemini (text-embedding-004, 768 dims) — vazio se a chave nao
+  /// Embedding Gemini (gemini-embedding-001, 3072 dims) — vazio se a chave nao
   /// estiver configurada ou a geracao falhar; busca cai pra mais recentes.
   embedding  Float[]        @default([])
   createdAt  DateTime       @default(now())
