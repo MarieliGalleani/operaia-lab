@@ -80,6 +80,28 @@ describe("buildStageMessages — etapas novas (Fase 6)", () => {
   });
 });
 
+describe("buildStageMessages — diagnostico inicial (Fase 5)", () => {
+  it("sem memoria do nicho, pede baseadoEmDadosReais false e avisa que ainda nao ha dado real", () => {
+    const messages = buildStageMessages("DIAGNOSTICO", baseCampaign());
+    expect(messages[1]!.content).toContain('"baseadoEmDadosReais" deve ser false');
+    expect(messages[1]!.content).toContain("PRIMEIRO cliente deste nicho");
+  });
+
+  it("com memoria do nicho, pede baseadoEmDadosReais true e referencia padroes reais", () => {
+    const messages = buildStageMessages("DIAGNOSTICO", baseCampaign(), [
+      { stage: "MAPA_NICHO", content: "Publico-alvo: adultos 25-45", score: 0.8 },
+    ]);
+    expect(messages[1]!.content).toContain('"baseadoEmDadosReais" deve ser true');
+    expect(messages[1]!.content).toContain("padroes reais observados em outros clientes");
+  });
+
+  it("pede hipoteses de perda de receita, nao pergunta o que o cliente quer automatizar", () => {
+    const messages = buildStageMessages("DIAGNOSTICO", baseCampaign());
+    expect(messages[1]!.content).toContain("hipoteses");
+    expect(messages[1]!.content).toContain("perdendo dinheiro");
+  });
+});
+
 describe("buildStageMessages — anexo do briefing", () => {
   it("anexa imagem como LLMImageAttachment quando o mimetype e image/*", () => {
     const messages = buildStageMessages(

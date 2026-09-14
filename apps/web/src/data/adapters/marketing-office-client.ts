@@ -2,6 +2,7 @@
 import { createHttpClient } from "./http-client";
 
 export type MarketingStageId =
+  | "DIAGNOSTICO"
   | "MAPA_NICHO"
   | "CRIATIVOS"
   | "LANDING_PAGE"
@@ -13,6 +14,7 @@ export type MarketingStageId =
   | "FRAMEWORK_PERFORMANCE";
 
 export const MARKETING_STAGE_ORDER: readonly MarketingStageId[] = [
+  "DIAGNOSTICO",
   "MAPA_NICHO",
   "CRIATIVOS",
   "LANDING_PAGE",
@@ -25,6 +27,7 @@ export const MARKETING_STAGE_ORDER: readonly MarketingStageId[] = [
 ];
 
 export const MARKETING_STAGE_LABEL: Readonly<Record<MarketingStageId, string>> = {
+  DIAGNOSTICO: "Diagnóstico Inicial",
   MAPA_NICHO: "Mapa de Nicho",
   CRIATIVOS: "Criativos",
   LANDING_PAGE: "Landing Page",
@@ -43,6 +46,7 @@ export interface MarketingCampaign {
   readonly briefing: string;
   readonly status: "PENDING" | "RUNNING" | "DONE" | "ERROR";
   readonly currentStage: MarketingStageId | null;
+  readonly diagnostico: string | null;
   readonly nicheMap: string | null;
   readonly creatives: string | null;
   readonly landingPageHtml: string | null;

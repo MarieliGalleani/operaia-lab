@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const marketingStageIdSchema = z.enum([
+  "DIAGNOSTICO",
   "MAPA_NICHO",
   "CRIATIVOS",
   "LANDING_PAGE",
@@ -26,6 +27,7 @@ export const marketingCampaignSchema = z.object({
   briefing: z.string(),
   status: marketingCampaignStatusSchema,
   currentStage: marketingStageIdSchema.nullable(),
+  diagnostico: z.string().nullable(),
   nicheMap: z.string().nullable(),
   creatives: z.string().nullable(),
   landingPageHtml: z.string().nullable(),

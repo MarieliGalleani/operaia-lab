@@ -43,6 +43,7 @@ Principios de copywriting que voce sempre aplica:
 
 function priorContext(campaign: MarketingCampaign): string {
   const parts: string[] = [];
+  if (campaign.diagnostico) parts.push(`## Diagnostico Inicial (ja definido)\n${campaign.diagnostico}`);
   if (campaign.nicheMap) parts.push(`## Mapa de Nicho (ja definido)\n${campaign.nicheMap}`);
   if (campaign.creatives) parts.push(`## Criativos (ja definidos)\n${campaign.creatives}`);
   if (campaign.landingPageHtml) parts.push(`## Landing Page (ja definida, HTML)\n(ja existe, nao repita aqui)`);
@@ -97,6 +98,50 @@ function buildUserPrompt(
   const header = `Nicho: ${campaign.niche}\nBriefing do cliente: ${campaign.briefing}${attachmentTextNote(campaign)}${priorContext(campaign)}${nicheMemoryContext(nicheMemory)}`;
 
   switch (stage) {
+    case "DIAGNOSTICO": {
+      const hasRealNicheData = Boolean(nicheMemory && nicheMemory.length > 0);
+      return `${header}
+
+Tarefa: ANTES de qualquer entrega tatica, monte um Diagnostico Inicial —
+a hipotese de ONDE esse negocio provavelmente esta perdendo dinheiro
+hoje. Isso e o que abre a conversa como especialista de mercado, nao
+como fornecedor generico: voce chega ja sabendo onde o negocio sangra,
+em vez de perguntar "o que voce quer automatizar?".
+
+${
+  hasRealNicheData
+    ? "Voce TEM acesso a padroes reais observados em outros clientes reais deste MESMO nicho (secao de contexto acima) — baseie as hipoteses neles quando fizer sentido, sem citar nome ou dado especifico de outro cliente."
+    : "Este e o PRIMEIRO cliente deste nicho na base — voce ainda NAO tem dado real de outros clientes deste setor. Baseie as hipoteses em conhecimento geral de mercado do nicho, e deixe isso EXPLICITO na resposta (nunca finja ter dado que nao tem)."
+}
+
+Responda APENAS com um objeto JSON valido (sem markdown, sem \`\`\`, sem
+texto antes ou depois), exatamente neste formato:
+
+{
+  "baseadoEmDadosReais": boolean,
+  "resumoExecutivo": string,
+  "hipoteses": [
+    { "area": string, "hipotese": string, "sinalComum": string, "oQueFazer": string }
+  ],
+  "avisoTransparencia": string
+}
+
+Regras: "baseadoEmDadosReais" deve ser ${hasRealNicheData ? "true" : "false"},
+refletindo a realidade acima — nunca minta sobre isso. "resumoExecutivo"
+e 2-3 frases diretas, no tom de quem ja identificou o problema, nao de
+quem esta perguntando. "hipoteses": 3 a 5 itens cobrindo areas
+diferentes (ex: vendas, pos-venda, backoffice, marketing) — cada
+"hipotese" e uma frase especifica e concreta (nunca generica tipo
+"melhorar atendimento"), "sinalComum" e o que normalmente indica esse
+problema no dia a dia do nicho, "oQueFazer" e a acao pratica
+recomendada. "avisoTransparencia" deve dizer claramente ${
+        hasRealNicheData
+          ? "que essas hipoteses se apoiam em padroes observados em outros clientes reais deste nicho"
+          : "que ainda nao ha dado real de outros clientes deste nicho e que as hipoteses vao ficar mais precisas conforme mais clientes deste setor entrarem na base"
+      }. Nunca invente numero ou estatistica especifica. Tudo em portugues
+do Brasil.`;
+    }
+
     case "MAPA_NICHO":
       return `${header}
 

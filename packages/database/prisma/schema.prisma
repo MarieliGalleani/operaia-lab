@@ -799,6 +799,7 @@ enum MarketingCampaignStatus {
 }
 
 enum MarketingStage {
+  DIAGNOSTICO
   MAPA_NICHO
   CRIATIVOS
   LANDING_PAGE
@@ -889,6 +890,10 @@ model MarketingCampaign {
   briefing        String
   status          MarketingCampaignStatus @default(PENDING)
   currentStage    MarketingStage?
+  /// P1.X Fase 5 — hipoteses de onde o negocio provavelmente perde dinheiro,
+  /// geradas ANTES de qualquer entrega tatica (virada de posicionamento:
+  /// especialista que ja chega com diagnostico, nao fornecedor generico).
+  diagnostico     String?
   nicheMap        String?
   creatives       String?
   landingPageHtml String?

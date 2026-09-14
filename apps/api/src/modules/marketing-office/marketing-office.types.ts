@@ -1,6 +1,7 @@
 import type { MarketingCampaign as PrismaMarketingCampaign } from "@operaia/database";
 
 export type MarketingStageId =
+  | "DIAGNOSTICO"
   | "MAPA_NICHO"
   | "CRIATIVOS"
   | "LANDING_PAGE"
@@ -12,6 +13,7 @@ export type MarketingStageId =
   | "FRAMEWORK_PERFORMANCE";
 
 export const MARKETING_STAGE_ORDER: readonly MarketingStageId[] = [
+  "DIAGNOSTICO",
   "MAPA_NICHO",
   "CRIATIVOS",
   "LANDING_PAGE",
@@ -24,6 +26,7 @@ export const MARKETING_STAGE_ORDER: readonly MarketingStageId[] = [
 ];
 
 export const MARKETING_STAGE_LABEL: Readonly<Record<MarketingStageId, string>> = {
+  DIAGNOSTICO: "Diagnóstico Inicial",
   MAPA_NICHO: "Mapa de Nicho",
   CRIATIVOS: "Criativos",
   LANDING_PAGE: "Landing Page",
@@ -38,6 +41,7 @@ export const MARKETING_STAGE_LABEL: Readonly<Record<MarketingStageId, string>> =
 export const MARKETING_STAGE_FIELD: Readonly<
   Record<MarketingStageId, keyof PrismaMarketingCampaign>
 > = {
+  DIAGNOSTICO: "diagnostico",
   MAPA_NICHO: "nicheMap",
   CRIATIVOS: "creatives",
   LANDING_PAGE: "landingPageHtml",

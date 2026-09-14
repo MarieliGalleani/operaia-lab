@@ -116,6 +116,7 @@ async function downloadCampaignAttachment(campaign: MarketingCampaign): Promise<
 }
 
 const STAGE_DOWNLOAD_EXT: Record<MarketingStageId, { ext: string; mime: string }> = {
+  DIAGNOSTICO: { ext: "json", mime: "application/json" },
   MAPA_NICHO: { ext: "md", mime: "text/markdown" },
   CRIATIVOS: { ext: "md", mime: "text/markdown" },
   LANDING_PAGE: { ext: "html", mime: "text/html" },
@@ -263,6 +264,7 @@ function isStageFallback(campaign: MarketingCampaign, stage: MarketingStageId): 
 }
 
 const STAGE_FIELD = {
+  DIAGNOSTICO: "diagnostico",
   MAPA_NICHO: "nicheMap",
   CRIATIVOS: "creatives",
   LANDING_PAGE: "landingPageHtml",
@@ -278,6 +280,18 @@ const openStage = ref<MarketingStageId | null>(null);
 
 function toggleStage(stage: MarketingStageId): void {
   openStage.value = openStage.value === stage ? null : stage;
+}
+
+interface Diagnostico {
+  baseadoEmDadosReais: boolean;
+  resumoExecutivo: string;
+  hipoteses: readonly {
+    area: string;
+    hipotese: string;
+    sinalComum: string;
+    oQueFazer: string;
+  }[];
+  avisoTransparencia: string;
 }
 
 interface GtmPlan {
@@ -340,6 +354,9 @@ function parseJson<T>(raw: string | null | undefined): T | null {
   }
 }
 
+const activeDiagnostico = computed<Diagnostico | null>(() =>
+  parseJson<Diagnostico>(active.value?.diagnostico),
+);
 const activeGtm = computed<GtmPlan | null>(() => parseJson<GtmPlan>(active.value?.gtmPlan));
 const activePlaybook = computed<SalesPlaybook | null>(() =>
   parseJson<SalesPlaybook>(active.value?.salesPlaybook),
@@ -587,6 +604,22 @@ onBeforeUnmount(() => {
           {{ active.errorMessage ?? "Falha desconhecida." }}
         </p>
 
+        <div v-if="activeDiagnostico" class="op-diagnostico">
+          <h4 class="op-diagnostico__title">💡 Onde este negócio provavelmente está perdendo dinheiro</h4>
+          <p class="op-diagnostico__resumo">{{ activeDiagnostico.resumoExecutivo }}</p>
+          <div class="op-diagnostico__list">
+            <div v-for="(h, i) in activeDiagnostico.hipoteses" :key="i" class="op-diagnostico__item">
+              <span class="op-diagnostico__area">{{ h.area }}</span>
+              <p class="op-diagnostico__hipotese">{{ h.hipotese }}</p>
+              <p class="op-diagnostico__detail"><strong>Sinal comum:</strong> {{ h.sinalComum }}</p>
+              <p class="op-diagnostico__detail"><strong>O que fazer:</strong> {{ h.oQueFazer }}</p>
+            </div>
+          </div>
+          <p class="op-diagnostico__aviso">
+            {{ activeDiagnostico.baseadoEmDadosReais ? "📊" : "🌱" }} {{ activeDiagnostico.avisoTransparencia }}
+          </p>
+        </div>
+
         <div v-if="sameNicheCampaigns.length > 1" class="op-reuse-panel">
           <h4 class="op-reuse-panel__title">Cérebro do Nicho — {{ active.niche }}</h4>
           <p class="op-reuse-panel__hint">
@@ -655,8 +688,26 @@ onBeforeUnmount(() => {
                 ⚠️ Esta etapa não foi gerada pela IA — o conteúdo abaixo é um texto genérico de segurança, usado
                 quando o modelo fica indisponível. Rode a campanha novamente para tentar gerar o conteúdo real.
               </p>
+              <div v-if="stage === 'DIAGNOSTICO' && activeDiagnostico" class="op-structured">
+                <div class="op-structured__section">
+                  <h4>Resumo executivo</h4>
+                  <p>{{ activeDiagnostico.resumoExecutivo }}</p>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Hipóteses de perda de receita</h4>
+                  <ul>
+                    <li v-for="(h, i) in activeDiagnostico.hipoteses" :key="i">
+                      <strong>{{ h.area }}:</strong> {{ h.hipotese }} — {{ h.sinalComum }} → {{ h.oQueFazer }}
+                    </li>
+                  </ul>
+                </div>
+                <div class="op-structured__section">
+                  <p><em>{{ activeDiagnostico.avisoTransparencia }}</em></p>
+                </div>
+              </div>
+
               <iframe
-                v-if="stage === 'LANDING_PAGE' && active.landingPageHtml"
+                v-else-if="stage === 'LANDING_PAGE' && active.landingPageHtml"
                 class="op-landing-preview"
                 sandbox=""
                 :srcdoc="active.landingPageHtml"
@@ -1066,6 +1117,71 @@ onBeforeUnmount(() => {
 .op-reuse-table tr.is-current td {
   color: var(--op-cta);
   font-weight: 600;
+}
+
+.op-diagnostico {
+  border: 1px solid var(--op-cta);
+  border-radius: var(--op-radius-sm);
+  background: var(--op-raise);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+
+.op-diagnostico__title {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.op-diagnostico__resumo {
+  font-size: 13.5px;
+  color: var(--op-ink-2);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.op-diagnostico__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.op-diagnostico__item {
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius-sm);
+  background: var(--op-panel-2);
+  padding: 10px 12px;
+}
+
+.op-diagnostico__area {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--op-cta);
+  margin-bottom: 4px;
+}
+
+.op-diagnostico__hipotese {
+  font-size: 13.5px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.op-diagnostico__detail {
+  font-size: 12px;
+  color: var(--op-muted-3);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.op-diagnostico__aviso {
+  font-size: 11.5px;
+  color: var(--op-muted-3);
+  margin: 0;
+  font-style: italic;
 }
 
 .op-stages {
