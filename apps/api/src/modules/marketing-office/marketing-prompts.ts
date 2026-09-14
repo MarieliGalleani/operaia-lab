@@ -1,5 +1,5 @@
 import type { LLMImageAttachment, LLMMessage } from "@operaia/ai-core";
-import type { NicheMemoryHit } from "./niche-memory-store.js";
+import type { NicheMemoryHit } from "../crm/niche-memory-store.js";
 import { MARKETING_STAGE_LABEL, type MarketingCampaign, type MarketingStageId } from "./marketing-office.types.js";
 
 const IMAGE_MIME_PREFIX = "image/";
@@ -85,7 +85,7 @@ function attachmentTextNote(campaign: MarketingCampaign): string {
 function nicheMemoryContext(hits: readonly NicheMemoryHit[] | undefined): string {
   if (!hits || hits.length === 0) return "";
   const blocks = hits.map(
-    (hit) => `### ${MARKETING_STAGE_LABEL[hit.stage]}\n${hit.content.slice(0, MAX_MEMORY_CONTENT_CHARS)}`,
+    (hit) => `### ${MARKETING_STAGE_LABEL[hit.stage as MarketingStageId]}\n${hit.content.slice(0, MAX_MEMORY_CONTENT_CHARS)}`,
   );
   return `\n\nConhecimento acumulado de outras campanhas reais ja feitas neste MESMO nicho (use como referencia de padrao, qualidade e o que ja funcionou — adapte ao briefing atual, nunca copie literalmente nem repita nome/dado especifico de outro cliente):\n\n${blocks.join("\n\n")}`;
 }

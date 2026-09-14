@@ -3,18 +3,18 @@ import { prisma } from "@operaia/database";
 import { env } from "../../config/env.js";
 import { resolveClientId, resolveNicheId } from "../crm/niche-client.service.js";
 import { recallNicheMemory, recordNicheMemory } from "../crm/niche-memory-store.js";
-import { buildStageMessages } from "./marketing-prompts.js";
+import { buildStageMessages } from "./automation-prompts.js";
 import {
-  MARKETING_STAGE_FIELD,
-  MARKETING_STAGE_ORDER,
-  type MarketingCampaign,
-} from "./marketing-office.types.js";
+  AUTOMATION_STAGE_FIELD,
+  AUTOMATION_STAGE_ORDER,
+  type AutomationEngagement,
+} from "./automation-engagement.types.js";
 
-const OFFICE = "MARKETING";
+const OFFICE = "AUTOMATION";
 
 let cachedLlm: LLMProvider | null = null;
 
-/** Stack de LLM dedicado ao Mercurio — mesma config do stack principal (lab-runtime),
+/** Stack de LLM dedicado ao Atlas — mesma config do stack principal (lab-runtime),
  * instanciado a parte para nao acoplar este modulo ao boot inteiro da equipe digital. */
 function getLlm(): LLMProvider {
   if (cachedLlm) return cachedLlm;
@@ -32,24 +32,23 @@ function getLlm(): LLMProvider {
   return cachedLlm;
 }
 
-type CampaignWithClient = MarketingCampaign & { client: { name: string } | null };
+type EngagementWithClient = AutomationEngagement & { client: { name: string } | null };
 
 function asNumberRecord(value: unknown): Record<string, number> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, number>;
 }
 
-/** Mapeia o registro do Prisma para o formato exposto na API (fallbackStagesJson -> fallbackStages,
- * client -> clientName, stageDurationsMsJson/nicheMemoryHitsJson -> totalDurationMs/reuseRatio). */
-export function toApiCampaign(
-  campaign: CampaignWithClient,
-): Omit<MarketingCampaign, "fallbackStagesJson" | "stageDurationsMsJson" | "nicheMemoryHitsJson"> & {
+/** Mapeia o registro do Prisma para o formato exposto na API (mesmo padrao do Mercurio). */
+export function toApiEngagement(
+  engagement: EngagementWithClient,
+): Omit<AutomationEngagement, "fallbackStagesJson" | "stageDurationsMsJson" | "nicheMemoryHitsJson"> & {
   fallbackStages: string[];
   clientName: string | null;
   totalDurationMs: number | null;
   reuseRatio: number | null;
 } {
-  const { fallbackStagesJson, stageDurationsMsJson, nicheMemoryHitsJson, client, ...rest } = campaign;
+  const { fallbackStagesJson, stageDurationsMsJson, nicheMemoryHitsJson, client, ...rest } = engagement;
 
   const durations = asNumberRecord(stageDurationsMsJson);
   const totalDurationMs = durations ? Object.values(durations).reduce((sum, ms) => sum + ms, 0) : null;
@@ -73,21 +72,21 @@ export function stripCodeFence(content: string): string {
   return fenced ? fenced[1]!.trim() : trimmed;
 }
 
-const CAMPAIGN_WITH_CLIENT_INCLUDE = { client: { select: { name: true } } } as const;
+const ENGAGEMENT_WITH_CLIENT_INCLUDE = { client: { select: { name: true } } } as const;
 
-export async function createCampaign(input: {
+export async function createEngagement(input: {
   niche: string;
   briefing: string;
   clientName?: string;
   attachmentName?: string;
   attachmentMimeType?: string;
   attachmentBase64?: string;
-}): Promise<CampaignWithClient> {
+}): Promise<EngagementWithClient> {
   const nicheId = await resolveNicheId(input.niche);
   const clientId = input.clientName?.trim()
     ? await resolveClientId(nicheId, input.clientName)
     : undefined;
-  const campaign = await prisma.marketingCampaign.create({
+  const engagement = await prisma.automationEngagement.create({
     data: {
       niche: input.niche,
       nicheId,
@@ -97,110 +96,105 @@ export async function createCampaign(input: {
       attachmentMimeType: input.attachmentMimeType,
       attachmentBase64: input.attachmentBase64,
     },
-    include: CAMPAIGN_WITH_CLIENT_INCLUDE,
+    include: ENGAGEMENT_WITH_CLIENT_INCLUDE,
   });
-  void runPipeline(campaign.id).catch((error) => {
-    console.error("[marketing-office] pipeline falhou de forma inesperada", error);
+  void runPipeline(engagement.id).catch((error) => {
+    console.error("[automation-engagements] pipeline falhou de forma inesperada", error);
   });
-  return campaign;
+  return engagement;
 }
 
-export async function listCampaigns(): Promise<readonly CampaignWithClient[]> {
-  return prisma.marketingCampaign.findMany({
+export async function listEngagements(): Promise<readonly EngagementWithClient[]> {
+  return prisma.automationEngagement.findMany({
     orderBy: { createdAt: "desc" },
-    include: CAMPAIGN_WITH_CLIENT_INCLUDE,
+    include: ENGAGEMENT_WITH_CLIENT_INCLUDE,
   });
 }
 
-export async function getCampaignById(id: string): Promise<CampaignWithClient | null> {
-  return prisma.marketingCampaign.findUnique({
+export async function getEngagementById(id: string): Promise<EngagementWithClient | null> {
+  return prisma.automationEngagement.findUnique({
     where: { id },
-    include: CAMPAIGN_WITH_CLIENT_INCLUDE,
+    include: ENGAGEMENT_WITH_CLIENT_INCLUDE,
   });
 }
 
-export interface MarketingAttachment {
+export interface AutomationAttachment {
   readonly name: string;
   readonly mimeType: string;
   readonly base64: string;
 }
 
-export async function getCampaignAttachment(id: string): Promise<MarketingAttachment | null> {
-  const campaign = await prisma.marketingCampaign.findUnique({
+export async function getEngagementAttachment(id: string): Promise<AutomationAttachment | null> {
+  const engagement = await prisma.automationEngagement.findUnique({
     where: { id },
     select: { attachmentName: true, attachmentMimeType: true, attachmentBase64: true },
   });
-  if (!campaign?.attachmentBase64 || !campaign.attachmentMimeType) return null;
+  if (!engagement?.attachmentBase64 || !engagement.attachmentMimeType) return null;
   return {
-    name: campaign.attachmentName ?? "anexo",
-    mimeType: campaign.attachmentMimeType,
-    base64: campaign.attachmentBase64,
+    name: engagement.attachmentName ?? "anexo",
+    mimeType: engagement.attachmentMimeType,
+    base64: engagement.attachmentBase64,
   };
 }
 
-/** Referencia definida pelo Mercurio na campanha mais recente e concluida deste cliente —
- * o "plano" ao lado do qual os lancamentos reais de trafego/performance sao comparados. */
-export async function getClientLatestMarketingPlans(clientId: string): Promise<{
-  planoTrafego: string | null;
-  frameworkPerformance: string | null;
+/** Referencia definida pelo Atlas no engajamento mais recente e concluido deste cliente —
+ * o "plano" ao lado do qual os lancamentos reais de automacao sao comparados. */
+export async function getClientLatestAutomationPlans(clientId: string): Promise<{
+  frameworkMonitoramento: string | null;
 }> {
-  const campaign = await prisma.marketingCampaign.findFirst({
+  const engagement = await prisma.automationEngagement.findFirst({
     where: { clientId, status: "DONE" },
     orderBy: { createdAt: "desc" },
-    select: { planoTrafego: true, frameworkPerformance: true },
+    select: { frameworkMonitoramento: true },
   });
-  return {
-    planoTrafego: campaign?.planoTrafego ?? null,
-    frameworkPerformance: campaign?.frameworkPerformance ?? null,
-  };
+  return { frameworkMonitoramento: engagement?.frameworkMonitoramento ?? null };
 }
 
 /**
- * Roda as etapas do Mercurio em sequencia, persistindo o resultado de
- * cada uma assim que fica pronta — a tela pode ir mostrando ao vivo por
- * polling, sem esperar a campanha inteira terminar.
+ * Roda as etapas do Atlas em sequencia, persistindo o resultado de cada
+ * uma assim que fica pronta — mesma logica do Mercurio.
  */
-async function runPipeline(campaignId: string): Promise<void> {
+async function runPipeline(engagementId: string): Promise<void> {
   const llm = getLlm();
-  await prisma.marketingCampaign.update({
-    where: { id: campaignId },
+  await prisma.automationEngagement.update({
+    where: { id: engagementId },
     data: { status: "RUNNING" },
   });
 
   try {
-    for (const stage of MARKETING_STAGE_ORDER) {
-      await prisma.marketingCampaign.update({
-        where: { id: campaignId },
+    for (const stage of AUTOMATION_STAGE_ORDER) {
+      await prisma.automationEngagement.update({
+        where: { id: engagementId },
         data: { currentStage: stage },
       });
 
-      const campaign = await prisma.marketingCampaign.findUniqueOrThrow({
-        where: { id: campaignId },
+      const engagement = await prisma.automationEngagement.findUniqueOrThrow({
+        where: { id: engagementId },
       });
 
       let nicheMemory: Awaited<ReturnType<typeof recallNicheMemory>> = [];
       try {
         nicheMemory = await recallNicheMemory({
-          nicheId: campaign.nicheId,
+          nicheId: engagement.nicheId,
           office: OFFICE,
           stage,
-          queryText: `${campaign.niche} ${campaign.briefing}`,
-          excludeSourceId: campaignId,
+          queryText: `${engagement.niche} ${engagement.briefing}`,
+          excludeSourceId: engagementId,
           embeddingsApiKey: env.GEMINI_API_KEY,
         });
       } catch (error) {
-        console.error("[marketing-office] falha ao recuperar memoria do nicho (segue sem contexto)", error);
+        console.error("[automation-engagements] falha ao recuperar memoria do nicho (segue sem contexto)", error);
       }
 
-      const messages = buildStageMessages(stage, campaign, nicheMemory);
+      const messages = buildStageMessages(stage, engagement, nicheMemory);
       const startedAt = Date.now();
       const completion = await llm.complete(messages, { temperature: 0.7 });
       const durationMs = Date.now() - startedAt;
-      const field = MARKETING_STAGE_FIELD[stage];
+      const field = AUTOMATION_STAGE_FIELD[stage];
       const strippedContent = stripCodeFence(completion.content);
 
-      const priorDurations = asNumberRecord(campaign.stageDurationsMsJson) ?? {};
-      const priorHits = asNumberRecord(campaign.nicheMemoryHitsJson) ?? {};
+      const priorDurations = asNumberRecord(engagement.stageDurationsMsJson) ?? {};
+      const priorHits = asNumberRecord(engagement.nicheMemoryHitsJson) ?? {};
 
       const data: Record<string, unknown> = {
         [field]: strippedContent,
@@ -208,39 +202,39 @@ async function runPipeline(campaignId: string): Promise<void> {
         nicheMemoryHitsJson: { ...priorHits, [stage]: nicheMemory.length },
       };
       if (completion.model === "deterministic") {
-        const priorFallbacks = Array.isArray(campaign.fallbackStagesJson)
-          ? (campaign.fallbackStagesJson as string[])
+        const priorFallbacks = Array.isArray(engagement.fallbackStagesJson)
+          ? (engagement.fallbackStagesJson as string[])
           : [];
         data.fallbackStagesJson = [...priorFallbacks, stage];
       } else {
         try {
           await recordNicheMemory({
-            nicheId: campaign.nicheId,
+            nicheId: engagement.nicheId,
             office: OFFICE,
-            sourceId: campaignId,
+            sourceId: engagementId,
             stage,
             content: strippedContent,
             embeddingsApiKey: env.GEMINI_API_KEY,
           });
         } catch (error) {
-          console.error("[marketing-office] falha ao gravar memoria do nicho (nao afeta a campanha)", error);
+          console.error("[automation-engagements] falha ao gravar memoria do nicho (nao afeta o engajamento)", error);
         }
       }
 
-      await prisma.marketingCampaign.update({
-        where: { id: campaignId },
+      await prisma.automationEngagement.update({
+        where: { id: engagementId },
         data,
       });
     }
 
-    await prisma.marketingCampaign.update({
-      where: { id: campaignId },
+    await prisma.automationEngagement.update({
+      where: { id: engagementId },
       data: { status: "DONE", currentStage: null },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Falha desconhecida no pipeline.";
-    await prisma.marketingCampaign.update({
-      where: { id: campaignId },
+    await prisma.automationEngagement.update({
+      where: { id: engagementId },
       data: { status: "ERROR", errorMessage: message },
     });
   }

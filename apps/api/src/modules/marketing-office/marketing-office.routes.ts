@@ -1,5 +1,7 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import { z } from "zod";
+import { listClients, listNiches } from "../crm/niche-client.service.js";
+import { createMetricEntry, deleteMetricEntry, listMetricEntries } from "../crm/client-metrics.service.js";
 import {
   clientPlansSchema,
   clientSummarySchema,
@@ -14,17 +16,10 @@ import {
   createCampaign,
   getCampaignAttachment,
   getCampaignById,
+  getClientLatestMarketingPlans,
   listCampaigns,
-  listClients,
-  listNiches,
   toApiCampaign,
 } from "./marketing-campaign.service.js";
-import {
-  createMetricEntry,
-  deleteMetricEntry,
-  getClientLatestPlans,
-  listMetricEntries,
-} from "./client-metrics.service.js";
 
 export const createMarketingOfficeRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get(
@@ -115,7 +110,7 @@ export const createMarketingOfficeRoutes: FastifyPluginAsyncZod = async (app) =>
       },
     },
     async (request) => {
-      return getClientLatestPlans(request.params.id);
+      return getClientLatestMarketingPlans(request.params.id);
     },
   );
 
@@ -125,7 +120,7 @@ export const createMarketingOfficeRoutes: FastifyPluginAsyncZod = async (app) =>
       schema: {
         tags: ["marketing-office"],
         params: z.object({ id: z.string().min(1) }),
-        querystring: z.object({ kind: z.enum(["TRAFEGO", "PERFORMANCE"]) }),
+        querystring: z.object({ kind: z.enum(["TRAFEGO", "PERFORMANCE", "AUTOMACAO"]) }),
         response: { 200: z.array(metricEntrySchema) },
       },
     },

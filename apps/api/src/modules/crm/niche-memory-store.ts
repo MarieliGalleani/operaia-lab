@@ -1,12 +1,19 @@
 /**
- * Cerebro do Nicho (P1.X Fase 2) — memoria vetorial cross-cliente.
+ * Cerebro do Nicho (P1.X Fase 2, generalizado na Fase 6) — memoria vetorial
+ * cross-cliente, compartilhada por QUALQUER andar com pipeline por cliente
+ * (Marketing/Mercurio, Automacao/Atlas, e o que vier depois).
  *
- * Cada etapa de uma campanha bem-sucedida (conteudo real, nao fallback)
- * vira uma nota aqui. Campanhas futuras do MESMO nicho recuperam as
- * notas mais relevantes (por similaridade de cosseno, mesmo padrao de
- * OperationalMemoryNote) e recebem esse conteudo como contexto antes de
- * gerar cada etapa — e o mecanismo tecnico do reaproveitamento composto
- * (cliente 2 reaproveita ~30% do cliente 1, cliente 6 reaproveita ~90%).
+ * Cada etapa bem-sucedida (conteudo real, nao fallback) de um pipeline
+ * vira uma nota aqui, escopada por (nicheId, office). Trabalhos futuros do
+ * MESMO nicho E do MESMO office recuperam as notas mais relevantes (por
+ * similaridade de cosseno, mesmo padrao de OperationalMemoryNote) e
+ * recebem esse conteudo como contexto antes de gerar cada etapa — e o
+ * mecanismo tecnico do reaproveitamento composto (cliente 2 reaproveita
+ * ~30% do cliente 1, cliente 6 reaproveita ~90%).
+ *
+ * "office" existe pra nao misturar, por exemplo, o Diagnostico do
+ * Marketing com o Diagnostico da Automacao — mesmo nome de etapa,
+ * conteudo com objetivo bem diferente.
  *
  * Sem GEMINI_API_KEY configurada, ou se a chamada de embedding falhar,
  * a gravacao/recall nunca lanca — no pior caso, cai pra so mostrar as
@@ -14,14 +21,13 @@
  */
 import { GeminiEmbeddingsProvider, cosineSimilarity, type EmbeddingsProvider } from "@operaia/ai-core";
 import { prisma } from "@operaia/database";
-import type { MarketingStageId } from "./marketing-office.types.js";
 
 const TOP_K = 3;
 const MAX_CANDIDATES = 20;
 const MAX_CONTENT_CHARS = 2500;
 
 export interface NicheMemoryHit {
-  readonly stage: MarketingStageId;
+  readonly stage: string;
   readonly content: string;
   readonly score: number;
 }
@@ -40,13 +46,14 @@ function getEmbeddings(apiKey: string | undefined): EmbeddingsProvider | undefin
 
 export interface RecordNicheMemoryParams {
   readonly nicheId: string;
-  readonly campaignId: string;
-  readonly stage: MarketingStageId;
+  readonly office: string;
+  readonly sourceId: string;
+  readonly stage: string;
   readonly content: string;
   readonly embeddingsApiKey: string | undefined;
 }
 
-/** Grava (ou atualiza) a nota desta etapa desta campanha na memoria do nicho. */
+/** Grava (ou atualiza) a nota desta etapa deste trabalho na memoria do nicho. */
 export async function recordNicheMemory(params: RecordNicheMemoryParams): Promise<void> {
   const content = params.content.slice(0, MAX_CONTENT_CHARS);
   const embeddings = getEmbeddings(params.embeddingsApiKey);
@@ -54,15 +61,17 @@ export async function recordNicheMemory(params: RecordNicheMemoryParams): Promis
 
   await prisma.nicheMemoryNote.upsert({
     where: {
-      nicheId_campaignId_stage: {
+      nicheId_office_sourceId_stage: {
         nicheId: params.nicheId,
-        campaignId: params.campaignId,
+        office: params.office,
+        sourceId: params.sourceId,
         stage: params.stage,
       },
     },
     create: {
       nicheId: params.nicheId,
-      campaignId: params.campaignId,
+      office: params.office,
+      sourceId: params.sourceId,
       stage: params.stage,
       content,
       embedding: [...embedding],
@@ -73,21 +82,23 @@ export async function recordNicheMemory(params: RecordNicheMemoryParams): Promis
 
 export interface RecallNicheMemoryParams {
   readonly nicheId: string;
-  readonly stage: MarketingStageId;
+  readonly office: string;
+  readonly stage: string;
   readonly queryText: string;
-  readonly excludeCampaignId: string;
+  readonly excludeSourceId: string;
   readonly embeddingsApiKey: string | undefined;
 }
 
-/** Busca as notas mais relevantes desta etapa, deste nicho, de OUTRAS campanhas. */
+/** Busca as notas mais relevantes desta etapa, deste nicho, deste office, de OUTROS trabalhos. */
 export async function recallNicheMemory(
   params: RecallNicheMemoryParams,
 ): Promise<readonly NicheMemoryHit[]> {
   const rows = await prisma.nicheMemoryNote.findMany({
     where: {
       nicheId: params.nicheId,
+      office: params.office,
       stage: params.stage,
-      campaignId: { not: params.excludeCampaignId },
+      sourceId: { not: params.excludeSourceId },
     },
     orderBy: { createdAt: "desc" },
     take: MAX_CANDIDATES,
@@ -100,7 +111,7 @@ export async function recallNicheMemory(
   if (!queryEmbedding) {
     // Sem embedding disponivel: melhor sinal que sobra e recencia dentro do nicho.
     return rows.slice(0, TOP_K).map((row) => ({
-      stage: row.stage as MarketingStageId,
+      stage: row.stage,
       content: row.content,
       score: 0,
     }));
@@ -108,7 +119,7 @@ export async function recallNicheMemory(
 
   return rows
     .map((row) => ({
-      stage: row.stage as MarketingStageId,
+      stage: row.stage,
       content: row.content,
       score: row.embedding.length > 0 ? cosineSimilarity(queryEmbedding, row.embedding) : 0,
     }))

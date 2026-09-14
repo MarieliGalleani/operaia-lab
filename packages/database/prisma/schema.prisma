@@ -822,6 +822,7 @@ model Niche {
   slug        String              @unique
   description String?
   campaigns   MarketingCampaign[]
+  automationEngagements AutomationEngagement[]
   memoryNotes NicheMemoryNote[]
   clients     Client[]
   createdAt   DateTime            @default(now())
@@ -846,10 +847,11 @@ model Client {
   setupPaid       Boolean             @default(false)
   /// Mensalidade que sustenta a operacao continua.
   recurringActive Boolean             @default(false)
-  campaigns       MarketingCampaign[]
-  metricEntries   ClientMetricEntry[]
-  createdAt       DateTime            @default(now())
-  updatedAt       DateTime            @updatedAt
+  campaigns          MarketingCampaign[]
+  automationEngagements AutomationEngagement[]
+  metricEntries      ClientMetricEntry[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@unique([nicheId, slug])
   @@index([nicheId])
@@ -857,12 +859,13 @@ model Client {
 }
 
 /// P1.X Fase 7 — acompanhamento continuo por cliente (Trafego Pago e
-/// Performance), depois que a campanha inicial do Mercurio ja definiu o
-/// Plano de Trafego e o Framework de Performance. Sem integracao real com
-/// conta de anuncios ainda — os valores sao lancados manualmente aqui.
+/// Performance do Marketing, Automacao do Atlas), depois que a campanha/
+/// engajamento inicial ja definiu o plano de referencia. Sem integracao
+/// real com sistemas externos ainda — os valores sao lancados manualmente.
 enum ClientMetricKind {
   TRAFEGO
   PERFORMANCE
+  AUTOMACAO
 }
 
 model ClientMetricEntry {
@@ -884,25 +887,33 @@ model ClientMetricEntry {
   @@map("client_metric_entries")
 }
 
-/// Cerebro do Nicho (P1.X Fase 2) — memoria vetorial cross-cliente: cada
-/// etapa de uma campanha bem-sucedida (nao fallback) vira uma nota aqui,
-/// reaproveitada por campanhas futuras do MESMO nicho via busca por
+/// Cerebro do Nicho (P1.X Fase 2, generalizado na Fase 6 pra valer pra
+/// qualquer andar, nao so Marketing) — memoria vetorial cross-cliente: cada
+/// etapa bem-sucedida (nao fallback) de qualquer pipeline por cliente
+/// (campanha do Mercurio, engajamento do Atlas, etc.) vira uma nota aqui,
+/// reaproveitada por trabalhos futuros do MESMO nicho via busca por
 /// similaridade de cosseno (mesmo padrao ja usado em OperationalMemoryNote,
 /// so que escopado por nicho em vez de workspace interno).
 model NicheMemoryNote {
-  id         String         @id @default(uuid())
-  nicheId    String
-  niche      Niche          @relation(fields: [nicheId], references: [id], onDelete: Cascade)
-  campaignId String
-  stage      MarketingStage
-  content    String
+  id       String @id @default(uuid())
+  nicheId  String
+  niche    Niche  @relation(fields: [nicheId], references: [id], onDelete: Cascade)
+  /// Qual andar/pipeline gerou esta nota — evita misturar, por exemplo, o
+  /// Diagnostico do Marketing com o Diagnostico da Automacao (mesmo nome de
+  /// etapa, conteudo com objetivo bem diferente).
+  office   String
+  /// Id da campanha/engajamento que gerou esta nota (generico entre andares).
+  sourceId String
+  /// Nome da etapa daquele pipeline (ex: DIAGNOSTICO, MAPA_NICHO, MAPA_PROCESSOS).
+  stage    String
+  content  String
   /// Embedding Gemini (gemini-embedding-001, 3072 dims) — vazio se a chave nao
   /// estiver configurada ou a geracao falhar; busca cai pra mais recentes.
-  embedding  Float[]        @default([])
-  createdAt  DateTime       @default(now())
+  embedding Float[] @default([])
+  createdAt DateTime @default(now())
 
-  @@unique([nicheId, campaignId, stage])
-  @@index([nicheId, stage, createdAt])
+  @@unique([nicheId, office, sourceId, stage])
+  @@index([nicheId, office, stage, createdAt])
   @@map("niche_memory_notes")
 }
 
@@ -955,3 +966,65 @@ model MarketingCampaign {
 }
 
 // P1.X Marketing — Fase 6: 3 etapas novas + anexo no briefing.
+
+enum AutomationEngagementStatus {
+  PENDING
+  RUNNING
+  DONE
+  ERROR
+}
+
+enum AutomationStage {
+  DIAGNOSTICO
+  MAPA_PROCESSOS
+  AUTOMACOES_RECOMENDADAS
+  ARQUITETURA_INTEGRACAO
+  PLANO_IMPLEMENTACAO
+  PLAYBOOK_OPERACIONAL
+  FRAMEWORK_MONITORAMENTO
+}
+
+/// P1.X Fase 6 — pipeline por cliente do Atlas (Automation Specialist),
+/// mesma logica do Mercurio (marketing-office): nicho + briefing entram,
+/// o Cerebro do Nicho (Fase 2, generalizado) acumula conhecimento real
+/// entre clientes do mesmo setor, cada etapa e uma chamada real de LLM.
+model AutomationEngagement {
+  id       String @id @default(uuid())
+  /// Texto exatamente como digitado no briefing — preservado para os prompts.
+  niche    String
+  nicheId  String
+  nicheRef Niche  @relation(fields: [nicheId], references: [id])
+  /// Opcional: nem todo engajamento esta ligado a um Cliente rastreado ainda.
+  clientId String?
+  client   Client? @relation(fields: [clientId], references: [id])
+  briefing String
+  status   AutomationEngagementStatus @default(PENDING)
+  currentStage AutomationStage?
+  /// Hipoteses de onde o negocio perde tempo/dinheiro por falta de automacao —
+  /// gerado ANTES de qualquer recomendacao tatica (mesma virada de
+  /// posicionamento da Fase 5 do Marketing).
+  diagnostico             String?
+  mapaProcessos           String?
+  automacoesRecomendadas  String?
+  arquiteturaIntegracao   String?
+  planoImplementacao      String?
+  playbookOperacional     String?
+  frameworkMonitoramento  String?
+  attachmentName     String?
+  attachmentMimeType String?
+  attachmentBase64   String?
+  errorMessage String?
+  /** Ids das etapas cujo conteudo veio do fallback deterministico (IA indisponivel), nao de uma geracao real. */
+  fallbackStagesJson Json?
+  /// Duracao real (ms) da chamada de LLM de cada etapa, por stage.
+  stageDurationsMsJson Json?
+  /// Quantas notas do Cerebro do Nicho foram injetadas no prompt de cada etapa.
+  nicheMemoryHitsJson Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([nicheId])
+  @@index([clientId])
+  @@map("automation_engagements")
+}

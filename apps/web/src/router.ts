@@ -16,6 +16,7 @@ import OperationalShellLayout from "@/layouts/OperationalShellLayout.vue";
 import TodayView from "@/views/shell/TodayView.vue";
 import SignalsView from "@/views/shell/SignalsView.vue";
 import MarketingWorkView from "@/views/shell/MarketingWorkView.vue";
+import AutomationWorkView from "@/views/shell/AutomationWorkView.vue";
 import WorkView from "@/views/shell/WorkView.vue";
 import TeamView from "@/views/shell/TeamView.vue";
 import InfraView from "@/views/shell/InfraView.vue";
@@ -199,6 +200,11 @@ const routes: RouteRecordRaw[] = [
             path: "triggers",
             name: "schedule-rules",
             component: ScheduleRulesView,
+          },
+          {
+            path: "clients",
+            name: "automation-clients",
+            component: AutomationWorkView,
           },
           {
             path: "team",

@@ -1,15 +1,16 @@
 /**
  * Acompanhamento continuo por cliente (P1.X Fase 7) — Trafego Pago e
- * Performance, depois que a campanha inicial do Mercurio ja definiu o
- * Plano de Trafego e o Framework de Performance daquele cliente.
+ * Performance do Marketing, Automacao do Atlas, e o que vier depois.
+ * Lancamentos manuais, separados por "kind", depois que o engajamento
+ * inicial daquele andar ja definiu o plano de referencia.
  *
- * Sem integracao real com conta de anuncios ainda (Meta/Google Ads) —
- * os valores sao lancados manualmente aqui. As telas mostram o plano
- * original (referencia) ao lado dos lancamentos reais.
+ * Sem integracao real com sistemas externos ainda (conta de anuncios,
+ * CRM, etc.) — os valores sao lancados manualmente aqui. As telas
+ * mostram o plano original (referencia) ao lado dos lancamentos reais.
  */
 import { prisma } from "@operaia/database";
 
-export type ClientMetricKind = "TRAFEGO" | "PERFORMANCE";
+export type ClientMetricKind = "TRAFEGO" | "PERFORMANCE" | "AUTOMACAO";
 
 export interface MetricEntry {
   readonly id: string;
@@ -76,21 +77,4 @@ export async function createMetricEntry(input: {
 
 export async function deleteMetricEntry(id: string): Promise<void> {
   await prisma.clientMetricEntry.delete({ where: { id } });
-}
-
-/** Referencia definida pelo Mercurio na campanha mais recente e concluida deste cliente —
- * o "plano" ao lado do qual os lancamentos reais de trafego/performance sao comparados. */
-export async function getClientLatestPlans(clientId: string): Promise<{
-  planoTrafego: string | null;
-  frameworkPerformance: string | null;
-}> {
-  const campaign = await prisma.marketingCampaign.findFirst({
-    where: { clientId, status: "DONE" },
-    orderBy: { createdAt: "desc" },
-    select: { planoTrafego: true, frameworkPerformance: true },
-  });
-  return {
-    planoTrafego: campaign?.planoTrafego ?? null,
-    frameworkPerformance: campaign?.frameworkPerformance ?? null,
-  };
 }

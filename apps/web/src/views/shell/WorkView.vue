@@ -191,6 +191,9 @@ const AUTOMATION_STATUS_LABEL: Record<string, { label: string; tone: string }> =
     <template v-if="floor.id === 'dev'" #extra>
       <router-link to="/app/floor/dev/workspaces/new" class="op-btn">Novo projeto</router-link>
     </template>
+    <template v-else-if="floor.id === 'automation'" #extra>
+      <router-link to="/app/floor/automation/clients" class="op-btn">Clientes (Atlas)</router-link>
+    </template>
   </OperationalHeader>
 
   <div class="op-content">

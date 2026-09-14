@@ -49,4 +49,7 @@ export {
   type MarketingCampaign,
   MarketingCampaignStatus,
   MarketingStage,
+  type AutomationEngagement,
+  AutomationEngagementStatus,
+  AutomationStage,
 } from "@prisma/client";
