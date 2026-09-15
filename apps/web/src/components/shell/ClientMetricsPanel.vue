@@ -12,6 +12,12 @@ import {
   type ClientSummary,
   type MetricEntry,
 } from "@/data/adapters/marketing-office-client";
+import {
+  createGoogleAdsClient,
+  type GoogleAdsAnalysis,
+  type GoogleAdsConnectionStatus,
+  type NegativeKeywordRecommendation,
+} from "@/data/adapters/google-ads-client";
 
 const props = defineProps<{
   kind: ClientMetricKind;
@@ -20,6 +26,7 @@ const props = defineProps<{
 }>();
 
 const client = createMarketingOfficeClient();
+const googleAds = createGoogleAdsClient();
 
 const clients = ref<readonly ClientSummary[]>([]);
 const selectedClientId = ref<string | null>(null);
@@ -39,6 +46,21 @@ const value = ref("");
 const note = ref("");
 const submitting = ref(false);
 const submitError = ref<string | null>(null);
+
+const gadsStatus = ref<GoogleAdsConnectionStatus | null>(null);
+const gadsLoadState = ref<"idle" | "loading" | "ready" | "error">("idle");
+const gadsAnalysis = ref<GoogleAdsAnalysis | null>(null);
+const gadsAnalysisState = ref<"idle" | "loading" | "ready" | "error">("idle");
+const gadsAnalysisError = ref<string | null>(null);
+const gadsCustomerId = ref("");
+const gadsLoginCustomerId = ref("");
+const gadsApplyingKey = ref<string | null>(null);
+const gadsAppliedKeys = ref<Set<string>>(new Set());
+const gadsDisconnecting = ref(false);
+
+function gadsRecKey(rec: NegativeKeywordRecommendation): string {
+  return `${rec.campaignId}:${rec.term}`;
+}
 
 interface PlanoTrafego {
   objetivoCampanha: string;
@@ -164,6 +186,74 @@ async function removeEntry(id: string): Promise<void> {
   }
 }
 
+async function loadGoogleAdsStatus(): Promise<void> {
+  if (props.kind !== "TRAFEGO" || !selectedClientId.value) return;
+  gadsLoadState.value = "loading";
+  gadsAnalysis.value = null;
+  gadsAnalysisState.value = "idle";
+  gadsAppliedKeys.value = new Set();
+  try {
+    gadsStatus.value = await googleAds.getStatus(selectedClientId.value);
+    gadsLoadState.value = "ready";
+    if (gadsStatus.value.connected) {
+      void loadGoogleAdsAnalysis();
+    }
+  } catch (error) {
+    gadsLoadState.value = "error";
+    console.log("[client-metrics] falha ao carregar status do Google Ads", error);
+  }
+}
+
+async function loadGoogleAdsAnalysis(): Promise<void> {
+  if (!selectedClientId.value) return;
+  gadsAnalysisState.value = "loading";
+  gadsAnalysisError.value = null;
+  try {
+    gadsAnalysis.value = await googleAds.getAnalysis(selectedClientId.value);
+    gadsAnalysisState.value = "ready";
+  } catch (error) {
+    gadsAnalysisState.value = "error";
+    gadsAnalysisError.value =
+      error instanceof Error ? error.message : "Não foi possível consultar a conta.";
+  }
+}
+
+function connectGoogleAds(): void {
+  if (!selectedClientId.value || !gadsCustomerId.value.trim()) return;
+  window.location.href = googleAds.buildConnectUrl(
+    selectedClientId.value,
+    gadsCustomerId.value.trim(),
+    gadsLoginCustomerId.value.trim() || undefined,
+  );
+}
+
+async function disconnectGoogleAds(): Promise<void> {
+  if (!selectedClientId.value) return;
+  gadsDisconnecting.value = true;
+  try {
+    await googleAds.disconnect(selectedClientId.value);
+    await loadGoogleAdsStatus();
+  } catch (error) {
+    console.log("[client-metrics] falha ao desconectar Google Ads", error);
+  } finally {
+    gadsDisconnecting.value = false;
+  }
+}
+
+async function applyGoogleAdsRecommendation(rec: NegativeKeywordRecommendation): Promise<void> {
+  if (!selectedClientId.value) return;
+  const key = gadsRecKey(rec);
+  gadsApplyingKey.value = key;
+  try {
+    await googleAds.applyNegativeKeyword(selectedClientId.value, rec.campaignId, rec.term);
+    gadsAppliedKeys.value = new Set([...gadsAppliedKeys.value, key]);
+  } catch (error) {
+    console.log("[client-metrics] falha ao aplicar palavra negativa", error);
+  } finally {
+    gadsApplyingKey.value = null;
+  }
+}
+
 /** period e sempre meia-noite UTC do dia escolhido no input date — exibe em
  * UTC pra nao voltar um dia em fusos atras (ex: Brasil, UTC-3). */
 function formatPeriod(iso: string): string {
@@ -177,10 +267,14 @@ function formatPeriod(iso: string): string {
 
 watch(selectedClientId, () => {
   void loadClientData();
+  void loadGoogleAdsStatus();
 });
 
 onMounted(() => {
-  void loadClients().then(() => loadClientData());
+  void loadClients().then(() => {
+    void loadClientData();
+    void loadGoogleAdsStatus();
+  });
 });
 </script>
 
@@ -238,6 +332,157 @@ onMounted(() => {
       </div>
       <div v-else-if="kind === 'PERFORMANCE'" class="op-metrics__plan op-metrics__plan--empty">
         Este cliente ainda não tem um Framework de Performance gerado (rode uma campanha completa em Trabalhos).
+      </div>
+
+      <div v-if="kind === 'TRAFEGO'" class="op-gads">
+        <div class="op-gads__head">
+          <h4>Google Ads</h4>
+          <span v-if="gadsStatus?.connected" class="op-gads__badge op-gads__badge--on">
+            conectado · {{ gadsStatus.customerId }}
+          </span>
+          <span v-else-if="gadsStatus?.configured" class="op-gads__badge">não conectado</span>
+        </div>
+
+        <p v-if="gadsLoadState === 'loading'" class="op-metrics__empty">Verificando conexão…</p>
+
+        <p v-else-if="gadsStatus && !gadsStatus.configured" class="op-gads__note">
+          Integração já implementada no backend (busca de termos sem conversão, sugestão de palavra
+          negativa e leitura de impressão perdida), mas esta instância ainda não tem as credenciais
+          de aplicação do Google Ads cadastradas. Assim que forem configuradas, a conexão fica
+          disponível aqui — nenhuma mudança adicional será necessária.
+        </p>
+
+        <template v-else-if="gadsStatus">
+          <form v-if="!gadsStatus.connected" class="op-gads__connect" @submit.prevent="connectGoogleAds">
+            <input
+              v-model="gadsCustomerId"
+              type="text"
+              class="op-input"
+              placeholder="ID do cliente Google Ads (ex: 123-456-7890)"
+            />
+            <input
+              v-model="gadsLoginCustomerId"
+              type="text"
+              class="op-input"
+              placeholder="ID da conta gerenciadora (opcional)"
+            />
+            <button type="submit" class="op-btn op-btn--cta" :disabled="!gadsCustomerId.trim()">
+              Conectar conta
+            </button>
+          </form>
+
+          <template v-else>
+            <p v-if="gadsStatus.lastError" class="op-error-inline">
+              Última sincronização falhou: {{ gadsStatus.lastError }}
+            </p>
+
+            <p v-if="gadsAnalysisState === 'loading'" class="op-metrics__empty">Consultando a conta…</p>
+            <p v-else-if="gadsAnalysisState === 'error'" class="op-error-inline">{{ gadsAnalysisError }}</p>
+
+            <template v-else-if="gadsAnalysis">
+              <div class="op-gads__summary">
+                <div>
+                  <span>Investimento (30d)</span>
+                  <strong>R$ {{ gadsAnalysis.summary.costBrl.toFixed(2) }}</strong>
+                </div>
+                <div>
+                  <span>Conversões</span>
+                  <strong>{{ gadsAnalysis.summary.conversions }}</strong>
+                </div>
+                <div>
+                  <span>Custo por conversão</span>
+                  <strong>{{
+                    gadsAnalysis.summary.costPerConversionBrl !== null
+                      ? "R$ " + gadsAnalysis.summary.costPerConversionBrl.toFixed(2)
+                      : "—"
+                  }}</strong>
+                </div>
+              </div>
+
+              <div v-if="gadsAnalysis.negativeKeywordRecommendations.length > 0" class="op-gads__block">
+                <h5>Sugestões de palavra negativa</h5>
+                <div
+                  v-for="rec in gadsAnalysis.negativeKeywordRecommendations"
+                  :key="gadsRecKey(rec)"
+                  class="op-gads__rec"
+                >
+                  <div>
+                    <strong>{{ rec.term }}</strong>
+                    <span class="op-gads__rec-meta">{{ rec.campaignName }} · {{ rec.reason }}</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="op-btn"
+                    :disabled="gadsApplyingKey === gadsRecKey(rec) || gadsAppliedKeys.has(gadsRecKey(rec))"
+                    @click="applyGoogleAdsRecommendation(rec)"
+                  >
+                    {{
+                      gadsAppliedKeys.has(gadsRecKey(rec))
+                        ? "Aplicada"
+                        : gadsApplyingKey === gadsRecKey(rec)
+                          ? "Aplicando…"
+                          : "Negativar"
+                    }}
+                  </button>
+                </div>
+              </div>
+              <p v-else class="op-metrics__empty">
+                Nenhum termo com gasto sem conversão nos últimos 30 dias.
+              </p>
+
+              <div v-if="gadsAnalysis.lostImpressionShare.length > 0" class="op-gads__block">
+                <h5>Impressão perdida por campanha</h5>
+                <table class="op-metrics__ref-table">
+                  <thead>
+                    <tr>
+                      <th>Campanha</th>
+                      <th>Impressão</th>
+                      <th>Perdida (orçamento)</th>
+                      <th>Perdida (lance/qualidade)</th>
+                      <th>Causa principal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="row in gadsAnalysis.lostImpressionShare" :key="row.campaignId">
+                      <td>{{ row.campaignName }}</td>
+                      <td class="op-mono">{{ row.impressionSharePct.toFixed(1) }}%</td>
+                      <td class="op-mono">{{ row.lostToBudgetPct.toFixed(1) }}%</td>
+                      <td class="op-mono">{{ row.lostToRankPct.toFixed(1) }}%</td>
+                      <td>
+                        {{
+                          row.mainCause === "orcamento"
+                            ? "Orçamento"
+                            : row.mainCause === "lance_ou_qualidade"
+                              ? "Lance/qualidade"
+                              : "—"
+                        }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </template>
+
+            <div class="op-gads__actions">
+              <button
+                type="button"
+                class="op-btn"
+                :disabled="gadsAnalysisState === 'loading'"
+                @click="loadGoogleAdsAnalysis"
+              >
+                Atualizar análise
+              </button>
+              <button
+                type="button"
+                class="op-gads__disconnect"
+                :disabled="gadsDisconnecting"
+                @click="disconnectGoogleAds"
+              >
+                Desconectar
+              </button>
+            </div>
+          </template>
+        </template>
       </div>
 
       <form class="op-metrics__form" @submit.prevent="submitEntry">
@@ -443,6 +688,132 @@ onMounted(() => {
 @media (max-width: 900px) {
   .op-metrics__form {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+.op-gads {
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius-sm);
+  background: var(--op-raise);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.op-gads__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.op-gads__head h4 {
+  font-size: 13px;
+  margin: 0;
+}
+
+.op-gads__badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--op-muted-3);
+  border: 1px solid var(--op-line);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.op-gads__badge--on {
+  color: var(--op-green);
+  border-color: var(--op-green);
+}
+
+.op-gads__note {
+  font-size: 12.5px;
+  color: var(--op-muted-3);
+  margin: 0;
+  max-width: 64ch;
+}
+
+.op-gads__connect {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+}
+
+.op-gads__summary {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 14px;
+}
+
+.op-gads__summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.op-gads__summary span {
+  font-size: 11px;
+  color: var(--op-muted-3);
+}
+
+.op-gads__summary strong {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 15px;
+}
+
+.op-gads__block {
+  margin-bottom: 14px;
+}
+
+.op-gads__block h5 {
+  font-size: 12px;
+  color: var(--op-muted-3);
+  margin: 0 0 8px;
+}
+
+.op-gads__rec {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--op-line);
+  font-size: 12.5px;
+}
+
+.op-gads__rec:last-child {
+  border-bottom: none;
+}
+
+.op-gads__rec-meta {
+  display: block;
+  font-size: 11.5px;
+  color: var(--op-muted-3);
+  margin-top: 2px;
+}
+
+.op-gads__actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.op-gads__disconnect {
+  background: none;
+  border: none;
+  color: var(--op-red);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+@media (max-width: 900px) {
+  .op-gads__connect {
+    grid-template-columns: 1fr;
+  }
+
+  .op-gads__summary {
+    flex-wrap: wrap;
+    gap: 16px;
   }
 }
 </style>

@@ -22,6 +22,7 @@ import { createAutomationOfficeRoutes } from "./modules/automation-office/index.
 import { createMarketingOfficeRoutes } from "./modules/marketing-office/index.js";
 import { createAutomationEngagementRoutes } from "./modules/automation-engagements/index.js";
 import { createCrmRoutes } from "./modules/crm/index.js";
+import { createGoogleAdsCallbackRoute, createGoogleAdsRoutes } from "./modules/google-ads/index.js";
 import { scheduleRuleRoutes } from "./modules/schedule-rules/schedule-rules.routes.js";
 import { createProductLabRuntime } from "./modules/operations/product-lab-runtime.js";
 import { createOperationsRoutes } from "./modules/operations/operations.routes.js";
@@ -83,6 +84,9 @@ export function buildApp(): AppBundle {
   app.register(createAuthRoutes(authService, env.NODE_ENV === "production"), {
     prefix: "/api/auth",
   });
+  /** Publico de proposito — e o navegador do usuario voltando do consentimento
+   * OAuth do Google, sem sessao autenticada da OperaIA.lab presente. */
+  app.register(createGoogleAdsCallbackRoute, { prefix: "/api/v1" });
   app.register(async (protectedApi) => {
     registerAuthenticatedApiHooks(protectedApi);
     protectedApi.register(infraRoutes, { prefix: "/api/v1/infra" });
@@ -117,6 +121,7 @@ export function buildApp(): AppBundle {
     protectedApi.register(createMarketingOfficeRoutes, { prefix: "/api/v1" });
     protectedApi.register(createAutomationEngagementRoutes, { prefix: "/api/v1" });
     protectedApi.register(createCrmRoutes, { prefix: "/api/v1" });
+    protectedApi.register(createGoogleAdsRoutes, { prefix: "/api/v1" });
     protectedApi.register(scheduleRuleRoutes, { prefix: "/api/v1" });
     protectedApi.register(liveStatusRoutes, { prefix: "/api/v1/ws" });
   });

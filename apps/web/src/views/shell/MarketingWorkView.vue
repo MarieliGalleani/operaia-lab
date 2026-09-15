@@ -7,7 +7,7 @@
  * sem conteudo estatico/fake.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import OperationalHeader from "@/components/shell/OperationalHeader.vue";
 import ClientMetricsPanel from "@/components/shell/ClientMetricsPanel.vue";
 import { findFloor, floorIdFromPath } from "@/data/office-floors";
@@ -24,11 +24,15 @@ import {
 const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024;
 
 const route = useRoute();
+const router = useRouter();
 const floor = computed(() => findFloor(floorIdFromPath(route.path)));
 const client = createMarketingOfficeClient();
 
 type WorkTab = "campanhas" | "trafego" | "performance";
 const activeTab = ref<WorkTab>("campanhas");
+
+/** Volta do consentimento OAuth do Google Ads (ver callback em apps/api). */
+const googleAdsReturn = ref<"conectado" | "erro" | null>(null);
 
 const listState = ref<"idle" | "loading" | "ready" | "error">("idle");
 const listError = ref<string | null>(null);
@@ -460,6 +464,15 @@ onMounted(() => {
   void loadCampaigns();
   void loadNiches();
   void loadClients();
+
+  const gadsParam = route.query.googleAds;
+  if (gadsParam === "conectado" || gadsParam === "erro") {
+    googleAdsReturn.value = gadsParam;
+    activeTab.value = "trafego";
+    const rest = { ...route.query };
+    delete rest.googleAds;
+    void router.replace({ query: rest });
+  }
 });
 
 onBeforeUnmount(() => {
@@ -921,11 +934,19 @@ onBeforeUnmount(() => {
   </div>
 
   <div v-else-if="activeTab === 'trafego'" class="op-content op-content--single">
+    <p v-if="googleAdsReturn === 'conectado'" class="op-banner op-banner--ok">
+      Conta do Google Ads conectada com sucesso.
+      <button type="button" class="op-banner__close" @click="googleAdsReturn = null">fechar</button>
+    </p>
+    <p v-else-if="googleAdsReturn === 'erro'" class="op-banner op-banner--error">
+      Não foi possível concluir a conexão com o Google Ads. Tente novamente.
+      <button type="button" class="op-banner__close" @click="googleAdsReturn = null">fechar</button>
+    </p>
     <section class="op-panel">
       <ClientMetricsPanel
         kind="TRAFEGO"
         title="Tráfego Pago"
-        hint="Acompanhamento contínuo por cliente — o plano que o Mercúrio definiu ao lado dos números reais de investimento e resultado, lançados aqui enquanto não há integração direta com a conta de anúncios."
+        hint="Acompanhamento contínuo por cliente — o plano que o Mercúrio definiu, os números reais lançados manualmente e, quando a conta do Google Ads estiver conectada, a leitura direta de investimento, termos sem conversão e impressão perdida."
       />
     </section>
   </div>
@@ -942,6 +963,39 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.op-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 20px 34px 0;
+  padding: 10px 16px;
+  border-radius: var(--op-radius-sm);
+  font-size: 13px;
+}
+
+.op-banner--ok {
+  background: color-mix(in srgb, var(--op-green) 14%, transparent);
+  border: 1px solid var(--op-green);
+  color: var(--op-green);
+}
+
+.op-banner--error {
+  background: color-mix(in srgb, var(--op-red) 14%, transparent);
+  border: 1px solid var(--op-red);
+  color: var(--op-red);
+}
+
+.op-banner__close {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .op-tabs {
   display: flex;
   gap: 6px;

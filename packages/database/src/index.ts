@@ -52,4 +52,5 @@ export {
   type AutomationEngagement,
   AutomationEngagementStatus,
   AutomationStage,
+  type GoogleAdsConnection,
 } from "@prisma/client";

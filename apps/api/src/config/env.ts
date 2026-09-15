@@ -113,6 +113,17 @@ const envSchema = z.object({
   GITHUB_TOKEN: z.string().optional(),
   /** P1.24 — sem ela, webSearch fica NOT_IMPLEMENTED (Mercurio hoje). */
   TAVILY_API_KEY: z.string().optional(),
+
+  /**
+   * P1.X Fase 8 — Google Ads (OAuth da aplicacao, nao por cliente).
+   * Sem as 3 configuradas, a integracao fica indisponivel (ver
+   * isGoogleAdsConfigured) — nao bloqueia o boot, so desativa a feature.
+   */
+  GOOGLE_ADS_CLIENT_ID: z.string().optional(),
+  GOOGLE_ADS_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_ADS_DEVELOPER_TOKEN: z.string().optional(),
+  /** URL completa do callback OAuth (ex.: https://api.operaia.com.br/api/v1/office/google-ads/callback). */
+  GOOGLE_ADS_REDIRECT_URI: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

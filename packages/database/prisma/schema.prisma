@@ -850,12 +850,37 @@ model Client {
   campaigns          MarketingCampaign[]
   automationEngagements AutomationEngagement[]
   metricEntries      ClientMetricEntry[]
+  googleAdsConnection GoogleAdsConnection?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 
   @@unique([nicheId, slug])
   @@index([nicheId])
   @@map("clients")
+}
+
+/// P1.X Fase 8 — conexao real com a conta de Google Ads do cliente (OAuth).
+/// client_id/client_secret/developer_token sao da NOSSA aplicacao (env vars,
+/// configurados uma vez); refresh_token e por cliente, obtido no consentimento
+/// OAuth dele. Sem client_id/secret/developer_token configurados no .env,
+/// a conexao fica indisponivel (ver isGoogleAdsConfigured) — feature dormente
+/// ate a conta Google Cloud da OperaIA.lab ser provisionada.
+model GoogleAdsConnection {
+  id              String   @id @default(uuid())
+  clientId        String   @unique
+  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  /// Formato "123-456-7890" (sem hifen na chamada real da API).
+  customerId      String
+  /// Id da conta MCC, se o acesso for via conta administradora.
+  loginCustomerId String?
+  refreshToken    String
+  status          String   @default("CONNECTED")
+  lastSyncAt      DateTime?
+  lastError       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("google_ads_connections")
 }
 
 /// P1.X Fase 7 — acompanhamento continuo por cliente (Trafego Pago e

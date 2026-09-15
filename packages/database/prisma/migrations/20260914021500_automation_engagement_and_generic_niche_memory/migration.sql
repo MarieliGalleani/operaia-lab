@@ -4,7 +4,7 @@
 -- Cerebro do Nicho generico: campaignId -> sourceId, stage vira texto livre,
 -- e ganha um discriminador "office" pra nao misturar etapas de mesmo nome
 -- entre andares diferentes (ex: DIAGNOSTICO do Marketing vs da Automacao).
-ALTER TABLE "niche_memory_notes" DROP CONSTRAINT "niche_memory_notes_nicheId_campaignId_stage_key";
+DROP INDEX "niche_memory_notes_nicheId_campaignId_stage_key";
 DROP INDEX "niche_memory_notes_nicheId_stage_createdAt_idx";
 ALTER TABLE "niche_memory_notes" RENAME COLUMN "campaignId" TO "sourceId";
 ALTER TABLE "niche_memory_notes" ALTER COLUMN "stage" TYPE TEXT USING "stage"::TEXT;
