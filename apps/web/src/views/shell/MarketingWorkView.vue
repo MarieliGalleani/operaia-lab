@@ -291,6 +291,26 @@ function toggleStage(stage: MarketingStageId): void {
   openStage.value = openStage.value === stage ? null : stage;
 }
 
+interface NichoMap {
+  publicoAlvo: string;
+  dores: readonly string[];
+  desejos: readonly string[];
+  objecoes: readonly string[];
+  tamanhoMercado: string;
+  concorrencia: readonly { nome: string; tipo: "direta" | "indireta"; observacao: string }[];
+  posicionamentoRecomendado: string;
+}
+
+interface Criativos {
+  conceitos: readonly { headline: string; copy: string; ganchoVisual: string; cta: string }[];
+  maisForteIndex: number;
+  motivoMaisForte: string;
+}
+
+interface PitchDeck {
+  slides: readonly { numero: number; titulo: string; bullets: readonly string[] }[];
+}
+
 interface Diagnostico {
   baseadoEmDadosReais: boolean;
   resumoExecutivo: string;
@@ -366,6 +386,9 @@ function parseJson<T>(raw: string | null | undefined): T | null {
 const activeDiagnostico = computed<Diagnostico | null>(() =>
   parseJson<Diagnostico>(active.value?.diagnostico),
 );
+const activeNicheMap = computed<NichoMap | null>(() => parseJson<NichoMap>(active.value?.nicheMap));
+const activeCriativos = computed<Criativos | null>(() => parseJson<Criativos>(active.value?.creatives));
+const activePitchDeck = computed<PitchDeck | null>(() => parseJson<PitchDeck>(active.value?.pitchDeck));
 const activeGtm = computed<GtmPlan | null>(() => parseJson<GtmPlan>(active.value?.gtmPlan));
 const activePlaybook = computed<SalesPlaybook | null>(() =>
   parseJson<SalesPlaybook>(active.value?.salesPlaybook),
@@ -759,12 +782,100 @@ onBeforeUnmount(() => {
                 </div>
               </div>
 
+              <div v-else-if="stage === 'MAPA_NICHO' && activeNicheMap" class="op-structured">
+                <div class="op-structured__section">
+                  <h4>Público-alvo</h4>
+                  <p>{{ activeNicheMap.publicoAlvo }}</p>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Dores</h4>
+                  <ul>
+                    <li v-for="(d, i) in activeNicheMap.dores" :key="i">{{ d }}</li>
+                  </ul>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Desejos</h4>
+                  <ul>
+                    <li v-for="(d, i) in activeNicheMap.desejos" :key="i">{{ d }}</li>
+                  </ul>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Objeções mais comuns</h4>
+                  <ul>
+                    <li v-for="(o, i) in activeNicheMap.objecoes" :key="i">{{ o }}</li>
+                  </ul>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Tamanho e potencial do mercado</h4>
+                  <p>{{ activeNicheMap.tamanhoMercado }}</p>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Concorrência direta e indireta</h4>
+                  <ul>
+                    <li v-for="c in activeNicheMap.concorrencia" :key="c.nome">
+                      <strong>{{ c.nome }}</strong>
+                      <span class="op-mono" style="font-size: 11px; color: var(--op-muted-3)">
+                        ({{ c.tipo }})
+                      </span>
+                      — {{ c.observacao }}
+                    </li>
+                  </ul>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Posicionamento recomendado</h4>
+                  <p><em>{{ activeNicheMap.posicionamentoRecomendado }}</em></p>
+                </div>
+              </div>
+
+              <div v-else-if="stage === 'CRIATIVOS' && activeCriativos" class="op-structured">
+                <div class="op-structured__section">
+                  <h4>Conceitos criativos</h4>
+                  <div class="op-perf-grid">
+                    <div
+                      v-for="(c, i) in activeCriativos.conceitos"
+                      :key="i"
+                      class="op-perf-card"
+                      :class="{ 'op-perf-card--best': i === activeCriativos.maisForteIndex }"
+                    >
+                      <div class="op-perf-card__head">
+                        <strong>{{ c.headline }}</strong>
+                        <span v-if="i === activeCriativos.maisForteIndex" class="op-mono">★ mais forte</span>
+                      </div>
+                      <p class="op-perf-card__freq">{{ c.copy }}</p>
+                      <p class="op-perf-card__ref">🎨 {{ c.ganchoVisual }}</p>
+                      <p class="op-perf-card__action">CTA: {{ c.cta }}</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="op-structured__section">
+                  <h4>Por que esse é o mais forte</h4>
+                  <p>{{ activeCriativos.motivoMaisForte }}</p>
+                </div>
+              </div>
+
               <iframe
                 v-else-if="stage === 'LANDING_PAGE' && active.landingPageHtml"
                 class="op-landing-preview"
                 sandbox=""
                 :srcdoc="active.landingPageHtml"
               />
+
+              <div v-else-if="stage === 'PITCH_DECK' && activePitchDeck" class="op-structured">
+                <div class="op-structured__section">
+                  <h4>Roteiro do pitch</h4>
+                  <ol class="op-storyboard">
+                    <li v-for="slide in activePitchDeck.slides" :key="slide.numero" class="op-storyboard__cena">
+                      <span class="op-storyboard__num">{{ slide.numero }}</span>
+                      <div>
+                        <p class="op-storyboard__meta">{{ slide.titulo }}</p>
+                        <ul>
+                          <li v-for="(b, i) in slide.bullets" :key="i">{{ b }}</li>
+                        </ul>
+                      </div>
+                    </li>
+                  </ol>
+                </div>
+              </div>
 
               <div v-else-if="stage === 'PLANO_GTM' && activeGtm" class="op-structured">
                 <div class="op-structured__section">
@@ -1576,6 +1687,15 @@ onBeforeUnmount(() => {
   border-radius: var(--op-radius-sm);
   background: var(--op-raise);
   padding: 12px;
+}
+
+.op-perf-card--best {
+  border-color: var(--op-cta);
+  box-shadow: 0 0 0 1px var(--op-cta);
+}
+
+.op-perf-card--best .op-perf-card__head .op-mono {
+  color: var(--op-cta);
 }
 
 .op-perf-card__head {

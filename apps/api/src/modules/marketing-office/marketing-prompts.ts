@@ -145,26 +145,50 @@ do Brasil.`;
     case "MAPA_NICHO":
       return `${header}
 
-Tarefa: monte o Mapa de Nicho completo, em markdown, com estas secoes:
-## Publico-alvo
-## Dores
-## Desejos
-## Objecoes mais comuns
-## Tamanho e potencial do mercado
-## Concorrencia direta e indireta
-## Angulo de posicionamento recomendado`;
+Tarefa: monte o Mapa de Nicho completo. Responda APENAS com um objeto
+JSON valido (sem markdown, sem \`\`\`, sem texto antes ou depois),
+exatamente neste formato:
+
+{
+  "publicoAlvo": string,
+  "dores": string[],
+  "desejos": string[],
+  "objecoes": string[],
+  "tamanhoMercado": string,
+  "concorrencia": [{ "nome": string, "tipo": "direta" | "indireta", "observacao": string }],
+  "posicionamentoRecomendado": string
+}
+
+Regras: 3 a 5 itens em "dores", "desejos" e "objecoes". "concorrencia"
+com 3 a 5 concorrentes (diretos e indiretos misturados). Nunca invente
+numero ou estatistica especifica em "tamanhoMercado" — descreva em
+termos qualitativos (ex: "mercado em crescimento, pouca oferta
+especializada na regiao"). Tudo em portugues do Brasil, especifico para
+o nicho.`;
 
     case "CRIATIVOS":
       return `${header}
 
 Tarefa: com base no Mapa de Nicho acima, crie 5 conceitos criativos para
-anuncios/posts, em markdown. Para cada um: ## Headline, Copy curto (2-3
-frases), Gancho visual sugerido, CTA. Use formulas de headline testadas
-quando fizer sentido: "Consiga {resultado} sem {dor}", "Nunca mais
-{coisa ruim} de novo", ou uma pergunta que nomeia a dor direto. CTA
-sempre no formato verbo + o que a pessoa ganha, nunca generico. Ao
-final, indique qual dos 5 e o mais forte para virar a Landing Page e
-por que.`;
+anuncios/posts. Responda APENAS com um objeto JSON valido (sem
+markdown, sem \`\`\`, sem texto antes ou depois), exatamente neste
+formato:
+
+{
+  "conceitos": [
+    { "headline": string, "copy": string, "ganchoVisual": string, "cta": string }
+  ],
+  "maisForteIndex": number,
+  "motivoMaisForte": string
+}
+
+Regras: exatamente 5 itens em "conceitos". "copy" com 2-3 frases. Use
+formulas de headline testadas quando fizer sentido: "Consiga
+{resultado} sem {dor}", "Nunca mais {coisa ruim} de novo", ou uma
+pergunta que nomeia a dor direto. "cta" sempre no formato verbo + o que
+a pessoa ganha, nunca generico. "maisForteIndex" e o indice (0 a 4, na
+ordem de "conceitos") do conceito mais forte pra virar a Landing Page —
+explique o motivo em "motivoMaisForte". Tudo em portugues do Brasil.`;
 
     case "LANDING_PAGE":
       return `${header}
@@ -210,11 +234,20 @@ texto antes ou depois.`;
     case "PITCH_DECK":
       return `${header}
 
-Tarefa: monte o roteiro de um Pitch Deck de vendas, em markdown, um
-titulo "## Slide N — <titulo>" por slide, com o conteudo-chave de cada
-slide (bullets curtos). Estrutura sugerida: Problema, Custo de nao
-agir, Solucao, Como funciona, Prova/resultados, Oferta, Proximos
-passos.`;
+Tarefa: monte o roteiro de um Pitch Deck de vendas. Responda APENAS com
+um objeto JSON valido (sem markdown, sem \`\`\`, sem texto antes ou
+depois), exatamente neste formato:
+
+{
+  "slides": [
+    { "numero": number, "titulo": string, "bullets": string[] }
+  ]
+}
+
+Regras: 7 slides, nesta ordem de "titulo": Problema, Custo de nao agir,
+Solucao, Como funciona, Prova/resultados, Oferta, Proximos passos. Cada
+slide com 2 a 4 bullets curtos. Tudo em portugues do Brasil, especifico
+para o nicho.`;
 
     case "PLANO_GTM":
       return `${header}
