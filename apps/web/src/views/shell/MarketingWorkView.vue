@@ -10,6 +10,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import OperationalHeader from "@/components/shell/OperationalHeader.vue";
 import ClientMetricsPanel from "@/components/shell/ClientMetricsPanel.vue";
+import ClientRosterPanel from "@/components/shell/ClientRosterPanel.vue";
 import { findFloor, floorIdFromPath } from "@/data/office-floors";
 import {
   MARKETING_STAGE_LABEL,
@@ -28,7 +29,7 @@ const router = useRouter();
 const floor = computed(() => findFloor(floorIdFromPath(route.path)));
 const client = createMarketingOfficeClient();
 
-type WorkTab = "campanhas" | "trafego" | "performance";
+type WorkTab = "campanhas" | "trafego" | "performance" | "clientes";
 const activeTab = ref<WorkTab>("campanhas");
 
 /** Volta do consentimento OAuth do Google Ads (ver callback em apps/api). */
@@ -516,6 +517,14 @@ onBeforeUnmount(() => {
     >
       Performance
     </button>
+    <button
+      type="button"
+      class="op-tab"
+      :class="{ 'is-active': activeTab === 'clientes' }"
+      @click="activeTab = 'clientes'"
+    >
+      Clientes
+    </button>
   </div>
 
   <div v-if="activeTab === 'campanhas'" class="op-content">
@@ -960,6 +969,18 @@ onBeforeUnmount(() => {
       />
     </section>
   </div>
+
+  <div v-else-if="activeTab === 'clientes'" class="op-content op-content--single">
+    <section class="op-panel">
+      <h3 class="op-panel__title">Carteira de Clientes</h3>
+      <p class="op-clientes__hint">
+        Cadastro direto, financeiro (setup e recorrência com valor e data) e painel geral do andar
+        — quantos clientes ativos, quem ainda não pagou o setup e quem está parado há mais de duas
+        semanas sem nenhuma atualização.
+      </p>
+      <ClientRosterPanel />
+    </section>
+  </div>
 </template>
 
 <style scoped>
@@ -1226,6 +1247,13 @@ onBeforeUnmount(() => {
   font-size: 12px;
   color: var(--op-muted-3);
   margin: 0 0 12px;
+}
+
+.op-clientes__hint {
+  font-size: 12.5px;
+  color: var(--op-muted-3);
+  margin: 0 0 16px;
+  max-width: 72ch;
 }
 
 .op-reuse-table {

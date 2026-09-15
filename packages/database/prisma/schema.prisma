@@ -842,14 +842,21 @@ model Client {
   slug    String
   nicheId String
   niche   Niche               @relation(fields: [nicheId], references: [id])
-  /// Cobranca unica de implantacao/treinamento — ainda sem fluxo de
-  /// pagamento real, so o registro de status (Fase 4/5 constroem em cima).
+  contactName  String?
+  contactEmail String?
+  contactPhone String?
+  /// Cobranca unica de implantacao/treinamento — status manual; o valor e
+  /// data reais ficam no historico de ClientPayment (Fase Financeiro).
   setupPaid       Boolean             @default(false)
-  /// Mensalidade que sustenta a operacao continua.
+  /// Mensalidade que sustenta a operacao continua — status manual, mesma
+  /// logica do setupPaid.
   recurringActive Boolean             @default(false)
+  /// Cliente encerrado sai da carteira ativa sem apagar historico.
+  active Boolean @default(true)
   campaigns          MarketingCampaign[]
   automationEngagements AutomationEngagement[]
   metricEntries      ClientMetricEntry[]
+  payments            ClientPayment[]
   googleAdsConnection GoogleAdsConnection?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
@@ -857,6 +864,22 @@ model Client {
   @@unique([nicheId, slug])
   @@index([nicheId])
   @@map("clients")
+}
+
+/// Registro real de pagamento (P1.X Fase Financeiro) — historico de valores
+/// e datas por cliente, em vez de so um booleano sim/nao.
+model ClientPayment {
+  id        String   @id @default(uuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  kind      String
+  amountBrl Float
+  paidAt    DateTime
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([clientId])
+  @@map("client_payments")
 }
 
 /// P1.X Fase 8 — conexao real com a conta de Google Ads do cliente (OAuth).

@@ -528,6 +528,65 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.op-input {
+  width: 100%;
+  background: var(--op-raise);
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius-sm);
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--op-ink-2);
+  font-family: inherit;
+}
+
+.op-input:focus {
+  outline: none;
+  border-color: var(--op-cta);
+}
+
+.op-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--op-radius-sm);
+  border: 1px solid var(--op-bd-btn);
+  background: var(--op-raise);
+  color: var(--op-ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.op-btn:hover:not(:disabled) {
+  border-color: var(--op-bd-btn-h);
+}
+
+.op-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.op-btn--cta {
+  background: var(--op-cta);
+  border-color: var(--op-cta);
+  color: #fff;
+}
+
+.op-btn--cta:hover:not(:disabled) {
+  background: var(--op-cta-h);
+}
+
+.op-mono {
+  font-family: var(--op-font-mono);
+}
+
+.op-error-inline {
+  color: var(--op-red);
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+
 .op-metrics__head {
   display: flex;
   align-items: flex-start;
