@@ -1,0 +1,7 @@
+.git
+apps/web
+docs
+deploy
+finance
+scripts
+*.log
