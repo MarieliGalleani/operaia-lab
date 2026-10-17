@@ -6,6 +6,7 @@
 
 import {
   CHANNEL_LABEL,
+  SIGNAL_LABEL,
   countByStatus,
   type DraftStatus,
   type FlowStoryChannel,
@@ -27,6 +28,8 @@ export interface RankedProduct {
   readonly price: number;
   readonly category: string;
   readonly linkPending: boolean;
+  /** Sinais de venda em português (ex.: "Em alta"). */
+  readonly signals: readonly string[];
 }
 
 export interface ReasonBucket {
@@ -72,6 +75,7 @@ const REASON_RULES: readonly { id: string; label: string; test: RegExp }[] = [
   { id: "sales", label: "Poucas vendas", test: /poucas vendas/i },
   { id: "niche", label: "Fora do nicho", test: /fora do nicho/i },
   { id: "top", label: "Ficou fora do top", test: /fora do top/i },
+  { id: "category", label: "Categoria já cheia", test: /categoria cheia/i },
   { id: "duplicate", label: "Repetido", test: /repetido/i },
 ];
 
@@ -119,6 +123,7 @@ export function computeDashboard(run: ReviewRun): DashboardStats {
       price: c.product.price,
       category: c.product.category,
       linkPending: c.linkPending,
+      signals: (c.signals ?? []).map((sig) => SIGNAL_LABEL[sig] ?? sig),
     }));
 
   const reasonMap = new Map<string, { label: string; count: number; examples: string[] }>();

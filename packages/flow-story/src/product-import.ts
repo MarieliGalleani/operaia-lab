@@ -4,7 +4,7 @@
  *
  * Colunas: id, titulo|title, url|link, preco|price, comissao|commission
  * (8 ou 8% ou 0.08), nota|rating, vendidos|sold, categoria|category,
- * nota_loja|store_rating (opcional).
+ * nota_loja|store_rating, vendidos_30d e preco_original (opcionais).
  */
 
 import { normalizeText } from "./flow-robot.js";
@@ -30,6 +30,13 @@ const HEADER_ALIASES: Readonly<Record<string, keyof ProductCandidate>> = {
   category: "category",
   nota_loja: "storeRating",
   store_rating: "storeRating",
+  vendidos_30d: "soldLast30Days",
+  vendas_30d: "soldLast30Days",
+  vendidos_30_dias: "soldLast30Days",
+  sold_30d: "soldLast30Days",
+  preco_original: "originalPrice",
+  preco_cheio: "originalPrice",
+  original_price: "originalPrice",
 };
 
 function splitCsvLine(line: string, separator: string): string[] {
@@ -97,6 +104,8 @@ export function parseProductsCsv(csv: string): ProductCandidate[] {
       soldCount: parseNumber(row.soldCount ?? "0") || 0,
       category: row.category ?? "",
       ...(row.storeRating ? { storeRating: parseNumber(row.storeRating) } : {}),
+      ...(row.soldLast30Days ? { soldLast30Days: parseNumber(row.soldLast30Days) } : {}),
+      ...(row.originalPrice ? { originalPrice: parseNumber(row.originalPrice) } : {}),
     };
   });
 }

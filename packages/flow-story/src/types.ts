@@ -23,6 +23,10 @@ export interface ProductCandidate {
   readonly category: string;
   /** Nota da loja/vendedor (0 a 5), quando o portal informar. */
   readonly storeRating?: number;
+  /** Vendas nos ultimos 30 dias — sinal de produto "em alta". */
+  readonly soldLast30Days?: number;
+  /** Preco antes do desconto, quando houver promocao. */
+  readonly originalPrice?: number;
 }
 
 /** Canais onde a Story sabe escrever. */
@@ -52,6 +56,8 @@ export interface FlowStoryConfig {
   readonly minSoldCount?: number;
   /** Quantos produtos a Flow entrega por rodada (padrao 5). */
   readonly maxProducts?: number;
+  /** Maximo de produtos da mesma categoria por rodada (padrao 2). */
+  readonly maxPerCategory?: number;
   /** Tom de voz do perfil (ex.: "leve e divertido"). */
   readonly tone?: string;
 }
@@ -67,7 +73,11 @@ export interface CuratedProduct {
   readonly affiliateUrl: string;
   /** true quando o link ainda nao tem tracking (provider manual). */
   readonly linkPending: boolean;
+  /** Sinais de venda detectados (em alta, desconto, campeao de vendas). */
+  readonly signals: readonly SalesSignal[];
 }
+
+export type SalesSignal = "em-alta" | "desconto" | "campeao" | "loja-top";
 
 export interface RejectedProduct {
   readonly productId: string;
@@ -82,6 +92,14 @@ export interface PostDraft {
   readonly id: string;
   readonly productId: string;
   readonly channel: FlowStoryChannel;
+  /** Versao do teste A/B (cada uma com angulo, horario e subId proprios). */
+  readonly variant: "A" | "B";
+  readonly angle: string;
+  readonly angleLabel: string;
+  /** Horario sugerido para publicar (Brasilia), "HH:MM". */
+  readonly suggestedTime: string;
+  /** subId do link desta versao — e assim que o relatorio do portal separa A de B. */
+  readonly trackingSubId: string;
   readonly text: string;
   readonly hashtags: readonly string[];
   readonly affiliateUrl: string;

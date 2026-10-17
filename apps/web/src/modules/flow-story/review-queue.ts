@@ -30,12 +30,24 @@ export interface ReviewCurated {
   readonly reasons: readonly string[];
   readonly affiliateUrl: string;
   readonly linkPending: boolean;
+  readonly signals?: readonly string[];
 }
+
+export const SIGNAL_LABEL: Readonly<Record<string, string>> = {
+  "em-alta": "Em alta",
+  desconto: "Com desconto",
+  campeao: "Campeão de vendas",
+  "loja-top": "Loja top",
+};
 
 export interface ReviewDraft {
   readonly id: string;
   readonly productId: string;
   readonly channel: FlowStoryChannel;
+  /** Teste A/B (rodadas antigas não têm estes campos). */
+  readonly variant?: "A" | "B";
+  readonly angleLabel?: string;
+  readonly suggestedTime?: string;
   readonly text: string;
   readonly hashtags: readonly string[];
   readonly affiliateUrl: string;
@@ -164,10 +176,12 @@ export function exportApproved(run: ReviewRun): string {
   return JSON.stringify(
     run.drafts
       .filter((d) => d.status === "APPROVED")
-      .map(({ id, productId, channel, text, affiliateUrl }) => ({
+      .map(({ id, productId, channel, variant, suggestedTime, text, affiliateUrl }) => ({
         id,
         productId,
         channel,
+        variant,
+        suggestedTime,
         text,
         affiliateUrl,
       })),

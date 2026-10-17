@@ -2,6 +2,7 @@
 import { computed, ref, watch } from "vue";
 import {
   CHANNEL_LABEL,
+  SIGNAL_LABEL,
   approvalBlocker,
   countByStatus,
   decide,
@@ -192,6 +193,12 @@ function clearRun(): void {
           seu link de afiliado (copie do portal) antes de aprovar.
         </p>
 
+        <p v-if="run.drafts.some((d) => d.variant)" class="panel fs__alert fs__ab">
+          Teste A/B: cada post tem a versão A e a B, com ângulos e horários diferentes. Publique as duas
+          nos horários sugeridos e depois rode <code>aprender</code> com o relatório do portal para saber
+          qual vendeu mais.
+        </p>
+
         <nav class="fs__tabs" aria-label="Filtrar rascunhos">
           <button
             v-for="f in FILTERS"
@@ -214,7 +221,11 @@ function clearRun(): void {
         <article v-for="draft in visibleDrafts" :key="draft.id" class="panel fs__card">
           <header class="fs__card-head">
             <div>
-              <p class="eyebrow">{{ CHANNEL_LABEL[draft.channel] }}</p>
+              <p class="eyebrow">
+                {{ CHANNEL_LABEL[draft.channel] }}
+                <template v-if="draft.variant"> · Versão {{ draft.variant }}</template>
+                <template v-if="draft.suggestedTime"> · publicar às {{ draft.suggestedTime }}</template>
+              </p>
               <h2 class="fs__product">{{ productOf(draft)?.product.title ?? draft.productId }}</h2>
             </div>
             <div class="fs__chips">
@@ -223,6 +234,10 @@ function clearRun(): void {
               </span>
               <span v-if="productOf(draft)" class="chip">
                 ≈ {{ brl(productOf(draft)!.estimatedCommission) }} por venda
+              </span>
+              <span v-if="draft.angleLabel" class="chip">Ângulo: {{ draft.angleLabel }}</span>
+              <span v-for="sig in productOf(draft)?.signals ?? []" :key="sig" class="chip chip--ok">
+                {{ SIGNAL_LABEL[sig] ?? sig }}
               </span>
               <span v-if="draft.source === 'template'" class="chip chip--warn">Texto modelo</span>
               <span v-if="linkPendingOf(draft) && draft.status === 'PENDING_APPROVAL'" class="chip chip--warn">Link sem rastreio</span>
@@ -378,6 +393,12 @@ function clearRun(): void {
   padding-left: 18px;
   color: var(--text-muted);
   font-size: 0.9rem;
+}
+
+.fs__ab {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 .fs__text {

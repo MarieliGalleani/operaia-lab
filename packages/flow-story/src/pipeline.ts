@@ -10,6 +10,8 @@ import {
   type AffiliateLinkProvider,
 } from "./affiliate-link.js";
 import { FlowRobot } from "./flow-robot.js";
+import type { LearningReport } from "./learning.js";
+import { anglesFor, type DraftVariant } from "./sales-playbook.js";
 import { StoryWriter } from "./story-writer.js";
 import type {
   DraftStatus,
@@ -25,25 +27,48 @@ export interface FlowStoryRunInput {
   readonly llm: LLMProvider;
   readonly links?: AffiliateLinkProvider;
   readonly campaignId?: string;
+  /** Duas versoes por post para testar o que vende mais (padrao: true). */
+  readonly abTest?: boolean;
+  /** Resultado do aprendizado da rodada anterior (angulo e horarios vencedores). */
+  readonly learning?: Pick<LearningReport, "bestAngle" | "bestTimes">;
 }
 
 export async function runFlowStory(input: FlowStoryRunInput): Promise<FlowStoryRun> {
   if (input.config.channels.length === 0) {
     throw new Error("Flow Story: informe ao menos um canal declarado no cadastro de afiliado.");
   }
-  const flow = new FlowRobot(input.links ?? new ManualAffiliateLinkProvider());
+  const links = input.links ?? new ManualAffiliateLinkProvider();
+  const flow = new FlowRobot(links);
+  const campaignId = input.campaignId ?? "flowstory";
   const story = new StoryWriter(input.llm);
 
   const { curated, rejected } = await flow.curate(
     input.products,
     input.config,
-    input.campaignId,
+    campaignId,
   );
 
   const drafts: PostDraft[] = [];
+  const variants: readonly DraftVariant[] = input.abTest === false ? ["A"] : ["A", "B"];
   for (const product of curated) {
+    const angles = anglesFor(product, input.learning?.bestAngle);
     for (const channel of input.config.channels) {
-      drafts.push(await story.write(product, channel, input.config));
+      for (const [i, variant] of variants.entries()) {
+        const trackingSubId = `${campaignId}-${product.product.id}-${channel}-${variant}`;
+        const link = await links.createLink({ productUrl: product.product.url, subId: trackingSubId });
+        drafts.push(
+          await story.write(product, channel, input.config, {
+            variant,
+            angle: angles[i]!,
+            trackingSubId,
+            // Sem API: mantem o link da Flow (pendente) para a Marieli colar o do portal.
+            affiliateUrl: link.pending ? product.affiliateUrl : link.url,
+            ...(input.learning?.bestTimes[channel]
+              ? { postTimes: input.learning.bestTimes[channel] }
+              : {}),
+          }),
+        );
+      }
     }
   }
 

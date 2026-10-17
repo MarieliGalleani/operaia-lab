@@ -9,7 +9,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "run:csv": "tsx src/cli.ts"
+    "run:csv": "tsx src/cli.ts",
+    "aprender": "tsx src/learn-cli.ts"
   },
   "dependencies": {
     "@operaia/ai-core": "workspace:*"

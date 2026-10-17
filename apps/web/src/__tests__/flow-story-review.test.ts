@@ -22,8 +22,10 @@ describe("Sala de Aprovação — Flow Story", () => {
   it("lê a rodada gerada pelo CLI do pacote", () => {
     const run = parseRun(FIXTURE);
     expect(run.curated.length).toBe(2);
-    expect(run.drafts.length).toBe(4);
-    expect(countByStatus(run)).toEqual({ PENDING_APPROVAL: 4, APPROVED: 0, REJECTED: 0 });
+    expect(run.drafts.length).toBe(8);
+    expect(run.drafts[0]?.variant).toBe("A");
+    expect(run.drafts[1]?.angleLabel).toBe("Oferta");
+    expect(countByStatus(run)).toEqual({ PENDING_APPROVAL: 8, APPROVED: 0, REJECTED: 0 });
   });
 
   it("recusa arquivo que não é rodada", () => {
@@ -62,6 +64,6 @@ describe("Sala de Aprovação — Flow Story", () => {
     run = replaceDraft(run, decide(b!, "REJECTED"));
     const exported = JSON.parse(exportApproved(run)) as { id: string }[];
     expect(exported.map((d) => d.id)).toEqual([a!.id]);
-    expect(countByStatus(run)).toEqual({ PENDING_APPROVAL: 2, APPROVED: 1, REJECTED: 1 });
+    expect(countByStatus(run)).toEqual({ PENDING_APPROVAL: 6, APPROVED: 1, REJECTED: 1 });
   });
 });
