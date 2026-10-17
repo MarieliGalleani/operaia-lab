@@ -1,0 +1,117 @@
+{
+  "curated": [
+    {
+      "product": {
+        "id": "x2",
+        "title": "Garrafa térmica 1L inox",
+        "url": "https://loja.example/x2",
+        "price": 89.9,
+        "commissionRate": 0.12,
+        "rating": 4.7,
+        "soldCount": 1500,
+        "category": "Cozinha",
+        "storeRating": 4.8
+      },
+      "score": 67,
+      "estimatedCommission": 10.79,
+      "affiliateUrl": "https://loja.example/x2",
+      "linkPending": true,
+      "reasons": [
+        "comissao 12% (≈ R$ 10,79 por venda)",
+        "nota 4.7 com 1500 vendidos",
+        "loja nota 4.8"
+      ]
+    },
+    {
+      "product": {
+        "id": "x1",
+        "title": "Organizador de gaveta 6 divisórias",
+        "url": "https://loja.example/x1",
+        "price": 49.9,
+        "commissionRate": 0.1,
+        "rating": 4.8,
+        "soldCount": 3200,
+        "category": "Casa",
+        "storeRating": 4.9
+      },
+      "score": 61,
+      "estimatedCommission": 4.99,
+      "affiliateUrl": "https://loja.example/x1",
+      "linkPending": true,
+      "reasons": [
+        "comissao 10% (≈ R$ 4,99 por venda)",
+        "nota 4.8 com 3200 vendidos",
+        "loja nota 4.9"
+      ]
+    }
+  ],
+  "rejected": [
+    {
+      "productId": "x3",
+      "title": "Tapete antiderrapante",
+      "reason": "comissao 3% abaixo de 5%"
+    }
+  ],
+  "drafts": [
+    {
+      "id": "x2-instagram",
+      "productId": "x2",
+      "channel": "instagram",
+      "text": "Achado do dia: Garrafa térmica 1L inox ✨\n⭐ Nota 4.7 · 1500+ vendidos\n💰 R$ 89,90\nLink nos stories e na bio.\n\n👉 https://loja.example/x2\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.\n#casaeorganizacao #cozinha #achadinhos",
+      "hashtags": [
+        "#casaeorganizacao",
+        "#cozinha",
+        "#achadinhos"
+      ],
+      "affiliateUrl": "https://loja.example/x2",
+      "disclosure": "Link de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "status": "PENDING_APPROVAL",
+      "source": "template"
+    },
+    {
+      "id": "x2-whatsapp",
+      "productId": "x2",
+      "channel": "whatsapp",
+      "text": "🔎 Garrafa térmica 1L inox\n⭐ 4.7 · 1500+ vendidos\n💰 R$ 89,90\n\n👉 https://loja.example/x2\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "hashtags": [
+        "#casaeorganizacao",
+        "#cozinha",
+        "#achadinhos"
+      ],
+      "affiliateUrl": "https://loja.example/x2",
+      "disclosure": "Link de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "status": "PENDING_APPROVAL",
+      "source": "template"
+    },
+    {
+      "id": "x1-instagram",
+      "productId": "x1",
+      "channel": "instagram",
+      "text": "Achado do dia: Organizador de gaveta 6 divisórias ✨\n⭐ Nota 4.8 · 3200+ vendidos\n💰 R$ 49,90\nLink nos stories e na bio.\n\n👉 https://loja.example/x1\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.\n#casaeorganizacao #casa #achadinhos",
+      "hashtags": [
+        "#casaeorganizacao",
+        "#casa",
+        "#achadinhos"
+      ],
+      "affiliateUrl": "https://loja.example/x1",
+      "disclosure": "Link de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "status": "PENDING_APPROVAL",
+      "source": "template"
+    },
+    {
+      "id": "x1-whatsapp",
+      "productId": "x1",
+      "channel": "whatsapp",
+      "text": "🔎 Organizador de gaveta 6 divisórias\n⭐ 4.8 · 3200+ vendidos\n💰 R$ 49,90\n\n👉 https://loja.example/x1\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "hashtags": [
+        "#casaeorganizacao",
+        "#casa",
+        "#achadinhos"
+      ],
+      "affiliateUrl": "https://loja.example/x1",
+      "disclosure": "Link de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "status": "PENDING_APPROVAL",
+      "source": "template"
+    }
+  ]
+}
