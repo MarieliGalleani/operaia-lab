@@ -19,6 +19,8 @@ import {
 import { CLIENT_FLOORS } from "./data/client-floors-registry";
 import { GERAI_F2_ACTORS } from "./data/gerai-actors";
 import { GERAI_F2_MAP_ID } from "./data/gerai-floor-2-map";
+import { FLOW_STORY_ACTORS } from "./data/flow-story-actors";
+import { FLOW_STORY_MAP_ID } from "./data/flow-story-floor-map";
 import { buildOfficeActors } from "./data/office-actors";
 import { OFFICE_MAP_ID } from "./data/office-map";
 import { buildActorsForStations } from "./data/real-agents";
@@ -62,6 +64,11 @@ export class OfficeEntityProvider implements EntityProvider {
       // antes do guard de stations abaixo: Geraí nao usa esse mapa de
       // estacoes (aquele e so pro elenco real de client-floor-map.ts).
       return GERAI_F2_ACTORS;
+    }
+
+    // 1º andar Flow Story: elenco proprio, sem status ao vivo da Equipe Digital.
+    if (mapId === FLOW_STORY_MAP_ID) {
+      return FLOW_STORY_ACTORS;
     }
 
     const stations =

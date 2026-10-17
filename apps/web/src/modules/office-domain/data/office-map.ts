@@ -232,13 +232,33 @@ const FRONT_DOOR: EntityBlueprint = {
   },
 };
 
+/** Elevador da recepção → 1º andar (Flow Story). Volta no spawn "elevator-lab". */
+const ELEVATOR_TO_FLOW_STORY: EntityBlueprint = {
+  id: "elevator-to-flow-story",
+  ref: "portal-door",
+  components: {
+    transform: {
+      col: (ROOM_BOUNDS.reception?.col ?? ORIGIN_X) + 6,
+      row: 0,
+    },
+    renderable: { spriteId: "door", layer: "walls", visible: true },
+    portal: {
+      portalId: "elevator-to-flow-story",
+      target: { mapId: "flow-story", spawnPointId: "elevator-in" },
+      mode: "walk",
+      label: "Elevador · 1º andar Flow Story",
+    },
+    interactable: { kind: "portal", radiusTiles: 1, enabled: true, label: "Subir para o Flow Story" },
+  },
+};
+
 const GROUND_FLOOR: FloorDef = {
   id: FLOOR_ID,
   name: "Sede OperaIA.lab",
   level: 0,
   size: { cols: MAP_COLS, rows: MAP_ROWS },
   areas: AREAS,
-  entities: [...ambientProps(), FRONT_DOOR],
+  entities: [...ambientProps(), FRONT_DOOR, ELEVATOR_TO_FLOW_STORY],
   spawnPoints: buildSpawnPoints(),
 };
 

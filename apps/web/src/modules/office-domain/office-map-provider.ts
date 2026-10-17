@@ -11,6 +11,7 @@ import { CAMPUS_RECEPTION_MAP } from "./data/campus-reception-map";
 import { CLIENT_FLOORS } from "./data/client-floors-registry";
 import { GERAI_ENTRANCE_MAP } from "./data/gerai-entrance-map";
 import { GERAI_F2_MAP } from "./data/gerai-floor-2-map";
+import { FLOW_STORY_MAP } from "./data/flow-story-floor-map";
 import { OFFICE_MAP } from "./data/office-map";
 
 const CLIENT_MAP_ENTRIES: Readonly<Record<string, MapManifest>> =
@@ -29,6 +30,7 @@ const WORLD_CATALOG: Readonly<Record<string, MapManifest>> = {
   // aqui — na pratica, era impossivel visitar a sede dela.
   [GERAI_ENTRANCE_MAP.id]: GERAI_ENTRANCE_MAP,
   [GERAI_F2_MAP.id]: GERAI_F2_MAP,
+  [FLOW_STORY_MAP.id]: FLOW_STORY_MAP,
   ...CLIENT_MAP_ENTRIES,
 };
 
