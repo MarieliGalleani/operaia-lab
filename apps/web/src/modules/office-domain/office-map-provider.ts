@@ -9,6 +9,7 @@ import type { MapProvider } from "../virtual-world/contracts/providers";
 import { CAMPUS_PLAZA_MAP } from "./data/campus-plaza-map";
 import { CAMPUS_RECEPTION_MAP } from "./data/campus-reception-map";
 import { CLIENT_FLOORS } from "./data/client-floors-registry";
+import { FLOW_STORY_MAP } from "./data/flow-story-floor-map";
 import { OFFICE_MAP } from "./data/office-map";
 
 const CLIENT_MAP_ENTRIES: Readonly<Record<string, MapManifest>> =
@@ -23,6 +24,7 @@ const WORLD_CATALOG: Readonly<Record<string, MapManifest>> = {
   [CAMPUS_RECEPTION_MAP.id]: CAMPUS_RECEPTION_MAP,
   [CAMPUS_PLAZA_MAP.id]: CAMPUS_PLAZA_MAP,
   [OFFICE_MAP.id]: OFFICE_MAP,
+  [FLOW_STORY_MAP.id]: FLOW_STORY_MAP,
   ...CLIENT_MAP_ENTRIES,
 };
 

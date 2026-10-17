@@ -530,6 +530,16 @@ importers:
         specifier: ^3.0.5
         version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(tsx@4.23.1)
 
+  packages/flow-story:
+    dependencies:
+      '@operaia/ai-core':
+        specifier: workspace:*
+        version: link:../ai-core
+    devDependencies:
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.7(@types/node@22.20.1)(jiti@2.7.0)(jsdom@25.0.1)(tsx@4.23.1)
+
   packages/memory:
     dependencies:
       '@operaia/shared':
@@ -1217,6 +1227,7 @@ packages:
   '@xmldom/xmldom@0.8.13':
     resolution: {integrity: sha512-KRYzxepc14G/CEpEGc3Yn+JKaAeT63smlDr+vjB8jRfgTBBI9wRj/nkQEO+ucV8p8I9bfKLWp37uHgFrbntPvw==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   abbrev@2.0.0:
     resolution: {integrity: sha512-6/mh1E2u2YgEsCHdY0Yx5oW+61gZU+1vXaoiHHrpKeuRNNgFvS+/jrwHiQhB5apAf5oB7UB7E19ol2R2LKH8hQ==}

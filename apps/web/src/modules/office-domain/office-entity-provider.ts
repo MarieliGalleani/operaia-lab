@@ -14,6 +14,8 @@ import {
   CAMPUS_RECEPTION_MAP_ID,
 } from "./data/campus-ids";
 import { CLIENT_FLOORS } from "./data/client-floors-registry";
+import { FLOW_STORY_ACTORS } from "./data/flow-story-actors";
+import { FLOW_STORY_MAP_ID } from "./data/flow-story-floor-map";
 import { buildOfficeActors } from "./data/office-actors";
 import { OFFICE_MAP_ID } from "./data/office-map";
 import { buildActorsForStations } from "./data/real-agents";
@@ -29,6 +31,11 @@ export class OfficeEntityProvider implements EntityProvider {
   async listActors(mapId: string): Promise<readonly ActorDescriptor[]> {
     if (CAMPUS_MAP_IDS.has(mapId)) {
       return [];
+    }
+
+    // 1º andar Flow Story: elenco proprio, sem status ao vivo da Equipe Digital.
+    if (mapId === FLOW_STORY_MAP_ID) {
+      return FLOW_STORY_ACTORS;
     }
 
     const stations =
