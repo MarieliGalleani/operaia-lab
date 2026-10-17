@@ -2,28 +2,6 @@
   "curated": [
     {
       "product": {
-        "id": "x2",
-        "title": "Garrafa térmica 1L inox",
-        "url": "https://loja.example/x2",
-        "price": 89.9,
-        "commissionRate": 0.12,
-        "rating": 4.7,
-        "soldCount": 1500,
-        "category": "Cozinha",
-        "storeRating": 4.8
-      },
-      "score": 67,
-      "estimatedCommission": 10.79,
-      "affiliateUrl": "https://loja.example/x2",
-      "linkPending": true,
-      "reasons": [
-        "comissao 12% (≈ R$ 10,79 por venda)",
-        "nota 4.7 com 1500 vendidos",
-        "loja nota 4.8"
-      ]
-    },
-    {
-      "product": {
         "id": "x1",
         "title": "Organizador de gaveta 6 divisórias",
         "url": "https://loja.example/x1",
@@ -32,16 +10,52 @@
         "rating": 4.8,
         "soldCount": 3200,
         "category": "Casa",
-        "storeRating": 4.9
+        "storeRating": 4.9,
+        "soldLast30Days": 900,
+        "originalPrice": 69.9
       },
       "score": 61,
       "estimatedCommission": 4.99,
       "affiliateUrl": "https://loja.example/x1",
       "linkPending": true,
+      "signals": [
+        "em-alta",
+        "desconto",
+        "loja-top"
+      ],
       "reasons": [
         "comissao 10% (≈ R$ 4,99 por venda)",
         "nota 4.8 com 3200 vendidos",
+        "900 vendidos nos ultimos 30 dias",
+        "28,6% de desconto (de R$ 69,90)",
         "loja nota 4.9"
+      ]
+    },
+    {
+      "product": {
+        "id": "x2",
+        "title": "Garrafa térmica 1L inox",
+        "url": "https://loja.example/x2",
+        "price": 89.9,
+        "commissionRate": 0.12,
+        "rating": 4.7,
+        "soldCount": 1500,
+        "category": "Cozinha",
+        "storeRating": 4.8,
+        "soldLast30Days": 150
+      },
+      "score": 60,
+      "estimatedCommission": 10.79,
+      "affiliateUrl": "https://loja.example/x2",
+      "linkPending": true,
+      "signals": [
+        "loja-top"
+      ],
+      "reasons": [
+        "comissao 12% (≈ R$ 10,79 por venda)",
+        "nota 4.7 com 1500 vendidos",
+        "150 vendidos nos ultimos 30 dias",
+        "loja nota 4.8"
       ]
     }
   ],
@@ -54,40 +68,15 @@
   ],
   "drafts": [
     {
-      "id": "x2-instagram",
-      "productId": "x2",
-      "channel": "instagram",
-      "text": "Achado do dia: Garrafa térmica 1L inox ✨\n⭐ Nota 4.7 · 1500+ vendidos\n💰 R$ 89,90\nLink nos stories e na bio.\n\n👉 https://loja.example/x2\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.\n#casaeorganizacao #cozinha #achadinhos",
-      "hashtags": [
-        "#casaeorganizacao",
-        "#cozinha",
-        "#achadinhos"
-      ],
-      "affiliateUrl": "https://loja.example/x2",
-      "disclosure": "Link de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
-      "status": "PENDING_APPROVAL",
-      "source": "template"
-    },
-    {
-      "id": "x2-whatsapp",
-      "productId": "x2",
-      "channel": "whatsapp",
-      "text": "🔎 Garrafa térmica 1L inox\n⭐ 4.7 · 1500+ vendidos\n💰 R$ 89,90\n\n👉 https://loja.example/x2\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
-      "hashtags": [
-        "#casaeorganizacao",
-        "#cozinha",
-        "#achadinhos"
-      ],
-      "affiliateUrl": "https://loja.example/x2",
-      "disclosure": "Link de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
-      "status": "PENDING_APPROVAL",
-      "source": "template"
-    },
-    {
-      "id": "x1-instagram",
+      "id": "x1-instagram-A",
       "productId": "x1",
       "channel": "instagram",
-      "text": "Achado do dia: Organizador de gaveta 6 divisórias ✨\n⭐ Nota 4.8 · 3200+ vendidos\n💰 R$ 49,90\nLink nos stories e na bio.\n\n👉 https://loja.example/x1\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.\n#casaeorganizacao #casa #achadinhos",
+      "variant": "A",
+      "angle": "em-alta",
+      "angleLabel": "Em alta",
+      "suggestedTime": "12:00",
+      "trackingSubId": "flowstory-x1-instagram-A",
+      "text": "900 pessoas compraram no último mês 👀\nOrganizador de gaveta 6 divisórias\n⭐ 4.8 · 3200+ vendidos\n💰 R$ 49,90 (antes R$ 69,90)\n\n👉 https://loja.example/x1\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.\n#casaeorganizacao #casa #achadinhos",
       "hashtags": [
         "#casaeorganizacao",
         "#casa",
@@ -99,16 +88,141 @@
       "source": "template"
     },
     {
-      "id": "x1-whatsapp",
+      "id": "x1-instagram-B",
       "productId": "x1",
-      "channel": "whatsapp",
-      "text": "🔎 Organizador de gaveta 6 divisórias\n⭐ 4.8 · 3200+ vendidos\n💰 R$ 49,90\n\n👉 https://loja.example/x1\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "channel": "instagram",
+      "variant": "B",
+      "angle": "oferta",
+      "angleLabel": "Oferta",
+      "suggestedTime": "19:30",
+      "trackingSubId": "flowstory-x1-instagram-B",
+      "text": "Baixou: R$ 49,90 (antes R$ 69,90) 🏷️\nOrganizador de gaveta 6 divisórias\n⭐ 4.8 · 3200+ vendidos\n💰 R$ 49,90 (antes R$ 69,90)\n\n👉 https://loja.example/x1\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.\n#casaeorganizacao #casa #achadinhos",
       "hashtags": [
         "#casaeorganizacao",
         "#casa",
         "#achadinhos"
       ],
       "affiliateUrl": "https://loja.example/x1",
+      "disclosure": "Link de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "status": "PENDING_APPROVAL",
+      "source": "template"
+    },
+    {
+      "id": "x1-whatsapp-A",
+      "productId": "x1",
+      "channel": "whatsapp",
+      "variant": "A",
+      "angle": "em-alta",
+      "angleLabel": "Em alta",
+      "suggestedTime": "12:00",
+      "trackingSubId": "flowstory-x1-whatsapp-A",
+      "text": "900 pessoas compraram no último mês 👀\nOrganizador de gaveta 6 divisórias\n⭐ 4.8 · 3200+ vendidos\n💰 R$ 49,90 (antes R$ 69,90)\n\n👉 https://loja.example/x1\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "hashtags": [
+        "#casaeorganizacao",
+        "#casa",
+        "#achadinhos"
+      ],
+      "affiliateUrl": "https://loja.example/x1",
+      "disclosure": "Link de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "status": "PENDING_APPROVAL",
+      "source": "template"
+    },
+    {
+      "id": "x1-whatsapp-B",
+      "productId": "x1",
+      "channel": "whatsapp",
+      "variant": "B",
+      "angle": "oferta",
+      "angleLabel": "Oferta",
+      "suggestedTime": "20:00",
+      "trackingSubId": "flowstory-x1-whatsapp-B",
+      "text": "Baixou: R$ 49,90 (antes R$ 69,90) 🏷️\nOrganizador de gaveta 6 divisórias\n⭐ 4.8 · 3200+ vendidos\n💰 R$ 49,90 (antes R$ 69,90)\n\n👉 https://loja.example/x1\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "hashtags": [
+        "#casaeorganizacao",
+        "#casa",
+        "#achadinhos"
+      ],
+      "affiliateUrl": "https://loja.example/x1",
+      "disclosure": "Link de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "status": "PENDING_APPROVAL",
+      "source": "template"
+    },
+    {
+      "id": "x2-instagram-A",
+      "productId": "x2",
+      "channel": "instagram",
+      "variant": "A",
+      "angle": "prova-social",
+      "angleLabel": "Prova social",
+      "suggestedTime": "12:00",
+      "trackingSubId": "flowstory-x2-instagram-A",
+      "text": "Nota 4.7 e mais de 1500 vendidos ⭐\nGarrafa térmica 1L inox\n⭐ 4.7 · 1500+ vendidos\n💰 R$ 89,90\n\n👉 https://loja.example/x2\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.\n#casaeorganizacao #cozinha #achadinhos",
+      "hashtags": [
+        "#casaeorganizacao",
+        "#cozinha",
+        "#achadinhos"
+      ],
+      "affiliateUrl": "https://loja.example/x2",
+      "disclosure": "Link de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "status": "PENDING_APPROVAL",
+      "source": "template"
+    },
+    {
+      "id": "x2-instagram-B",
+      "productId": "x2",
+      "channel": "instagram",
+      "variant": "B",
+      "angle": "dor-solucao",
+      "angleLabel": "Problema → solução",
+      "suggestedTime": "19:30",
+      "trackingSubId": "flowstory-x2-instagram-B",
+      "text": "Sabe aquele perrengue do dia a dia? Isso resolve 🙌\nGarrafa térmica 1L inox\n⭐ 4.7 · 1500+ vendidos\n💰 R$ 89,90\n\n👉 https://loja.example/x2\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.\n#casaeorganizacao #cozinha #achadinhos",
+      "hashtags": [
+        "#casaeorganizacao",
+        "#cozinha",
+        "#achadinhos"
+      ],
+      "affiliateUrl": "https://loja.example/x2",
+      "disclosure": "Link de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "status": "PENDING_APPROVAL",
+      "source": "template"
+    },
+    {
+      "id": "x2-whatsapp-A",
+      "productId": "x2",
+      "channel": "whatsapp",
+      "variant": "A",
+      "angle": "prova-social",
+      "angleLabel": "Prova social",
+      "suggestedTime": "12:00",
+      "trackingSubId": "flowstory-x2-whatsapp-A",
+      "text": "Nota 4.7 e mais de 1500 vendidos ⭐\nGarrafa térmica 1L inox\n⭐ 4.7 · 1500+ vendidos\n💰 R$ 89,90\n\n👉 https://loja.example/x2\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "hashtags": [
+        "#casaeorganizacao",
+        "#cozinha",
+        "#achadinhos"
+      ],
+      "affiliateUrl": "https://loja.example/x2",
+      "disclosure": "Link de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "status": "PENDING_APPROVAL",
+      "source": "template"
+    },
+    {
+      "id": "x2-whatsapp-B",
+      "productId": "x2",
+      "channel": "whatsapp",
+      "variant": "B",
+      "angle": "dor-solucao",
+      "angleLabel": "Problema → solução",
+      "suggestedTime": "20:00",
+      "trackingSubId": "flowstory-x2-whatsapp-B",
+      "text": "Sabe aquele perrengue do dia a dia? Isso resolve 🙌\nGarrafa térmica 1L inox\n⭐ 4.7 · 1500+ vendidos\n💰 R$ 89,90\n\n👉 https://loja.example/x2\nLink de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
+      "hashtags": [
+        "#casaeorganizacao",
+        "#cozinha",
+        "#achadinhos"
+      ],
+      "affiliateUrl": "https://loja.example/x2",
       "disclosure": "Link de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.",
       "status": "PENDING_APPROVAL",
       "source": "template"

@@ -4,6 +4,7 @@
  *   pnpm --filter @operaia/flow-story run:csv -- produtos.csv \
  *     --nicho "casa e organizacao" --canais instagram,whatsapp \
  *     [--categorias casa,cozinha] [--max 5] [--tom "leve"] [--saida rodada.json]
+ *     [--aprendizado aprendizado.json]   (usa o que venceu na rodada anterior)
  *
  * LLM: usa LLM_PROVIDER/GEMINI_API_KEY do .env (padrao: deterministic, que
  * cai no template seguro). Nada e publicado: o JSON de saida e a fila de
@@ -12,6 +13,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { createLLMProvider, type LLMProviderId } from "@operaia/ai-core";
+import type { LearningReport } from "./learning.js";
 import { parseProductsCsv } from "./product-import.js";
 import { runFlowStory } from "./pipeline.js";
 import { FLOW_STORY_CHANNELS, type FlowStoryChannel } from "./types.js";
@@ -45,11 +47,16 @@ async function main(): Promise<void> {
     geminiApiKey: process.env.GEMINI_API_KEY,
   });
 
+  const learningPath = arg("aprendizado");
+  const learning = learningPath
+    ? (JSON.parse(readFileSync(learningPath, "utf8")) as LearningReport)
+    : undefined;
   const max = arg("max");
   const tone = arg("tom");
   const run = await runFlowStory({
     products: parseProductsCsv(readFileSync(csvPath, "utf8")),
     llm,
+    ...(learning ? { learning } : {}),
     config: {
       niche,
       channels,

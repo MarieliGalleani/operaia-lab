@@ -12,6 +12,13 @@
 
 import type { LLMMessage, LLMProvider } from "@operaia/ai-core";
 import { storyProfile } from "./profiles.js";
+import {
+  DEFAULT_POST_TIMES,
+  SALES_ANGLES,
+  angleTemplate,
+  type DraftVariant,
+  type SalesAngle,
+} from "./sales-playbook.js";
 import type {
   CuratedProduct,
   FlowStoryChannel,
@@ -66,9 +73,12 @@ export function checkStoryText(text: string, product: CuratedProduct): string | 
   for (const pattern of FORBIDDEN_PATTERNS) {
     if (pattern.test(text)) return `promessa proibida (${pattern.source})`;
   }
-  const realPrice = normalizePriceToken(formatPrice(product.product.price));
+  const allowed = new Set([normalizePriceToken(formatPrice(product.product.price))]);
+  if (product.product.originalPrice !== undefined) {
+    allowed.add(normalizePriceToken(formatPrice(product.product.originalPrice)));
+  }
   for (const mention of priceMentions(text)) {
-    if (normalizePriceToken(mention) !== realPrice) {
+    if (!allowed.has(normalizePriceToken(mention))) {
       return `preco R$ ${mention} diferente do real (R$ ${formatPrice(product.product.price)})`;
     }
   }
@@ -117,28 +127,6 @@ export function finalizeText(
   return `${trimmedBody.trim()}\n\n${tail}`;
 }
 
-export function templateText(product: CuratedProduct, channel: FlowStoryChannel): string {
-  const p = product.product;
-  const price = `R$ ${formatPrice(p.price)}`;
-  switch (channel) {
-    case "tiktok":
-      return [
-        `[Gancho] Olha esse achado de ${p.category.toLowerCase()} 👀`,
-        `[Produto] ${p.title} — nota ${p.rating} e mais de ${p.soldCount} vendidos.`,
-        `[Chamada] Por ${price}. Link na bio!`,
-      ].join("\n");
-    case "instagram":
-      return [
-        `Achado do dia: ${p.title} ✨`,
-        `⭐ Nota ${p.rating} · ${p.soldCount}+ vendidos`,
-        `💰 ${price}`,
-        "Link nos stories e na bio.",
-      ].join("\n");
-    default:
-      return [`🔎 ${p.title}`, `⭐ ${p.rating} · ${p.soldCount}+ vendidos`, `💰 ${price}`].join("\n");
-  }
-}
-
 interface LLMStoryPayload {
   readonly text?: unknown;
   readonly hashtags?: unknown;
@@ -160,9 +148,14 @@ export function buildStorySystemPrompt(config: FlowStoryConfig): string {
     `Voce e ${storyProfile.name}, ${storyProfile.role} do andar Flow Story do OperaIA.lab.`,
     `Missao: ${storyProfile.mission}`,
     `Nicho do perfil: ${config.niche}. Tom de voz: ${config.tone ?? "proximo, leve e honesto"}.`,
+    "Como escrever para vender:",
+    "- Primeira linha = gancho de ate 8 palavras, no angulo pedido.",
+    "- Um beneficio concreto, tirado do titulo ou da categoria do produto.",
+    "- Frases curtas. Fale com uma pessoa, nao com uma multidao.",
+    "- Termine com uma chamada clara para o link (ex.: 'link aqui embaixo').",
     "Regras:",
     "- Use SOMENTE os dados do produto enviados. Nao invente beneficios, medidas ou numeros.",
-    "- Se citar preco, use exatamente o preco informado.",
+    "- Se citar preco, use exatamente o preco informado (ou o preco de antes, quando houver).",
     "- Proibido: garantia, '100%', 'melhor preco', 'ultimas unidades', 'so hoje', promessas de saude.",
     "- Nao cite o nome do marketplace.",
     "- Escreva em portugues do Brasil.",
@@ -170,17 +163,36 @@ export function buildStorySystemPrompt(config: FlowStoryConfig): string {
   ].join("\n");
 }
 
-function buildUserPrompt(product: CuratedProduct, channel: FlowStoryChannel): string {
+function buildUserPrompt(
+  product: CuratedProduct,
+  channel: FlowStoryChannel,
+  angle: SalesAngle,
+): string {
   const p = product.product;
   return [
     `Formato: ${CHANNEL_BRIEF[channel]}.`,
+    `Angulo: ${SALES_ANGLES[angle].label} — ${SALES_ANGLES[angle].brief}.`,
     "Produto:",
     `- titulo: ${p.title}`,
     `- categoria: ${p.category}`,
     `- preco: R$ ${formatPrice(p.price)}`,
+    ...(p.originalPrice !== undefined && p.originalPrice > p.price
+      ? [`- preco antes: R$ ${formatPrice(p.originalPrice)}`]
+      : []),
     `- nota: ${p.rating} (${p.soldCount} vendidos)`,
+    ...(p.soldLast30Days !== undefined ? [`- vendidos nos ultimos 30 dias: ${p.soldLast30Days}`] : []),
     "Nao inclua o link nem o aviso de afiliado — eles sao adicionados depois.",
   ].join("\n");
+}
+
+export interface StoryWriteOptions {
+  readonly variant?: DraftVariant;
+  readonly angle?: SalesAngle;
+  /** Link desta versao (subId proprio para medir o A/B). */
+  readonly affiliateUrl?: string;
+  readonly trackingSubId?: string;
+  /** Horarios aprendidos para o canal (substituem os de partida). */
+  readonly postTimes?: readonly string[];
 }
 
 export class StoryWriter {
@@ -190,19 +202,23 @@ export class StoryWriter {
     product: CuratedProduct,
     channel: FlowStoryChannel,
     config: FlowStoryConfig,
+    options: StoryWriteOptions = {},
   ): Promise<PostDraft> {
+    const variant = options.variant ?? "A";
+    const angle = options.angle ?? "prova-social";
+    const affiliateUrl = options.affiliateUrl ?? product.affiliateUrl;
     const fallbackTags = [slugTag(config.niche), slugTag(product.product.category), "#achadinhos"];
-    let body = templateText(product, channel);
+    let body = angleTemplate(product, channel, angle);
     let hashtags = sanitizeHashtags([], fallbackTags);
     let source: PostDraft["source"] = "template";
 
     const messages: LLMMessage[] = [
       { role: "system", content: buildStorySystemPrompt(config) },
-      { role: "user", content: buildUserPrompt(product, channel) },
+      { role: "user", content: buildUserPrompt(product, channel, angle) },
     ];
 
     try {
-      const completion = await this.llm.complete(messages, { temperature: 0.7, maxTokens: 600 });
+      const completion = await this.llm.complete(messages, { temperature: 0.8, maxTokens: 600 });
       const payload = parsePayload(completion.content);
       const text = typeof payload?.text === "string" ? payload.text.trim() : "";
       if (text && checkStoryText(text, product) === null) {
@@ -211,16 +227,25 @@ export class StoryWriter {
         source = "llm";
       }
     } catch {
-      // LLM indisponivel: segue com o template seguro.
+      // LLM indisponivel: segue com o template seguro do angulo.
     }
 
+    const learned = options.postTimes ?? [];
+    const [defaultA, defaultB] = DEFAULT_POST_TIMES[channel];
+    const timeA: string = learned[0] ?? defaultA;
+    const timeB: string = learned[1] ?? learned[0] ?? defaultB;
     return {
-      id: `${product.product.id}-${channel}`,
+      id: `${product.product.id}-${channel}-${variant}`,
       productId: product.product.id,
       channel,
-      text: finalizeText(body, channel, product.affiliateUrl, hashtags),
+      variant,
+      angle,
+      angleLabel: SALES_ANGLES[angle].label,
+      suggestedTime: variant === "A" ? timeA : timeB,
+      trackingSubId: options.trackingSubId ?? `${product.product.id}-${channel}-${variant}`,
+      text: finalizeText(body, channel, affiliateUrl, hashtags),
       hashtags,
-      affiliateUrl: product.affiliateUrl,
+      affiliateUrl,
       disclosure: AFFILIATE_DISCLOSURE,
       status: "PENDING_APPROVAL",
       source,

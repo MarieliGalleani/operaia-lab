@@ -6,6 +6,9 @@ import {
   FlowRobot,
   ManualAffiliateLinkProvider,
   checkStoryText,
+  anglesFor,
+  DEFAULT_POST_TIMES,
+  scoreProduct,
   flowProfile,
   parseProductsCsv,
   reviewDraft,
@@ -121,6 +124,7 @@ describe("Story — guardrails", () => {
       reasons: [],
       affiliateUrl: "https://s.example/x",
       linkPending: false,
+      signals: [],
     };
     expect(checkStoryText("Qualidade garantida!", curated)).toMatch(/proibida/);
     expect(checkStoryText("Corre que é só hoje", curated)).toMatch(/proibida/);
@@ -136,7 +140,7 @@ describe("Pipeline Flow -> Story -> aprovação", () => {
     );
     const run = await runFlowStory({ products: [product()], config, llm, links: trackedLinks });
 
-    expect(run.drafts).toHaveLength(2);
+    expect(run.drafts).toHaveLength(4); // 1 produto × 2 canais × versões A e B
     for (const draft of run.drafts) {
       expect(draft.status).toBe("PENDING_APPROVAL");
       expect(draft.source).toBe("llm");
@@ -186,6 +190,103 @@ describe("Pipeline Flow -> Story -> aprovação", () => {
     expect(approved.status).toBe("APPROVED");
     expect(draft.status).toBe("PENDING_APPROVAL");
     expect(() => reviewDraft(approved, "REJECTED")).toThrow(/ja foi revisado/);
+  });
+});
+
+describe("Táticas de vendedor", () => {
+  it("Flow detecta produto em alta, desconto, campeão e loja top — e pontua mais alto", async () => {
+    const hot = product({
+      id: "hot",
+      url: "https://loja.example/hot",
+      soldCount: 6000,
+      soldLast30Days: 2400,
+      originalPrice: 79.9,
+    });
+    const flow = new FlowRobot(new ManualAffiliateLinkProvider());
+    const { curated } = await flow.curate([product(), hot], config);
+    expect(curated[0]?.product.id).toBe("hot");
+    expect(curated[0]?.signals).toEqual(["em-alta", "desconto", "campeao", "loja-top"]);
+    expect(curated[0]?.reasons.join(" ")).toMatch(/2400 vendidos nos ultimos 30 dias/);
+    expect(curated[0]?.reasons.join(" ")).toMatch(/de desconto/);
+    expect(scoreProduct(hot)).toBeGreaterThan(scoreProduct(product()));
+  });
+
+  it("Flow varia as categorias (no máximo 2 por categoria)", async () => {
+    const flow = new FlowRobot(new ManualAffiliateLinkProvider());
+    const casa = [1, 2, 3].map((n) => product({ id: `c${n}`, url: `https://loja.example/c${n}` }));
+    const cozinha = product({ id: "k1", url: "https://loja.example/k1", category: "Cozinha", price: 30 });
+    const { curated, rejected } = await flow.curate([...casa, cozinha], {
+      ...config,
+      categories: ["casa", "cozinha"],
+    });
+    expect(curated.map((c) => c.product.id).sort()).toEqual(["c1", "c2", "k1"]);
+    expect(rejected.find((r) => r.productId === "c3")?.reason).toMatch(/categoria cheia/);
+  });
+
+  it("escolhe o ângulo pelo sinal: em alta → oferta; sem sinal → prova social → problema", () => {
+    const base = {
+      score: 80,
+      estimatedCommission: 5,
+      reasons: [],
+      affiliateUrl: "https://x.example",
+      linkPending: true,
+    };
+    expect(anglesFor({ ...base, product: product(), signals: ["em-alta", "desconto"] })).toEqual([
+      "em-alta",
+      "oferta",
+    ]);
+    expect(anglesFor({ ...base, product: product(), signals: [] })).toEqual([
+      "prova-social",
+      "dor-solucao",
+    ]);
+    expect(anglesFor({ ...base, product: product({ rating: 4.5 }), signals: [] })).toEqual([
+      "dor-solucao",
+      "curiosidade",
+    ]);
+  });
+
+  it("teste A/B: versões com ângulo, horário e subId próprios", async () => {
+    const llm = new StubLLM(JSON.stringify({ text: "Nota 4.8 e mais de 3200 vendidos!" }));
+    const run = await runFlowStory({
+      products: [product()],
+      config: { ...config, channels: ["instagram"] },
+      llm,
+      links: trackedLinks,
+      campaignId: "out26",
+    });
+    const [a, b] = run.drafts;
+    expect([a?.variant, b?.variant]).toEqual(["A", "B"]);
+    expect(a?.angle).toBe("prova-social");
+    expect(b?.angle).toBe("dor-solucao");
+    expect([a?.suggestedTime, b?.suggestedTime]).toEqual(DEFAULT_POST_TIMES.instagram);
+    expect(a?.trackingSubId).toBe("out26-p1-instagram-A");
+    expect(b?.affiliateUrl).toContain("out26-p1-instagram-B");
+    expect(llm.calls[0]?.[1]?.content).toMatch(/Angulo: Prova social/);
+    expect(llm.calls[1]?.[1]?.content).toMatch(/Angulo: Problema/);
+  });
+
+  it("com A/B desligado sai uma versão só", async () => {
+    const run = await runFlowStory({
+      products: [product()],
+      config: { ...config, channels: ["whatsapp"] },
+      llm: new StubLLM("{}"),
+      abTest: false,
+    });
+    expect(run.drafts.map((d) => d.variant)).toEqual(["A"]);
+  });
+
+  it("texto de oferta pode citar o preço de antes, mas não um preço inventado", () => {
+    const curated = {
+      product: product({ originalPrice: 79.9 }),
+      score: 80,
+      estimatedCommission: 4.99,
+      reasons: [],
+      affiliateUrl: "https://s.example/x",
+      linkPending: false,
+      signals: ["desconto" as const],
+    };
+    expect(checkStoryText("De R$ 79,90 por R$ 49,90", curated)).toBeNull();
+    expect(checkStoryText("De R$ 99,90 por R$ 49,90", curated)).toMatch(/diferente do real/);
   });
 });
 

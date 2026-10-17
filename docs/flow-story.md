@@ -24,6 +24,27 @@ CSV do portal ──► Flow (curadoria) ──► Story (textos) ──► fila
 Nada é publicado automaticamente. Todo rascunho nasce `PENDING_APPROVAL`, e
 `reviewDraft` não deixa aprovar um texto sem o aviso de link de afiliado.
 
+## Táticas de vendedor
+
+- **Produto em alta (Flow):** com `vendidos_30d` no CSV, a Flow marca o que está vendendo agora; com
+  `preco_original`, marca desconto real. Sinais: em alta, com desconto, campeão de vendas, loja top.
+- **Variedade (Flow):** no máximo 2 produtos da mesma categoria por rodada (`maxPerCategory`).
+- **Ângulo certo (Story):** o sinal decide como abrir o texto — em alta, oferta, prova social,
+  problema → solução ou curiosidade. Gancho de até 8 palavras, um benefício concreto, chamada clara.
+- **Teste A/B:** cada post sai em duas versões (ângulos e horários diferentes), cada uma com seu
+  `subId` (`campanha-produto-canal-A|B`) para o relatório do portal separar o que vendeu.
+- **Horários de partida (Brasília):** Instagram 12:00/19:30 · WhatsApp 12:00/20:00 ·
+  Telegram 09:00/20:00 · TikTok 19:00/21:30. São hipóteses para o primeiro teste.
+- **Aprender:** com o relatório do portal (CSV `sub_id, cliques, pedidos, comissao`):
+
+```bash
+pnpm --filter @operaia/flow-story aprender -- rodada.json relatorio.csv --saida aprendizado.json
+pnpm --filter @operaia/flow-story run:csv -- produtos.csv --nicho "..." --canais instagram --aprendizado aprendizado.json
+```
+
+  O vencedor só é declarado com pelo menos 30 cliques por grupo. O ângulo que mais rendeu por
+  clique vira a versão A da próxima rodada, e os horários vencedores substituem os de partida.
+
 ## Guardrails da Story
 
 - Proibido: garantia, "100%", "melhor preço", "últimas unidades", "só hoje", promessas de saúde.
@@ -34,7 +55,7 @@ Nada é publicado automaticamente. Todo rascunho nasce `PENDING_APPROVAL`, e
 ## Critérios padrão da Flow
 
 Nota ≥ 4,5 · loja ≥ 4,5 · ≥ 50 vendidos · comissão ≥ 5% · top 5 por rodada.
-Pontuação 0–100: comissão em R$ (40) + nota (25) + vendas (20) + loja (15).
+Pontuação 0–100: comissão em R$ (35) + nota (20) + vendas (15) + em alta (12) + loja (10) + desconto (8).
 Tudo configurável em `FlowStoryConfig`.
 
 ## Como rodar hoje
@@ -47,7 +68,8 @@ pnpm --filter @operaia/flow-story run:csv -- examples/produtos-exemplo.csv \
 
 - Usa `LLM_PROVIDER` / `GEMINI_API_KEY` do `.env`. Sem isso, cai no modo
   `deterministic` e a Story escreve pelo template.
-- Colunas do CSV (pt ou en): `id, titulo, link, preco, comissao, nota, vendidos, categoria, nota_loja`.
+- Colunas do CSV (pt ou en): `id, titulo, link, preco, comissao, nota, vendidos, categoria`;
+  opcionais: `nota_loja, vendidos_30d, preco_original`.
   Aceita `;` ou `,`, `R$ 1.299,90` e `12%`.
 
 ## Painel do andar (dashboard)

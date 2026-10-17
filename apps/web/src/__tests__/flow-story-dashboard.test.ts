@@ -13,16 +13,17 @@ const FIXTURE = readFileSync(join(HERE, "fixtures", "flow-story-rodada.json"), "
 describe("Painel do andar Flow Story", () => {
   it("resume a rodada do CLI: funil, potencial, ranking e motivos", () => {
     const stats = computeDashboard(parseRun(FIXTURE));
-    expect(stats.funnel.map((f) => f.value)).toEqual([3, 2, 4, 0]);
+    expect(stats.funnel.map((f) => f.value)).toEqual([3, 2, 8, 0]); // A/B: 2 produtos × 2 canais × 2 versões
     expect(stats.potentialCommission).toBe(15.78); // 10,79 + 4,99
     expect(stats.approvedCommission).toBe(0);
-    expect(stats.ranking.map((r) => r.id)).toEqual(["x2", "x1"]);
+    expect(stats.ranking.map((r) => r.id)).toEqual(["x1", "x2"]);
+    expect(stats.ranking[0]?.signals).toEqual(["Em alta", "Com desconto", "Loja top"]);
     expect(stats.reasons).toEqual([
       { id: "commission", label: "Comissão baixa", count: 1, examples: ["Tapete antiderrapante"] },
     ]);
     expect(stats.channels.map((c) => [c.channel, c.pending])).toEqual([
-      ["instagram", 2],
-      ["whatsapp", 2],
+      ["instagram", 4],
+      ["whatsapp", 4],
     ]);
     expect(stats.pendingLinks).toBe(2);
     expect(stats.aiShare).toBe(0);
@@ -45,6 +46,7 @@ describe("Painel do andar Flow Story", () => {
     expect(bucketReason("fora do nicho (Moda)").id).toBe("niche");
     expect(bucketReason("ficou fora do top 5").id).toBe("top");
     expect(bucketReason("produto repetido").id).toBe("duplicate");
+    expect(bucketReason("categoria cheia (Casa, max 2)").id).toBe("category");
     expect(bucketReason("comissao 2% abaixo de 5%").id).toBe("commission");
     expect(bucketReason("URL invalida").id).toBe("invalid");
   });

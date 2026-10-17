@@ -202,13 +202,14 @@ const tipStyle = computed(() => {
                 :key="p.id"
                 class="fsd__row"
                 tabindex="0"
-                @mousemove="showTip($event, p.title, [`Nota ${p.score}/100`, `≈ ${brl(p.estimatedCommission)} por venda`, `Preço ${brl(p.price)} · ${p.category}`, ...(p.linkPending ? ['Link ainda sem rastreio'] : [])])"
+                @mousemove="showTip($event, p.title, [`Nota ${p.score}/100`, `≈ ${brl(p.estimatedCommission)} por venda`, `Preço ${brl(p.price)} · ${p.category}`, ...(p.signals.length ? [p.signals.join(' · ')] : []), ...(p.linkPending ? ['Link ainda sem rastreio'] : [])])"
                 @mouseleave="hideTip"
                 @focus="showTip($event, p.title, [`Nota ${p.score}/100`, `≈ ${brl(p.estimatedCommission)} por venda`])"
                 @blur="hideTip"
               >
                 <span class="fsd__row-label">
                   <span class="fsd__rank">{{ i + 1 }}</span>{{ p.title }}
+                  <span v-for="sig in p.signals" :key="sig" class="fsd__signal">{{ sig }}</span>
                 </span>
                 <span class="fsd__track">
                   <span class="fsd__bar" :style="{ width: widthOf(p.score, 100) }" />
@@ -578,6 +579,16 @@ const tipStyle = computed(() => {
   width: 1.4em;
   color: var(--text-soft);
   font-variant-numeric: tabular-nums;
+}
+
+.fsd__signal {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  background: var(--brand-soft);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  vertical-align: 1px;
 }
 
 .fsd__row-value {
