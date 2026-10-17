@@ -12,6 +12,8 @@
  */
 
 import type { Application, Container, Graphics, Sprite, Texture } from "pixi.js";
+
+import { declutterPlates, type PlateRect } from "./label-declutter";
 import type { Viewport } from "pixi-viewport";
 
 import type { PresenceComponent, RenderLayer } from "../../contracts/components";
@@ -73,6 +75,8 @@ export class PixiWorldEngine implements WorldEngine {
   private readonly actorSprites = new Map<EntityId, Container>();
   // Balão sutil de atividade ("trabalhando") por ator não-local.
   private readonly actorBubbles = new Map<EntityId, Container>();
+  /** Grupo (plaquinha + balão) por ator e seu retângulo local, para anti-sobreposição. */
+  private readonly actorPlates = new Map<EntityId, { group: Container; width: number; height: number; bottom: number }>();
   /** Telas/luzes que pulsam (monitores, TVs, hologramas) — só apresentação. */
   private readonly ambientPulses: Graphics[] = [];
 
@@ -188,6 +192,7 @@ export class PixiWorldEngine implements WorldEngine {
     this.clearLayers();
     this.actorSprites.clear();
     this.actorBubbles.clear();
+    this.actorPlates.clear();
     this.ambientPulses.length = 0;
     this.ambientSteam.length = 0;
     for (const floor of manifest.floors) {
@@ -228,6 +233,7 @@ export class PixiWorldEngine implements WorldEngine {
     this.clearLayers();
     this.actorSprites.clear();
     this.actorBubbles.clear();
+    this.actorPlates.clear();
     this.ambientPulses.length = 0;
     this.ambientSteam.length = 0;
     this.layers.clear();
@@ -782,12 +788,37 @@ export class PixiWorldEngine implements WorldEngine {
       }
     }
 
+    this.declutterActorPlates();
+
     for (const [id, sprite] of this.actorSprites) {
       if (!alive.has(id)) {
         sprite.destroy();
         this.actorSprites.delete(id);
         this.actorBubbles.delete(id);
+        this.actorPlates.delete(id);
       }
+    }
+  }
+
+  /** Sobe as plaquinhas que se sobreporiam (posição de mundo = sprite + base local). */
+  private declutterActorPlates(): void {
+    const rects: PlateRect[] = [];
+    for (const [id, plate] of this.actorPlates) {
+      const sprite = this.actorSprites.get(id);
+      if (!sprite) {
+        continue;
+      }
+      rects.push({
+        id: String(id),
+        x: sprite.x,
+        bottom: sprite.y + plate.bottom,
+        width: plate.width,
+        height: plate.height,
+      });
+    }
+    const offsets = declutterPlates(rects);
+    for (const [id, plate] of this.actorPlates) {
+      plate.group.y = offsets.get(String(id)) ?? 0;
     }
   }
 
@@ -817,7 +848,7 @@ export class PixiWorldEngine implements WorldEngine {
       sprite.scale.set(targetH / (tex.height || targetH));
       container.addChild(sprite);
       topY = -targetH - this.tileH * 0.08;
-      const bubbleTop = this.attachNamePlate(container, presence, topY);
+      const bubbleTop = this.attachNamePlate(id, container, presence, topY);
       this.attachStatusBubble(id, container, presence?.local ?? false, bubbleTop);
       return container;
     }
@@ -849,7 +880,7 @@ export class PixiWorldEngine implements WorldEngine {
       .stroke({ width: 1.5, color: outline, alpha: 0.85 });
     container.addChild(g);
     topY = -(bodyH + headR * 1.6) - this.tileH * 0.08;
-    const bubbleTop = this.attachNamePlate(container, presence, topY);
+    const bubbleTop = this.attachNamePlate(id, container, presence, topY);
     this.attachStatusBubble(id, container, presence?.local ?? false, bubbleTop);
     return container;
   }
@@ -860,6 +891,7 @@ export class PixiWorldEngine implements WorldEngine {
    * desenha. Retorna o topo (y) para posicionar o balão de status acima dela.
    */
   private attachNamePlate(
+    id: EntityId,
     container: Container,
     presence: PresenceComponent | undefined,
     topY: number,
@@ -888,9 +920,13 @@ export class PixiWorldEngine implements WorldEngine {
     bg.roundRect(-w / 2, bottom - h, w, h, h / 2)
       .fill({ color: local ? 0x2f6b8a : 0xfff6e6, alpha: 0.96 })
       .stroke({ width: 1, color: local ? 0x1c2036 : 0xb5623c, alpha: 0.5 });
-    container.addChild(bg);
+    // Grupo deslocável (plaquinha + balão): a anti-sobreposição move o grupo todo.
+    const group = new this.pixi.Container();
+    group.addChild(bg);
     label.position.set(0, bottom - padY);
-    container.addChild(label);
+    group.addChild(label);
+    container.addChild(group);
+    this.actorPlates.set(id, { group, width: w, height: h, bottom });
     return bottom - h - 3;
   }
 
@@ -915,7 +951,7 @@ export class PixiWorldEngine implements WorldEngine {
     g.circle(0, -h / 2, 1.8).fill({ color: dot, alpha: 1 });
     g.circle(6, -h / 2, 1.8).fill({ color: dot, alpha: 1 });
     bubble.addChild(g);
-    container.addChild(bubble);
+    (this.actorPlates.get(id)?.group ?? container).addChild(bubble);
     this.actorBubbles.set(id, bubble);
   }
 
