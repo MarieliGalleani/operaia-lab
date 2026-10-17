@@ -154,6 +154,7 @@ function clearRun(): void {
         <h1 class="page__title">Aprovar posts</h1>
       </div>
       <div class="fs__actions">
+        <router-link to="/app/flow-story" class="btn btn--ghost">Painel do andar</router-link>
         <label class="btn btn--ghost fs__upload">
           {{ run ? "Carregar outra rodada" : "Carregar rodada (.json)" }}
           <input type="file" accept="application/json,.json" class="sr-only" @change="onFile" />
