@@ -50,6 +50,20 @@ pnpm --filter @operaia/flow-story run:csv -- examples/produtos-exemplo.csv \
 - Colunas do CSV (pt ou en): `id, titulo, link, preco, comissao, nota, vendidos, categoria, nota_loja`.
   Aceita `;` ou `,`, `R$ 1.299,90` e `12%`.
 
+## Sala de Aprovação (tela)
+
+Menu **Equipe › Flow Story** → `/app/flow-story/aprovacao`.
+
+1. Clique em **Carregar rodada** e escolha o `.json` gerado pelo `run:csv`.
+2. Cada card mostra o produto, a nota da Flow, a comissão estimada e os motivos da escolha.
+3. Edite o texto se quiser e clique em **Aprovar** ou **Recusar** (dá para voltar para pendente).
+4. **Baixar aprovados** gera `flow-story-aprovados.json` só com o que pode ser publicado.
+
+Regras da tela (as mesmas do pacote): não aprova sem o aviso de afiliado.
+Quando o link ainda está sem rastreio, é preciso trocar a URL do produto pelo
+seu link de afiliado no texto antes de aprovar — o link colado vira o oficial.
+A fila fica salva neste navegador até você clicar em **Limpar fila**.
+
 ## No escritório
 
 Elevador na recepção da sede → `flow-story` (nível 1, que era o reservado).
@@ -58,5 +72,5 @@ Salas: Recepção · Radar de Ofertas · Sala de Aprovação · Redação · Est
 ## Próximos passos
 
 1. Plugar a API oficial de afiliados num novo `AffiliateLinkProvider` (links rastreados automáticos).
-2. Tela de aprovação na Sala de Aprovação (lista de rascunhos com aprovar/editar/recusar).
+2. Carregar a rodada direto da API (sem arquivo) e salvar decisões no banco.
 3. Agendamento da rodada e publicação só dos aprovados, nos canais declarados no cadastro.
