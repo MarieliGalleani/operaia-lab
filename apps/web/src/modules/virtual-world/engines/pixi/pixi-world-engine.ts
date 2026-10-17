@@ -532,8 +532,16 @@ export class PixiWorldEngine implements WorldEngine {
     });
     label.anchor.set(0.5);
     label.position.set(center.x, center.y);
-    label.alpha = 0.55;
     label.zIndex = 10;
+    // Pílula de fundo: garante contraste sobre qualquer piso/tapete.
+    const padX = 6;
+    const padY = 2;
+    const w = label.width + padX * 2;
+    const h = label.height + padY * 2;
+    const bg = this.newGraphics();
+    bg.roundRect(center.x - w / 2, center.y - h / 2, w, h, h / 2).fill({ color: 0xfff6e6, alpha: 0.72 });
+    bg.zIndex = 9;
+    overlay.addChild(bg);
     overlay.addChild(label);
   }
 

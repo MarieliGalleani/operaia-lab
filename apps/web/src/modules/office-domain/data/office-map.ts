@@ -57,7 +57,7 @@ const LAYOUT: readonly (readonly (Cell | null)[])[] = [
   ],
   [
     cell("workspace", "Espaco de Trabalho", "development", true),
-    cell("ai-lab", "Laboratorio de IA", "ai-lab"),
+    cell("ai-lab", "Laboratório de IA", "ai-lab"),
     cell("lounge", "Lounge & Cafe", "lounge", true),
   ],
 ];

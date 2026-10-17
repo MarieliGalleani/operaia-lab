@@ -9,7 +9,7 @@ import type { PresenceActor, PresenceProvider } from "../../contracts/presence";
 export class MockPresenceProvider implements PresenceProvider {
   private readonly localActor: PresenceActor = {
     id: "local-user",
-    displayName: "Voce",
+    displayName: "Você",
     kind: "user",
     local: true,
     color: "#6C5CE7",
