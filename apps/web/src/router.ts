@@ -39,6 +39,7 @@ import ExecutionsView from "@/views/executions/ExecutionsView.vue";
 import ExecutionDetailView from "@/views/executions/ExecutionDetailView.vue";
 import ScheduleRulesView from "@/views/system/ScheduleRulesView.vue";
 import FlowStoryReviewView from "@/views/flow-story/FlowStoryReviewView.vue";
+import FlowStoryDashboardView from "@/views/flow-story/FlowStoryDashboardView.vue";
 
 const routes: RouteRecordRaw[] = [
   { path: "/", redirect: "/app" },
@@ -156,7 +157,7 @@ const routes: RouteRecordRaw[] = [
         path: "flow-story",
         component: OfficeLayout,
         children: [
-          { path: "", redirect: "/app/flow-story/aprovacao" },
+          { path: "", name: "flow-story", component: FlowStoryDashboardView },
           { path: "aprovacao", name: "flow-story-review", component: FlowStoryReviewView },
         ],
       },

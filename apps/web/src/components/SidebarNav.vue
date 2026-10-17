@@ -39,7 +39,7 @@ const groups: readonly NavGroup[] = [
         to: "/app/command/approvals",
         badgeKey: "approvals",
       },
-      { label: "Flow Story", icon: "missions", to: "/app/flow-story/aprovacao" },
+      { label: "Flow Story", icon: "missions", to: "/app/flow-story" },
     ],
   },
   {

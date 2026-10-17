@@ -50,6 +50,17 @@ pnpm --filter @operaia/flow-story run:csv -- examples/produtos-exemplo.csv \
 - Colunas do CSV (pt ou en): `id, titulo, link, preco, comissao, nota, vendidos, categoria, nota_loja`.
   Aceita `;` ou `,`, `R$ 1.299,90` e `12%`.
 
+## Painel do andar (dashboard)
+
+Menu **Equipe › Flow Story** → `/app/flow-story`. Usa a mesma rodada da Sala de
+Aprovação (carregar em qualquer uma das duas telas vale para as duas).
+
+- Equipe: o que a Flow e a Story fizeram nesta rodada.
+- Números: potencial de comissão (1 venda de cada), já liberado, posts aguardando, taxa de aproveitamento.
+- Gráficos: melhores oportunidades (nota da Flow), caminho da rodada (analisados → aprovados),
+  posts por canal (aprovado/pendente/recusado, com ícone e legenda) e por que a Flow deixou produtos de fora.
+- Cada gráfico tem **Ver tabela** e dica ao passar o mouse ou navegar pelo teclado.
+
 ## Sala de Aprovação (tela)
 
 Menu **Equipe › Flow Story** → `/app/flow-story/aprovacao`.
