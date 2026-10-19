@@ -10,7 +10,7 @@
 
 import { normalizeText } from "./flow-robot.js";
 import { SALES_ANGLES, type SalesAngle } from "./sales-playbook.js";
-import type { FlowStoryChannel, PostDraft } from "./types.js";
+import type { StoreFlowChannel, PostDraft } from "./types.js";
 
 export interface PerformanceRow {
   readonly subId: string;
@@ -41,9 +41,9 @@ export interface LearningReport {
   readonly byTime: readonly GroupStats[];
   /** null = ainda sem dado suficiente para escolher. */
   readonly bestAngle: SalesAngle | null;
-  readonly bestChannel: FlowStoryChannel | null;
+  readonly bestChannel: StoreFlowChannel | null;
   /** Melhores horarios por canal (ate 2), quando ha dado suficiente. */
-  readonly bestTimes: Partial<Record<FlowStoryChannel, readonly string[]>>;
+  readonly bestTimes: Partial<Record<StoreFlowChannel, readonly string[]>>;
   readonly insights: readonly string[];
 }
 
@@ -120,10 +120,10 @@ export function learnFromResults(
   const angleWin = winner(byAngle);
   const channelWin = winner(byChannel);
 
-  const bestTimes: Partial<Record<FlowStoryChannel, string[]>> = {};
+  const bestTimes: Partial<Record<StoreFlowChannel, string[]>> = {};
   for (const g of byTime) {
     if (g.clicks < MIN_CLICKS) continue;
-    const [channel, time] = g.key.split(" ") as [FlowStoryChannel, string];
+    const [channel, time] = g.key.split(" ") as [StoreFlowChannel, string];
     const list = (bestTimes[channel] ??= []);
     if (list.length < 2) list.push(time);
   }
@@ -160,7 +160,7 @@ export function learnFromResults(
     byChannel,
     byTime,
     bestAngle: angleWin && angleWin.key in SALES_ANGLES ? (angleWin.key as SalesAngle) : null,
-    bestChannel: (channelWin?.key as FlowStoryChannel | undefined) ?? null,
+    bestChannel: (channelWin?.key as StoreFlowChannel | undefined) ?? null,
     bestTimes,
     insights,
   };

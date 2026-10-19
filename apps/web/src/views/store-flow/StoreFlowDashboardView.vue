@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
-import { computeDashboard } from "@/modules/flow-story/dashboard-stats";
-import { loadSavedRun, parseRun, saveRun, type ReviewRun } from "@/modules/flow-story/review-queue";
+import { computeDashboard } from "@/modules/store-flow/dashboard-stats";
+import { loadSavedRun, parseRun, saveRun, type ReviewRun } from "@/modules/store-flow/review-queue";
 
 const run = ref<ReviewRun | null>(loadSavedRun());
 const loadError = ref<string | null>(null);
@@ -75,17 +75,17 @@ const tipStyle = computed(() => {
   <div class="studio fsd">
     <header class="studio__topbar">
       <div class="topbar__left">
-        <p class="page__kicker">1º andar · Flow Story</p>
+        <p class="page__kicker">1º andar · Store Flow</p>
         <h1 class="page__title">Painel do andar</h1>
       </div>
-      <div class="fsd__actions">
-        <label class="btn btn--ghost fsd__upload">
+      <div class="sfd__actions">
+        <label class="btn btn--ghost sfd__upload">
           {{ run ? "Carregar outra rodada" : "Carregar rodada (.json)" }}
           <input type="file" accept="application/json,.json" class="sr-only" @change="onFile" />
         </label>
-        <router-link to="/app/flow-story/aprovacao" class="btn btn--primary">
+        <router-link to="/app/store-flow/aprovacao" class="btn btn--primary">
           Sala de Aprovação
-          <span v-if="stats && stats.drafts.PENDING_APPROVAL > 0" class="fsd__pill">
+          <span v-if="stats && stats.drafts.PENDING_APPROVAL > 0" class="sfd__pill">
             {{ stats.drafts.PENDING_APPROVAL }}
           </span>
         </router-link>
@@ -93,20 +93,20 @@ const tipStyle = computed(() => {
     </header>
 
     <div class="studio__stage">
-      <p v-if="loadError" class="panel fsd__alert fsd__alert--danger" role="alert">{{ loadError }}</p>
+      <p v-if="loadError" class="panel sfd__alert sfd__alert--danger" role="alert">{{ loadError }}</p>
 
       <!-- Equipe do andar -->
-      <section class="fsd__crew" aria-label="Equipe do andar">
-        <article class="panel fsd__agent fsd__agent--flow">
-          <div class="fsd__avatar" aria-hidden="true">
+      <section class="sfd__crew" aria-label="Equipe do andar">
+        <article class="panel sfd__agent sfd__agent--flow">
+          <div class="sfd__avatar" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.5" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
             </svg>
           </div>
           <div>
             <p class="eyebrow">Robô de Ofertas · Radar</p>
-            <h2 class="fsd__agent-name">Flow</h2>
-            <p class="fsd__agent-line">
+            <h2 class="sfd__agent-name">Flow</h2>
+            <p class="sfd__agent-line">
               <template v-if="stats">
                 Escolheu <strong>{{ stats.chosen }}</strong> de {{ stats.analyzed }} produtos · nota média
                 <strong>{{ stats.averageScore }}</strong>
@@ -115,16 +115,16 @@ const tipStyle = computed(() => {
             </p>
           </div>
         </article>
-        <article class="panel fsd__agent fsd__agent--story">
-          <div class="fsd__avatar" aria-hidden="true">
+        <article class="panel sfd__agent sfd__agent--driele">
+          <div class="sfd__avatar" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" /><path d="m13.5 6.5 4 4" />
             </svg>
           </div>
           <div>
             <p class="eyebrow">Escritora · Redação</p>
-            <h2 class="fsd__agent-name">Story</h2>
-            <p class="fsd__agent-line">
+            <h2 class="sfd__agent-name">Driele</h2>
+            <p class="sfd__agent-line">
               <template v-if="stats">
                 Escreveu <strong>{{ stats.totalDrafts }}</strong> posts ·
                 <strong>{{ pct(stats.aiShare) }}</strong> com IA, o resto pelo modelo seguro
@@ -135,60 +135,60 @@ const tipStyle = computed(() => {
         </article>
       </section>
 
-      <section v-if="!stats" class="panel fsd__empty">
+      <section v-if="!stats" class="panel sfd__empty">
         <h2 class="section__title">Nenhuma rodada ainda</h2>
-        <p class="fsd__muted">
-          Rode <code>pnpm --filter @operaia/flow-story run:csv -- produtos.csv --nicho "..." --canais instagram</code>
+        <p class="sfd__muted">
+          Rode <code>pnpm --filter @operaia/store-flow run:csv -- produtos.csv --nicho "..." --canais instagram</code>
           na VM e carregue o <code>.json</code> aqui. O painel e a Sala de Aprovação usam a mesma rodada.
         </p>
       </section>
 
       <template v-else>
-        <p v-if="stats.pendingLinks > 0" class="panel fsd__alert fsd__alert--warn">
+        <p v-if="stats.pendingLinks > 0" class="panel sfd__alert sfd__alert--warn">
           <span aria-hidden="true">⚠</span>
           {{ stats.pendingLinks }} produto(s) sem link rastreado: a venda só conta como sua depois que
           você colar o link de afiliado na Sala de Aprovação.
         </p>
 
         <!-- KPIs -->
-        <section class="fsd__kpis" aria-label="Resumo da rodada">
-          <div class="panel fsd__kpi">
-            <p class="fsd__kpi-label">Potencial da rodada</p>
-            <p class="fsd__kpi-value">{{ brl(stats.potentialCommission) }}</p>
-            <p class="fsd__kpi-hint">1 venda de cada produto escolhido</p>
+        <section class="sfd__kpis" aria-label="Resumo da rodada">
+          <div class="panel sfd__kpi">
+            <p class="sfd__kpi-label">Potencial da rodada</p>
+            <p class="sfd__kpi-value">{{ brl(stats.potentialCommission) }}</p>
+            <p class="sfd__kpi-hint">1 venda de cada produto escolhido</p>
           </div>
-          <div class="panel fsd__kpi">
-            <p class="fsd__kpi-label">Já liberado</p>
-            <p class="fsd__kpi-value">{{ brl(stats.approvedCommission) }}</p>
-            <p class="fsd__kpi-hint">produtos com post aprovado</p>
+          <div class="panel sfd__kpi">
+            <p class="sfd__kpi-label">Já liberado</p>
+            <p class="sfd__kpi-value">{{ brl(stats.approvedCommission) }}</p>
+            <p class="sfd__kpi-hint">produtos com post aprovado</p>
           </div>
-          <div class="panel fsd__kpi">
-            <p class="fsd__kpi-label">Posts aguardando você</p>
-            <p class="fsd__kpi-value">{{ stats.drafts.PENDING_APPROVAL }}</p>
-            <p class="fsd__kpi-hint">
+          <div class="panel sfd__kpi">
+            <p class="sfd__kpi-label">Posts aguardando você</p>
+            <p class="sfd__kpi-value">{{ stats.drafts.PENDING_APPROVAL }}</p>
+            <p class="sfd__kpi-hint">
               {{ stats.drafts.APPROVED }} aprovados · {{ stats.drafts.REJECTED }} recusados
             </p>
           </div>
-          <div class="panel fsd__kpi">
-            <p class="fsd__kpi-label">Taxa de aproveitamento</p>
-            <p class="fsd__kpi-value">{{ stats.analyzed ? pct(stats.chosen / stats.analyzed) : "—" }}</p>
-            <p class="fsd__kpi-hint">produtos que passaram na curadoria</p>
+          <div class="panel sfd__kpi">
+            <p class="sfd__kpi-label">Taxa de aproveitamento</p>
+            <p class="sfd__kpi-value">{{ stats.analyzed ? pct(stats.chosen / stats.analyzed) : "—" }}</p>
+            <p class="sfd__kpi-hint">produtos que passaram na curadoria</p>
           </div>
         </section>
 
-        <div class="fsd__grid">
+        <div class="sfd__grid">
           <!-- Ranking -->
-          <section class="panel fsd__chart fsd__chart--wide" aria-labelledby="fsd-rank">
-            <header class="fsd__chart-head">
+          <section class="panel sfd__chart sfd__chart--wide" aria-labelledby="sfd-rank">
+            <header class="sfd__chart-head">
               <div>
-                <h2 id="fsd-rank" class="fsd__chart-title">Melhores oportunidades</h2>
-                <p class="fsd__muted">Nota da Flow (0–100): comissão, avaliação, vendas e loja</p>
+                <h2 id="sfd-rank" class="sfd__chart-title">Melhores oportunidades</h2>
+                <p class="sfd__muted">Nota da Flow (0–100): comissão, avaliação, vendas e loja</p>
               </div>
-              <button type="button" class="btn btn--ghost fsd__toggle" :aria-pressed="!!tableOpen.rank" @click="tableOpen.rank = !tableOpen.rank">
+              <button type="button" class="btn btn--ghost sfd__toggle" :aria-pressed="!!tableOpen.rank" @click="tableOpen.rank = !tableOpen.rank">
                 {{ tableOpen.rank ? "Ver gráfico" : "Ver tabela" }}
               </button>
             </header>
-            <table v-if="tableOpen.rank" class="fsd__table">
+            <table v-if="tableOpen.rank" class="sfd__table">
               <thead><tr><th>Produto</th><th>Nota</th><th>Comissão/venda</th><th>Preço</th></tr></thead>
               <tbody>
                 <tr v-for="p in stats.ranking" :key="p.id">
@@ -196,81 +196,81 @@ const tipStyle = computed(() => {
                 </tr>
               </tbody>
             </table>
-            <ol v-else class="fsd__bars" role="list">
+            <ol v-else class="sfd__bars" role="list">
               <li
                 v-for="(p, i) in stats.ranking"
                 :key="p.id"
-                class="fsd__row"
+                class="sfd__row"
                 tabindex="0"
                 @mousemove="showTip($event, p.title, [`Nota ${p.score}/100`, `≈ ${brl(p.estimatedCommission)} por venda`, `Preço ${brl(p.price)} · ${p.category}`, ...(p.signals.length ? [p.signals.join(' · ')] : []), ...(p.linkPending ? ['Link ainda sem rastreio'] : [])])"
                 @mouseleave="hideTip"
                 @focus="showTip($event, p.title, [`Nota ${p.score}/100`, `≈ ${brl(p.estimatedCommission)} por venda`])"
                 @blur="hideTip"
               >
-                <span class="fsd__row-label">
-                  <span class="fsd__rank">{{ i + 1 }}</span>{{ p.title }}
-                  <span v-for="sig in p.signals" :key="sig" class="fsd__signal">{{ sig }}</span>
+                <span class="sfd__row-label">
+                  <span class="sfd__rank">{{ i + 1 }}</span>{{ p.title }}
+                  <span v-for="sig in p.signals" :key="sig" class="sfd__signal">{{ sig }}</span>
                 </span>
-                <span class="fsd__track">
-                  <span class="fsd__bar" :style="{ width: widthOf(p.score, 100) }" />
+                <span class="sfd__track">
+                  <span class="sfd__bar" :style="{ width: widthOf(p.score, 100) }" />
                 </span>
-                <span class="fsd__row-value">{{ p.score }}<small> · {{ brl(p.estimatedCommission) }}</small></span>
+                <span class="sfd__row-value">{{ p.score }}<small> · {{ brl(p.estimatedCommission) }}</small></span>
               </li>
             </ol>
           </section>
 
           <!-- Funil -->
-          <section class="panel fsd__chart" aria-labelledby="fsd-funnel">
-            <header class="fsd__chart-head">
+          <section class="panel sfd__chart" aria-labelledby="sfd-funnel">
+            <header class="sfd__chart-head">
               <div>
-                <h2 id="fsd-funnel" class="fsd__chart-title">Caminho da rodada</h2>
-                <p class="fsd__muted">Do produto analisado ao post liberado</p>
+                <h2 id="sfd-funnel" class="sfd__chart-title">Caminho da rodada</h2>
+                <p class="sfd__muted">Do produto analisado ao post liberado</p>
               </div>
-              <button type="button" class="btn btn--ghost fsd__toggle" :aria-pressed="!!tableOpen.funnel" @click="tableOpen.funnel = !tableOpen.funnel">
+              <button type="button" class="btn btn--ghost sfd__toggle" :aria-pressed="!!tableOpen.funnel" @click="tableOpen.funnel = !tableOpen.funnel">
                 {{ tableOpen.funnel ? "Ver gráfico" : "Ver tabela" }}
               </button>
             </header>
-            <table v-if="tableOpen.funnel" class="fsd__table">
+            <table v-if="tableOpen.funnel" class="sfd__table">
               <thead><tr><th>Etapa</th><th>Quantidade</th></tr></thead>
               <tbody><tr v-for="f in stats.funnel" :key="f.id"><td>{{ f.label }}</td><td>{{ f.value }}</td></tr></tbody>
             </table>
-            <ol v-else class="fsd__bars" role="list">
+            <ol v-else class="sfd__bars" role="list">
               <li
                 v-for="f in stats.funnel"
                 :key="f.id"
-                class="fsd__row fsd__row--stack"
+                class="sfd__row sfd__row--stack"
                 tabindex="0"
                 @mousemove="showTip($event, f.label, [`${f.value} ${f.hint}`])"
                 @mouseleave="hideTip"
                 @focus="showTip($event, f.label, [`${f.value} ${f.hint}`])"
                 @blur="hideTip"
               >
-                <span class="fsd__row-label">{{ f.label }}</span>
-                <span class="fsd__row-value">{{ f.value }}</span>
-                <span class="fsd__track fsd__track--full">
-                  <span class="fsd__bar" :style="{ width: widthOf(f.value, funnelMax) }" />
+                <span class="sfd__row-label">{{ f.label }}</span>
+                <span class="sfd__row-value">{{ f.value }}</span>
+                <span class="sfd__track sfd__track--full">
+                  <span class="sfd__bar" :style="{ width: widthOf(f.value, funnelMax) }" />
                 </span>
               </li>
             </ol>
           </section>
 
           <!-- Posts por canal (status) -->
-          <section class="panel fsd__chart" aria-labelledby="fsd-channels">
-            <header class="fsd__chart-head">
+          <section class="panel sfd__chart" aria-labelledby="sfd-channels">
+            <header class="sfd__chart-head">
               <div>
-                <h2 id="fsd-channels" class="fsd__chart-title">Posts por canal</h2>
-                <p class="fsd__muted">Situação da aprovação</p>
+                <h2 id="sfd-channels" class="sfd__chart-title">Posts por canal</h2>
+                <p class="sfd__muted">Situação da aprovação</p>
               </div>
-              <button type="button" class="btn btn--ghost fsd__toggle" :aria-pressed="!!tableOpen.channels" @click="tableOpen.channels = !tableOpen.channels">
+              <button type="button" class="btn btn--ghost sfd__toggle" :aria-pressed="!!tableOpen.channels" @click="tableOpen.channels = !tableOpen.channels">
                 {{ tableOpen.channels ? "Ver gráfico" : "Ver tabela" }}
               </button>
             </header>
-            <ul class="fsd__legend" aria-label="Legenda">
-              <li><span class="fsd__swatch fsd__swatch--good" aria-hidden="true">✓</span>Aprovado</li>
-              <li><span class="fsd__swatch fsd__swatch--warn" aria-hidden="true">•</span>Pendente</li>
-              <li><span class="fsd__swatch fsd__swatch--bad" aria-hidden="true">✕</span>Recusado</li>
+            <ul class="sfd__legend" aria-label="Legenda">
+              <li><span class="sfd__swatch sfd__swatch--good" aria-hidden="true">✓</span>Aprovado</li>
+              <li><span class="sfd__swatch sfd__swatch--warn" aria-hidden="true">•</span>Pendente</li>
+              <li><span class="sfd__swatch sfd__swatch--bad" aria-hidden="true">✕</span>Recusado</li>
             </ul>
-            <table v-if="tableOpen.channels" class="fsd__table">
+            <table v-if="tableOpen.channels" class="sfd__table">
               <thead><tr><th>Canal</th><th>Aprovados</th><th>Pendentes</th><th>Recusados</th></tr></thead>
               <tbody>
                 <tr v-for="c in stats.channels" :key="c.channel">
@@ -278,47 +278,47 @@ const tipStyle = computed(() => {
                 </tr>
               </tbody>
             </table>
-            <ol v-else class="fsd__bars" role="list">
+            <ol v-else class="sfd__bars" role="list">
               <li
                 v-for="c in stats.channels"
                 :key="c.channel"
-                class="fsd__row fsd__row--stack"
+                class="sfd__row sfd__row--stack"
                 tabindex="0"
                 @mousemove="showTip($event, c.label, [`${c.approved} aprovado(s)`, `${c.pending} pendente(s)`, `${c.rejected} recusado(s)`])"
                 @mouseleave="hideTip"
                 @focus="showTip($event, c.label, [`${c.approved} aprovado(s)`, `${c.pending} pendente(s)`, `${c.rejected} recusado(s)`])"
                 @blur="hideTip"
               >
-                <span class="fsd__row-label">{{ c.label }}</span>
-                <span class="fsd__row-value">{{ c.approved }}/{{ c.total }} aprovados</span>
-                <span class="fsd__track fsd__track--full fsd__stack" :style="{ width: widthOf(c.total, channelMax) }">
-                  <span v-if="c.approved" class="fsd__seg fsd__seg--good" :style="{ flexGrow: c.approved }" />
-                  <span v-if="c.pending" class="fsd__seg fsd__seg--warn" :style="{ flexGrow: c.pending }" />
-                  <span v-if="c.rejected" class="fsd__seg fsd__seg--bad" :style="{ flexGrow: c.rejected }" />
+                <span class="sfd__row-label">{{ c.label }}</span>
+                <span class="sfd__row-value">{{ c.approved }}/{{ c.total }} aprovados</span>
+                <span class="sfd__track sfd__track--full sfd__stack" :style="{ width: widthOf(c.total, channelMax) }">
+                  <span v-if="c.approved" class="sfd__seg sfd__seg--good" :style="{ flexGrow: c.approved }" />
+                  <span v-if="c.pending" class="sfd__seg sfd__seg--warn" :style="{ flexGrow: c.pending }" />
+                  <span v-if="c.rejected" class="sfd__seg sfd__seg--bad" :style="{ flexGrow: c.rejected }" />
                 </span>
               </li>
             </ol>
           </section>
 
           <!-- Motivos de recusa -->
-          <section class="panel fsd__chart fsd__chart--wide" aria-labelledby="fsd-reasons">
-            <header class="fsd__chart-head">
+          <section class="panel sfd__chart sfd__chart--wide" aria-labelledby="sfd-reasons">
+            <header class="sfd__chart-head">
               <div>
-                <h2 id="fsd-reasons" class="fsd__chart-title">Por que a Flow deixou de fora</h2>
-                <p class="fsd__muted">Ajuda a escolher melhor o CSV da próxima rodada</p>
+                <h2 id="sfd-reasons" class="sfd__chart-title">Por que a Flow deixou de fora</h2>
+                <p class="sfd__muted">Ajuda a escolher melhor o CSV da próxima rodada</p>
               </div>
               <button
                 v-if="stats.reasons.length"
                 type="button"
-                class="btn btn--ghost fsd__toggle"
+                class="btn btn--ghost sfd__toggle"
                 :aria-pressed="!!tableOpen.reasons"
                 @click="tableOpen.reasons = !tableOpen.reasons"
               >
                 {{ tableOpen.reasons ? "Ver gráfico" : "Ver tabela" }}
               </button>
             </header>
-            <p v-if="!stats.reasons.length" class="fsd__muted">Nenhum produto recusado nesta rodada.</p>
-            <table v-else-if="tableOpen.reasons" class="fsd__table">
+            <p v-if="!stats.reasons.length" class="sfd__muted">Nenhum produto recusado nesta rodada.</p>
+            <table v-else-if="tableOpen.reasons" class="sfd__table">
               <thead><tr><th>Motivo</th><th>Produtos</th><th>Exemplos</th></tr></thead>
               <tbody>
                 <tr v-for="r in stats.reasons" :key="r.id">
@@ -326,22 +326,22 @@ const tipStyle = computed(() => {
                 </tr>
               </tbody>
             </table>
-            <ol v-else class="fsd__bars" role="list">
+            <ol v-else class="sfd__bars" role="list">
               <li
                 v-for="r in stats.reasons"
                 :key="r.id"
-                class="fsd__row"
+                class="sfd__row"
                 tabindex="0"
                 @mousemove="showTip($event, r.label, [`${r.count} produto(s)`, ...r.examples])"
                 @mouseleave="hideTip"
                 @focus="showTip($event, r.label, [`${r.count} produto(s)`])"
                 @blur="hideTip"
               >
-                <span class="fsd__row-label">{{ r.label }}</span>
-                <span class="fsd__track">
-                  <span class="fsd__bar fsd__bar--muted" :style="{ width: widthOf(r.count, reasonMax) }" />
+                <span class="sfd__row-label">{{ r.label }}</span>
+                <span class="sfd__track">
+                  <span class="sfd__bar sfd__bar--muted" :style="{ width: widthOf(r.count, reasonMax) }" />
                 </span>
-                <span class="fsd__row-value">{{ r.count }}</span>
+                <span class="sfd__row-value">{{ r.count }}</span>
               </li>
             </ol>
           </section>
@@ -349,7 +349,7 @@ const tipStyle = computed(() => {
       </template>
     </div>
 
-    <div v-if="tip" class="fsd__tip" :style="tipStyle" role="tooltip">
+    <div v-if="tip" class="sfd__tip" :style="tipStyle" role="tooltip">
       <strong>{{ tip.title }}</strong>
       <span v-for="line in tip.lines" :key="line">{{ line }}</span>
     </div>
@@ -359,28 +359,28 @@ const tipStyle = computed(() => {
 <style scoped>
 .fsd {
   /* Papéis de cor do painel (app é escuro). Azul = magnitude (um tom só). */
-  --fsd-seq: #3987e5;
-  --fsd-seq-muted: #6da7ec;
-  --fsd-track: rgba(148, 163, 184, 0.1);
+  --sfd-seq: #3987e5;
+  --sfd-seq-muted: #6da7ec;
+  --sfd-track: rgba(148, 163, 184, 0.1);
   /* Status reservados: sempre com ícone + rótulo. */
-  --fsd-good: #0ca30c;
-  --fsd-warn: #fab219;
-  --fsd-bad: #d03b3b;
-  --fsd-flow: #2f7a80;
-  --fsd-story: #d06a52;
+  --sfd-good: #0ca30c;
+  --sfd-warn: #fab219;
+  --sfd-bad: #d03b3b;
+  --sfd-flow: #2f7a80;
+  --sfd-driele: #d06a52;
 }
 
-.fsd__actions {
+.sfd__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.fsd__upload {
+.sfd__upload {
   cursor: pointer;
 }
 
-.fsd__pill {
+.sfd__pill {
   margin-left: 6px;
   min-width: 20px;
   padding: 0 6px;
@@ -390,42 +390,42 @@ const tipStyle = computed(() => {
   text-align: center;
 }
 
-.fsd__muted {
+.sfd__muted {
   margin: 2px 0 0;
   color: var(--text-muted);
   font-size: 0.88rem;
 }
 
-.fsd__muted code {
+.sfd__muted code {
   font-size: 0.85em;
   word-break: break-word;
 }
 
-.fsd__alert,
-.fsd__empty {
+.sfd__alert,
+.sfd__empty {
   padding: 14px 18px;
   margin-bottom: 14px;
 }
 
-.fsd__alert--warn {
+.sfd__alert--warn {
   border-color: var(--warning);
   background: var(--warning-soft);
 }
 
-.fsd__alert--danger {
+.sfd__alert--danger {
   border-color: var(--danger);
   background: var(--danger-soft);
 }
 
 /* —— Equipe —— */
-.fsd__crew {
+.sfd__crew {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 14px;
   margin-bottom: 14px;
 }
 
-.fsd__agent {
+.sfd__agent {
   display: flex;
   gap: 14px;
   align-items: center;
@@ -433,15 +433,15 @@ const tipStyle = computed(() => {
   border-left: 3px solid var(--agent);
 }
 
-.fsd__agent--flow {
-  --agent: var(--fsd-flow);
+.sfd__agent--flow {
+  --agent: var(--sfd-flow);
 }
 
-.fsd__agent--story {
-  --agent: var(--fsd-story);
+.sfd__agent--driele {
+  --agent: var(--sfd-driele);
 }
 
-.fsd__avatar {
+.sfd__avatar {
   flex: none;
   width: 44px;
   height: 44px;
@@ -452,46 +452,46 @@ const tipStyle = computed(() => {
   color: var(--text);
 }
 
-.fsd__avatar svg {
+.sfd__avatar svg {
   width: 24px;
   height: 24px;
 }
 
-.fsd__agent-name {
+.sfd__agent-name {
   margin: 0;
   font-size: 1.15rem;
 }
 
-.fsd__agent-line {
+.sfd__agent-line {
   margin: 2px 0 0;
   color: var(--text-muted);
   font-size: 0.9rem;
 }
 
-.fsd__agent-line strong {
+.sfd__agent-line strong {
   color: var(--text);
 }
 
 /* —— KPIs —— */
-.fsd__kpis {
+.sfd__kpis {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 14px;
   margin-bottom: 14px;
 }
 
-.fsd__kpi {
+.sfd__kpi {
   padding: 16px 18px;
 }
 
-.fsd__kpi-label,
-.fsd__kpi-hint {
+.sfd__kpi-label,
+.sfd__kpi-hint {
   margin: 0;
   color: var(--text-muted);
   font-size: 0.82rem;
 }
 
-.fsd__kpi-value {
+.sfd__kpi-value {
   margin: 6px 0 4px;
   font-size: 1.7rem;
   font-weight: 650;
@@ -500,22 +500,22 @@ const tipStyle = computed(() => {
 }
 
 /* —— Gráficos —— */
-.fsd__grid {
+.sfd__grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
-.fsd__chart {
+.sfd__chart {
   padding: 18px;
   min-width: 0;
 }
 
-.fsd__chart--wide {
+.sfd__chart--wide {
   grid-column: 1 / -1;
 }
 
-.fsd__chart-head {
+.sfd__chart-head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -523,17 +523,17 @@ const tipStyle = computed(() => {
   margin-bottom: 14px;
 }
 
-.fsd__chart-title {
+.sfd__chart-title {
   margin: 0;
   font-size: 1rem;
 }
 
-.fsd__toggle {
+.sfd__toggle {
   flex: none;
   font-size: 0.82rem;
 }
 
-.fsd__bars {
+.sfd__bars {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -541,7 +541,7 @@ const tipStyle = computed(() => {
   gap: 4px;
 }
 
-.fsd__row {
+.sfd__row {
   display: grid;
   grid-template-columns: minmax(120px, 32%) 1fr auto;
   align-items: center;
@@ -551,21 +551,21 @@ const tipStyle = computed(() => {
   outline: none;
 }
 
-.fsd__row--stack {
+.sfd__row--stack {
   grid-template-columns: 1fr auto;
   row-gap: 6px;
 }
 
-.fsd__row:hover,
-.fsd__row:focus-visible {
+.sfd__row:hover,
+.sfd__row:focus-visible {
   background: var(--surface-hover);
 }
 
-.fsd__row:focus-visible {
+.sfd__row:focus-visible {
   box-shadow: 0 0 0 2px var(--brand-line);
 }
 
-.fsd__row-label {
+.sfd__row-label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -574,14 +574,14 @@ const tipStyle = computed(() => {
   font-size: 0.9rem;
 }
 
-.fsd__rank {
+.sfd__rank {
   display: inline-block;
   width: 1.4em;
   color: var(--text-soft);
   font-variant-numeric: tabular-nums;
 }
 
-.fsd__signal {
+.sfd__signal {
   margin-left: 6px;
   padding: 1px 6px;
   border-radius: var(--radius-full);
@@ -591,7 +591,7 @@ const tipStyle = computed(() => {
   vertical-align: 1px;
 }
 
-.fsd__row-value {
+.sfd__row-value {
   color: var(--text);
   font-size: 0.88rem;
   font-variant-numeric: tabular-nums;
@@ -599,63 +599,63 @@ const tipStyle = computed(() => {
   white-space: nowrap;
 }
 
-.fsd__row-value small {
+.sfd__row-value small {
   color: var(--text-muted);
   font-size: 0.85em;
 }
 
-.fsd__track {
+.sfd__track {
   position: relative;
   display: block;
   height: 12px;
   border-radius: 0 4px 4px 0;
-  background: var(--fsd-track);
+  background: var(--sfd-track);
 }
 
-.fsd__track--full {
+.sfd__track--full {
   grid-column: 1 / -1;
 }
 
-.fsd__bar {
+.sfd__bar {
   display: block;
   height: 100%;
   border-radius: 0 4px 4px 0;
-  background: var(--fsd-seq);
+  background: var(--sfd-seq);
   transition: width 0.4s ease;
 }
 
-.fsd__bar--muted {
-  background: var(--fsd-seq-muted);
+.sfd__bar--muted {
+  background: var(--sfd-seq-muted);
 }
 
-.fsd__stack {
+.sfd__stack {
   display: flex;
   gap: 2px;
   background: transparent;
 }
 
-.fsd__seg {
+.sfd__seg {
   flex-basis: 0;
   height: 100%;
 }
 
-.fsd__seg:last-child {
+.sfd__seg:last-child {
   border-radius: 0 4px 4px 0;
 }
 
-.fsd__seg--good {
-  background: var(--fsd-good);
+.sfd__seg--good {
+  background: var(--sfd-good);
 }
 
-.fsd__seg--warn {
-  background: var(--fsd-warn);
+.sfd__seg--warn {
+  background: var(--sfd-warn);
 }
 
-.fsd__seg--bad {
-  background: var(--fsd-bad);
+.sfd__seg--bad {
+  background: var(--sfd-bad);
 }
 
-.fsd__legend {
+.sfd__legend {
   list-style: none;
   display: flex;
   flex-wrap: wrap;
@@ -666,13 +666,13 @@ const tipStyle = computed(() => {
   font-size: 0.82rem;
 }
 
-.fsd__legend li {
+.sfd__legend li {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.fsd__swatch {
+.sfd__swatch {
   width: 16px;
   height: 16px;
   border-radius: 4px;
@@ -683,44 +683,44 @@ const tipStyle = computed(() => {
   font-weight: 700;
 }
 
-.fsd__swatch--good {
-  background: var(--fsd-good);
+.sfd__swatch--good {
+  background: var(--sfd-good);
 }
 
-.fsd__swatch--warn {
-  background: var(--fsd-warn);
+.sfd__swatch--warn {
+  background: var(--sfd-warn);
 }
 
-.fsd__swatch--bad {
-  background: var(--fsd-bad);
+.sfd__swatch--bad {
+  background: var(--sfd-bad);
   color: #fff;
 }
 
-.fsd__table {
+.sfd__table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.88rem;
 }
 
-.fsd__table th,
-.fsd__table td {
+.sfd__table th,
+.sfd__table td {
   padding: 8px 6px;
   border-bottom: 1px solid var(--border);
   text-align: left;
 }
 
-.fsd__table th {
+.sfd__table th {
   color: var(--text-muted);
   font-weight: 500;
 }
 
-.fsd__table td:not(:first-child),
-.fsd__table th:not(:first-child) {
+.sfd__table td:not(:first-child),
+.sfd__table th:not(:first-child) {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-.fsd__tip {
+.sfd__tip {
   position: fixed;
   z-index: 50;
   transform: translate(-50%, -100%);
@@ -737,17 +737,17 @@ const tipStyle = computed(() => {
   pointer-events: none;
 }
 
-.fsd__tip strong {
+.sfd__tip strong {
   color: var(--text);
   font-weight: 600;
 }
 
 @media (max-width: 760px) {
-  .fsd__grid {
+  .sfd__grid {
     grid-template-columns: 1fr;
   }
 
-  .fsd__row {
+  .sfd__row {
     grid-template-columns: minmax(90px, 38%) 1fr auto;
     gap: 8px;
   }

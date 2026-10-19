@@ -2,7 +2,7 @@
  * Porta de geracao de link de afiliado.
  *
  * A API oficial do marketplace entra aqui depois (um adapter novo), sem
- * mexer na Flow nem na Story. Ate la, o provider manual devolve a URL
+ * mexer na Flow nem na Driele. Ate la, o provider manual devolve a URL
  * original marcada como pendente — a Marieli cola o link do portal.
  */
 

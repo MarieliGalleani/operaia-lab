@@ -1,7 +1,7 @@
 /**
- * Fila de aprovação do andar Flow Story (Sala de Aprovação).
+ * Fila de aprovação do andar Store Flow (Sala de Aprovação).
  *
- * Lê o JSON gerado pelo CLI do pacote @operaia/flow-story (`run:csv`) e
+ * Lê o JSON gerado pelo CLI do pacote @operaia/store-flow (`run:csv`) e
  * aplica as MESMAS regras de revisão do pacote (reviewDraft): não aprova sem
  * o aviso de afiliado, e cada rascunho só é decidido uma vez — mas aqui dá
  * para desfazer, porque nada foi publicado ainda.
@@ -10,7 +10,7 @@
  * tipos abaixo espelham só o que a tela usa.
  */
 
-export type FlowStoryChannel = "instagram" | "whatsapp" | "telegram" | "tiktok";
+export type StoreFlowChannel = "instagram" | "whatsapp" | "telegram" | "tiktok";
 export type DraftStatus = "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
 
 export interface ReviewProduct {
@@ -43,7 +43,7 @@ export const SIGNAL_LABEL: Readonly<Record<string, string>> = {
 export interface ReviewDraft {
   readonly id: string;
   readonly productId: string;
-  readonly channel: FlowStoryChannel;
+  readonly channel: StoreFlowChannel;
   /** Teste A/B (rodadas antigas não têm estes campos). */
   readonly variant?: "A" | "B";
   readonly angleLabel?: string;
@@ -62,7 +62,7 @@ export interface ReviewRun {
   readonly drafts: readonly ReviewDraft[];
 }
 
-export const CHANNEL_LABEL: Readonly<Record<FlowStoryChannel, string>> = {
+export const CHANNEL_LABEL: Readonly<Record<StoreFlowChannel, string>> = {
   instagram: "Instagram",
   whatsapp: "WhatsApp",
   telegram: "Telegram",
@@ -85,7 +85,7 @@ export function parseRun(raw: string): ReviewRun {
     throw new Error("Arquivo inválido: não é um JSON.");
   }
   if (!isObject(data) || !Array.isArray(data.drafts) || !Array.isArray(data.curated)) {
-    throw new Error("Esse JSON não é uma rodada do Flow Story (faltam drafts/curated).");
+    throw new Error("Esse JSON não é uma rodada do Store Flow (faltam drafts/curated).");
   }
   for (const [i, d] of data.drafts.entries()) {
     if (
@@ -190,7 +190,7 @@ export function exportApproved(run: ReviewRun): string {
   );
 }
 
-const STORAGE_KEY = "flow-story:review-run";
+const STORAGE_KEY = "store-flow:review-run";
 
 /** Guarda a fila neste navegador para não perder decisões ao recarregar. */
 export function saveRun(run: ReviewRun | null): void {

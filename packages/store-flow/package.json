@@ -1,5 +1,5 @@
 {
-  "name": "@operaia/flow-story",
+  "name": "@operaia/store-flow",
   "version": "0.1.0",
   "private": true,
   "type": "module",

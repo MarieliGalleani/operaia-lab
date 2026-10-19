@@ -9,7 +9,7 @@
 import type { AffiliateLinkProvider } from "./affiliate-link.js";
 import type {
   CuratedProduct,
-  FlowStoryConfig,
+  StoreFlowConfig,
   ProductCandidate,
   RejectedProduct,
   SalesSignal,
@@ -121,8 +121,8 @@ export class FlowRobot {
 
   async curate(
     candidates: readonly ProductCandidate[],
-    config: FlowStoryConfig,
-    campaignId = "flowstory",
+    config: StoreFlowConfig,
+    campaignId = "storeflow",
   ): Promise<FlowCurationResult> {
     const minRating = config.minRating ?? FLOW_DEFAULTS.minRating;
     const minStore = config.minStoreRating ?? FLOW_DEFAULTS.minStoreRating;

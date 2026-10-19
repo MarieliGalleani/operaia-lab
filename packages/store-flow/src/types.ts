@@ -1,5 +1,5 @@
 /**
- * Tipos do andar Flow Story — marketing de afiliados (marketplace neutro).
+ * Tipos do andar Store Flow — marketing de afiliados (marketplace neutro).
  *
  * O andar nao conhece nenhum marketplace pelo nome: os produtos chegam como
  * dado (export do portal de afiliados, planilha ou API plugada depois) e os
@@ -29,23 +29,23 @@ export interface ProductCandidate {
   readonly originalPrice?: number;
 }
 
-/** Canais onde a Story sabe escrever. */
-export type FlowStoryChannel = "instagram" | "whatsapp" | "telegram" | "tiktok";
+/** Canais onde a Driele sabe escrever. */
+export type StoreFlowChannel = "instagram" | "whatsapp" | "telegram" | "tiktok";
 
-export const FLOW_STORY_CHANNELS: readonly FlowStoryChannel[] = [
+export const STORE_FLOW_CHANNELS: readonly StoreFlowChannel[] = [
   "instagram",
   "whatsapp",
   "telegram",
   "tiktok",
 ];
 
-export interface FlowStoryConfig {
+export interface StoreFlowConfig {
   /** Nicho do perfil (ex.: "casa e organizacao"). */
   readonly niche: string;
   /** Categorias aceitas; vazio = todas. Comparacao sem acento/caixa. */
   readonly categories?: readonly string[];
   /** Canais declarados no cadastro de afiliado. So esses recebem texto. */
-  readonly channels: readonly FlowStoryChannel[];
+  readonly channels: readonly StoreFlowChannel[];
   /** Nota minima do produto (padrao 4.5). */
   readonly minRating?: number;
   /** Nota minima da loja, quando informada (padrao 4.5). */
@@ -87,11 +87,11 @@ export interface RejectedProduct {
 
 export type DraftStatus = "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
 
-/** Saida da Story: rascunho de post que SEMPRE espera aprovacao humana. */
+/** Saida da Driele: rascunho de post que SEMPRE espera aprovacao humana. */
 export interface PostDraft {
   readonly id: string;
   readonly productId: string;
-  readonly channel: FlowStoryChannel;
+  readonly channel: StoreFlowChannel;
   /** Versao do teste A/B (cada uma com angulo, horario e subId proprios). */
   readonly variant: "A" | "B";
   readonly angle: string;
@@ -106,11 +106,11 @@ export interface PostDraft {
   /** Aviso obrigatorio de link de afiliado (ja incluido no texto). */
   readonly disclosure: string;
   readonly status: DraftStatus;
-  /** "llm" quando a Story escreveu; "template" quando caiu no fallback. */
+  /** "llm" quando a Driele escreveu; "template" quando caiu no fallback. */
   readonly source: "llm" | "template";
 }
 
-export interface FlowStoryRun {
+export interface StoreFlowRun {
   readonly curated: readonly CuratedProduct[];
   readonly rejected: readonly RejectedProduct[];
   readonly drafts: readonly PostDraft[];

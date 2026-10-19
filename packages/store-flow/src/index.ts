@@ -12,13 +12,13 @@ export {
 } from "./flow-robot.js";
 export * from "./sales-playbook.js";
 export {
-  StoryWriter,
+  DrieleWriter,
   AFFILIATE_DISCLOSURE,
   CHANNEL_MAX_CHARS,
   checkStoryText,
   buildStorySystemPrompt,
-} from "./story-writer.js";
-export { runFlowStory, reviewDraft, type FlowStoryRunInput } from "./pipeline.js";
+} from "./driele-writer.js";
+export { runStoreFlow, reviewDraft, type StoreFlowRunInput } from "./pipeline.js";
 export { parseProductsCsv } from "./product-import.js";
 export {
   learnFromResults,

@@ -4,13 +4,13 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { bucketReason, computeDashboard } from "@/modules/flow-story/dashboard-stats";
-import { decide, parseRun, replaceDraft, type ReviewRun } from "@/modules/flow-story/review-queue";
+import { bucketReason, computeDashboard } from "@/modules/store-flow/dashboard-stats";
+import { decide, parseRun, replaceDraft, type ReviewRun } from "@/modules/store-flow/review-queue";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const FIXTURE = readFileSync(join(HERE, "fixtures", "flow-story-rodada.json"), "utf8");
+const FIXTURE = readFileSync(join(HERE, "fixtures", "store-flow-rodada.json"), "utf8");
 
-describe("Painel do andar Flow Story", () => {
+describe("Painel do andar Store Flow", () => {
   it("resume a rodada do CLI: funil, potencial, ranking e motivos", () => {
     const stats = computeDashboard(parseRun(FIXTURE));
     expect(stats.funnel.map((f) => f.value)).toEqual([3, 2, 8, 0]); // A/B: 2 produtos × 2 canais × 2 versões

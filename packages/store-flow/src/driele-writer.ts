@@ -1,5 +1,5 @@
 /**
- * Story — Escritora.
+ * Driele — Escritora.
  *
  * Escreve com o LLM e passa por guardrails antes de virar rascunho:
  * - sem promessas proibidas (garantia, "melhor preco", urgencia falsa);
@@ -11,7 +11,7 @@
  */
 
 import type { LLMMessage, LLMProvider } from "@operaia/ai-core";
-import { storyProfile } from "./profiles.js";
+import { drieleProfile } from "./profiles.js";
 import {
   DEFAULT_POST_TIMES,
   SALES_ANGLES,
@@ -21,22 +21,22 @@ import {
 } from "./sales-playbook.js";
 import type {
   CuratedProduct,
-  FlowStoryChannel,
-  FlowStoryConfig,
+  StoreFlowChannel,
+  StoreFlowConfig,
   PostDraft,
 } from "./types.js";
 
 export const AFFILIATE_DISCLOSURE =
   "Link de afiliado: posso receber comissão se você comprar por ele, sem custo extra para você.";
 
-export const CHANNEL_MAX_CHARS: Readonly<Record<FlowStoryChannel, number>> = {
+export const CHANNEL_MAX_CHARS: Readonly<Record<StoreFlowChannel, number>> = {
   instagram: 2200,
   whatsapp: 700,
   telegram: 1000,
   tiktok: 900,
 };
 
-const CHANNEL_BRIEF: Readonly<Record<FlowStoryChannel, string>> = {
+const CHANNEL_BRIEF: Readonly<Record<StoreFlowChannel, string>> = {
   instagram: "legenda de post do Instagram: gancho na primeira linha, 3 a 5 linhas curtas, chamada para o link na bio ou nos stories",
   whatsapp: "mensagem de grupo de WhatsApp: curta, direta, 1 emoji no maximo por linha",
   telegram: "mensagem de canal do Telegram: titulo em uma linha, beneficios em topicos curtos",
@@ -109,7 +109,7 @@ function sanitizeHashtags(raw: unknown, fallback: readonly string[]): string[] {
 /** Garante link + aviso no texto e respeita o limite do canal. */
 export function finalizeText(
   body: string,
-  channel: FlowStoryChannel,
+  channel: StoreFlowChannel,
   affiliateUrl: string,
   hashtags: readonly string[],
 ): string {
@@ -127,26 +127,26 @@ export function finalizeText(
   return `${trimmedBody.trim()}\n\n${tail}`;
 }
 
-interface LLMStoryPayload {
+interface LLMDrielePayload {
   readonly text?: unknown;
   readonly hashtags?: unknown;
 }
 
-function parsePayload(content: string): LLMStoryPayload | null {
+function parsePayload(content: string): LLMDrielePayload | null {
   const match = content.match(/\{[\s\S]*\}/);
   if (!match) return null;
   try {
     const parsed: unknown = JSON.parse(match[0]);
-    return parsed && typeof parsed === "object" ? (parsed as LLMStoryPayload) : null;
+    return parsed && typeof parsed === "object" ? (parsed as LLMDrielePayload) : null;
   } catch {
     return null;
   }
 }
 
-export function buildStorySystemPrompt(config: FlowStoryConfig): string {
+export function buildStorySystemPrompt(config: StoreFlowConfig): string {
   return [
-    `Voce e ${storyProfile.name}, ${storyProfile.role} do andar Flow Story do OperaIA.lab.`,
-    `Missao: ${storyProfile.mission}`,
+    `Voce e ${drieleProfile.name}, ${drieleProfile.role} do andar Store Flow do OperaIA.lab.`,
+    `Missao: ${drieleProfile.mission}`,
     `Nicho do perfil: ${config.niche}. Tom de voz: ${config.tone ?? "proximo, leve e honesto"}.`,
     "Como escrever para vender:",
     "- Primeira linha = gancho de ate 8 palavras, no angulo pedido.",
@@ -165,7 +165,7 @@ export function buildStorySystemPrompt(config: FlowStoryConfig): string {
 
 function buildUserPrompt(
   product: CuratedProduct,
-  channel: FlowStoryChannel,
+  channel: StoreFlowChannel,
   angle: SalesAngle,
 ): string {
   const p = product.product;
@@ -185,7 +185,7 @@ function buildUserPrompt(
   ].join("\n");
 }
 
-export interface StoryWriteOptions {
+export interface DrieleWriteOptions {
   readonly variant?: DraftVariant;
   readonly angle?: SalesAngle;
   /** Link desta versao (subId proprio para medir o A/B). */
@@ -195,14 +195,14 @@ export interface StoryWriteOptions {
   readonly postTimes?: readonly string[];
 }
 
-export class StoryWriter {
+export class DrieleWriter {
   constructor(private readonly llm: LLMProvider) {}
 
   async write(
     product: CuratedProduct,
-    channel: FlowStoryChannel,
-    config: FlowStoryConfig,
-    options: StoryWriteOptions = {},
+    channel: StoreFlowChannel,
+    config: StoreFlowConfig,
+    options: DrieleWriteOptions = {},
   ): Promise<PostDraft> {
     const variant = options.variant ?? "A";
     const angle = options.angle ?? "prova-social";

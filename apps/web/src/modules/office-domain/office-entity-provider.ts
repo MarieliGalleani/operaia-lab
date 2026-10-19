@@ -17,10 +17,15 @@ import {
   CAMPUS_RECEPTION_MAP_ID,
 } from "./data/campus-ids";
 import { CLIENT_FLOORS } from "./data/client-floors-registry";
+<<<<<<< HEAD
 import { GERAI_F2_ACTORS } from "./data/gerai-actors";
 import { GERAI_F2_MAP_ID } from "./data/gerai-floor-2-map";
 import { FLOW_STORY_ACTORS } from "./data/flow-story-actors";
 import { FLOW_STORY_MAP_ID } from "./data/flow-story-floor-map";
+=======
+import { STORE_FLOW_ACTORS } from "./data/store-flow-actors";
+import { STORE_FLOW_MAP_ID } from "./data/store-flow-floor-map";
+>>>>>>> 037e388 (refactor(store-flow): renomeia o andar Flow Story para Store Flow e a escritora Story para Driele)
 import { buildOfficeActors } from "./data/office-actors";
 import { OFFICE_MAP_ID } from "./data/office-map";
 import { buildActorsForStations } from "./data/real-agents";
@@ -58,6 +63,7 @@ export class OfficeEntityProvider implements EntityProvider {
       return [];
     }
 
+<<<<<<< HEAD
     if (mapId === GERAI_F2_MAP_ID) {
       // Elenco proprio da Geraí (Nova/Pixel/Muse/...) — Residente
       // independente, sem ligacao com o Command Center do Lab. Fica
@@ -69,6 +75,11 @@ export class OfficeEntityProvider implements EntityProvider {
     // 1º andar Flow Story: elenco proprio, sem status ao vivo da Equipe Digital.
     if (mapId === FLOW_STORY_MAP_ID) {
       return FLOW_STORY_ACTORS;
+=======
+    // 1º andar Store Flow: elenco proprio, sem status ao vivo da Equipe Digital.
+    if (mapId === STORE_FLOW_MAP_ID) {
+      return STORE_FLOW_ACTORS;
+>>>>>>> 037e388 (refactor(store-flow): renomeia o andar Flow Story para Store Flow e a escritora Story para Driele)
     }
 
     const stations =

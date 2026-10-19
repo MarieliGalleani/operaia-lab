@@ -1,11 +1,11 @@
 /**
- * 1º andar da sede — Flow Story (marketing de afiliados).
+ * 1º andar da sede — Store Flow (marketing de afiliados).
  *
  * Copia do molde do 2º andar da Geraí (celulas 9×7, grade 3×2), ligada a
  * recepcao da sede por elevador. O nivel 1 era o "reservado" da sede.
  *
- * Elenco proprio do andar: Flow (Robô de Ofertas) e Story (Escritora) —
- * pacote @operaia/flow-story. Andar separado: nao usa o elenco da Equipe
+ * Elenco proprio do andar: Flow (Robô de Ofertas) e Driele (Escritora) —
+ * pacote @operaia/store-flow. Andar separado: nao usa o elenco da Equipe
  * Digital nem entra na delegacao do CEO.
  */
 
@@ -27,7 +27,7 @@ const GAP_X = 2;
 const GAP_Y = 2;
 const ORIGIN_X = 1;
 const ORIGIN_Y = 1;
-const FLOOR_ID = "flow-story";
+const FLOOR_ID = "store-flow";
 
 interface Cell {
   readonly id: string;
@@ -41,13 +41,13 @@ function cell(id: string, name: string, kind: string, open = false): Cell {
 }
 
 /**
- * Planta Flow Story:
+ * Planta Store Flow:
  * Cima: Recepcao · Radar de Ofertas (Flow) · Sala de Aprovacao
- * Baixo: Redacao (Story) · Estudio de Video · Lounge
+ * Baixo: Redacao (Driele) · Estudio de Video · Lounge
  */
 const LAYOUT: readonly (readonly (Cell | null)[])[] = [
   [
-    cell("recepcao", "Recepcao Flow Story", "reception", true),
+    cell("recepcao", "Recepcao Store Flow", "reception", true),
     cell("radar", "Radar de Ofertas", "ai-lab"),
     cell("aprovacao", "Sala de Aprovacao", "meeting"),
   ],
@@ -107,7 +107,7 @@ function enclosureFor(c: Cell): AreaEnclosure {
 }
 
 function buildArea(c: Cell, bounds: TileRect): AreaBlueprint {
-  const tags = ["room", "flow-story"];
+  const tags = ["room", "store-flow"];
   if (REST_KINDS.has(c.kind)) {
     tags.push("rest");
   }
@@ -143,10 +143,10 @@ function stationOf(roomId: string, dx = 2, dy = 1): { col: number; row: number; 
   return { col: b.col + dx, row: b.row + dy, floorId: FLOOR_ID };
 }
 
-/** Postos do elenco Flow Story (usados por flow-story-actors). */
-export const FLOW_STORY_STATIONS = {
+/** Postos do elenco Store Flow (usados por store-flow-actors). */
+export const STORE_FLOW_STATIONS = {
   flow: stationOf("radar", 3, 2),
-  story: stationOf("redacao", 3, 2),
+  driele: stationOf("redacao", 3, 2),
 } as const;
 
 function buildSpawnPoints(): SpawnPointDef[] {
@@ -190,7 +190,7 @@ function ambientProps(): EntityBlueprint[] {
 
 /** Elevador de volta à recepção da sede (térreo). */
 const ELEVATOR_TO_LAB: EntityBlueprint = {
-  id: "flow-story-elevator-to-lab",
+  id: "store-flow-elevator-to-lab",
   ref: "portal-door",
   components: {
     transform: {
@@ -199,7 +199,7 @@ const ELEVATOR_TO_LAB: EntityBlueprint = {
     },
     renderable: { spriteId: "door", layer: "walls", visible: true },
     portal: {
-      portalId: "flow-story-elevator-to-lab",
+      portalId: "store-flow-elevator-to-lab",
       target: { mapId: "office", spawnPointId: "elevator-lab" },
       mode: "walk",
       label: "Elevador · Térreo",
@@ -215,7 +215,7 @@ const ELEVATOR_TO_LAB: EntityBlueprint = {
 
 const FLOOR_1: FloorDef = {
   id: FLOOR_ID,
-  name: "Flow Story — 1º andar",
+  name: "Store Flow — 1º andar",
   level: 1,
   size: { cols: MAP_COLS, rows: MAP_ROWS },
   areas: AREAS,
@@ -223,11 +223,11 @@ const FLOOR_1: FloorDef = {
   spawnPoints: buildSpawnPoints(),
 };
 
-export const FLOW_STORY_MAP_ID = "flow-story";
+export const STORE_FLOW_MAP_ID = "store-flow";
 
-export const FLOW_STORY_MAP: MapManifest = {
-  id: FLOW_STORY_MAP_ID,
-  name: "Flow Story — 1º andar",
+export const STORE_FLOW_MAP: MapManifest = {
+  id: STORE_FLOW_MAP_ID,
+  name: "Store Flow — 1º andar",
   themeId: CORPORATE_THEME_ID,
   tileWidth: 64,
   tileHeight: 32,

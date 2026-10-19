@@ -232,9 +232,9 @@ const FRONT_DOOR: EntityBlueprint = {
   },
 };
 
-/** Elevador da recepção → 1º andar (Flow Story). Volta no spawn "elevator-lab". */
-const ELEVATOR_TO_FLOW_STORY: EntityBlueprint = {
-  id: "elevator-to-flow-story",
+/** Elevador da recepção → 1º andar (Store Flow). Volta no spawn "elevator-lab". */
+const ELEVATOR_TO_STORE_FLOW: EntityBlueprint = {
+  id: "elevator-to-store-flow",
   ref: "portal-door",
   components: {
     transform: {
@@ -243,12 +243,12 @@ const ELEVATOR_TO_FLOW_STORY: EntityBlueprint = {
     },
     renderable: { spriteId: "door", layer: "walls", visible: true },
     portal: {
-      portalId: "elevator-to-flow-story",
-      target: { mapId: "flow-story", spawnPointId: "elevator-in" },
+      portalId: "elevator-to-store-flow",
+      target: { mapId: "store-flow", spawnPointId: "elevator-in" },
       mode: "walk",
-      label: "Elevador · 1º andar Flow Story",
+      label: "Elevador · 1º andar Store Flow",
     },
-    interactable: { kind: "portal", radiusTiles: 1, enabled: true, label: "Subir para o Flow Story" },
+    interactable: { kind: "portal", radiusTiles: 1, enabled: true, label: "Subir para o Store Flow" },
   },
 };
 
@@ -258,7 +258,7 @@ const GROUND_FLOOR: FloorDef = {
   level: 0,
   size: { cols: MAP_COLS, rows: MAP_ROWS },
   areas: AREAS,
-  entities: [...ambientProps(), FRONT_DOOR, ELEVATOR_TO_FLOW_STORY],
+  entities: [...ambientProps(), FRONT_DOOR, ELEVATOR_TO_STORE_FLOW],
   spawnPoints: buildSpawnPoints(),
 };
 

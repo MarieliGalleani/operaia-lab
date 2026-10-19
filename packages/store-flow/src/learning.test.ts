@@ -3,8 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   learnFromResults,
   parseResultsCsv,
-  runFlowStory,
-  type FlowStoryConfig,
+  runStoreFlow,
+  type StoreFlowConfig,
   type ProductCandidate,
 } from "./index.js";
 
@@ -26,10 +26,10 @@ const product: ProductCandidate = {
   category: "Casa",
 };
 
-const config: FlowStoryConfig = { niche: "casa", channels: ["instagram"] };
+const config: StoreFlowConfig = { niche: "casa", channels: ["instagram"] };
 
 async function firstRun() {
-  return runFlowStory({ products: [product], config, llm, campaignId: "out26" });
+  return runStoreFlow({ products: [product], config, llm, campaignId: "out26" });
 }
 
 describe("Aprendizado com resultados", () => {
@@ -70,7 +70,7 @@ describe("Aprendizado com resultados", () => {
   });
 
   it("a próxima rodada usa o vencedor como versão A e os horários aprendidos", async () => {
-    const run = await runFlowStory({
+    const run = await runStoreFlow({
       products: [product],
       config,
       llm,

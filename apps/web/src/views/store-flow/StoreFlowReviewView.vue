@@ -16,7 +16,7 @@ import {
   type ReviewCurated,
   type ReviewDraft,
   type ReviewRun,
-} from "@/modules/flow-story/review-queue";
+} from "@/modules/store-flow/review-queue";
 
 type Filter = DraftStatus;
 
@@ -135,7 +135,7 @@ function downloadApproved(): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "flow-story-aprovados.json";
+  a.download = "store-flow-aprovados.json";
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -151,11 +151,11 @@ function clearRun(): void {
   <div class="studio">
     <header class="studio__topbar">
       <div class="topbar__left">
-        <p class="page__kicker">Flow Story › Sala de Aprovação</p>
+        <p class="page__kicker">Store Flow › Sala de Aprovação</p>
         <h1 class="page__title">Aprovar posts</h1>
       </div>
       <div class="fs__actions">
-        <router-link to="/app/flow-story" class="btn btn--ghost">Painel do andar</router-link>
+        <router-link to="/app/store-flow" class="btn btn--ghost">Painel do andar</router-link>
         <label class="btn btn--ghost fs__upload">
           {{ run ? "Carregar outra rodada" : "Carregar rodada (.json)" }}
           <input type="file" accept="application/json,.json" class="sr-only" @change="onFile" />
@@ -180,7 +180,7 @@ function clearRun(): void {
         <ol class="fs__steps">
           <li>
             Na VM, rode
-            <code>pnpm --filter @operaia/flow-story run:csv -- produtos.csv --nicho "..." --canais instagram</code>
+            <code>pnpm --filter @operaia/store-flow run:csv -- produtos.csv --nicho "..." --canais instagram</code>
           </li>
           <li>Clique em <strong>Carregar rodada</strong> e escolha o arquivo <code>.json</code> gerado.</li>
           <li>Revise cada texto: aprove, edite ou recuse.</li>

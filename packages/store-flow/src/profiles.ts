@@ -1,12 +1,12 @@
 /**
- * Elenco do andar Flow Story (1º andar da sede).
+ * Elenco do andar Store Flow (1º andar da sede).
  *
  * Copia do molde do Mercurio (Marketing), especializada em afiliados.
  * Andar separado: nao entra no roster da Equipe Digital nem na delegacao
  * do CEO — roda o proprio pipeline (pipeline.ts).
  */
 
-export interface FlowStoryAgentProfile {
+export interface StoreFlowAgentProfile {
   readonly id: string;
   readonly name: string;
   readonly role: string;
@@ -15,7 +15,7 @@ export interface FlowStoryAgentProfile {
   readonly limits: readonly string[];
 }
 
-export const flowProfile: FlowStoryAgentProfile = {
+export const flowProfile: StoreFlowAgentProfile = {
   id: "flow",
   name: "Flow",
   role: "Robô de Ofertas",
@@ -31,9 +31,9 @@ export const flowProfile: FlowStoryAgentProfile = {
   ],
 };
 
-export const storyProfile: FlowStoryAgentProfile = {
-  id: "story",
-  name: "Story",
+export const drieleProfile: StoreFlowAgentProfile = {
+  id: "driele",
+  name: "Driele",
   role: "Escritora",
   mission: "Transformar cada oferta escolhida pela Flow em um texto que conversa com o publico do canal.",
   capabilities: [
@@ -47,7 +47,7 @@ export const storyProfile: FlowStoryAgentProfile = {
   ],
 };
 
-export const FLOW_STORY_ROSTER: readonly FlowStoryAgentProfile[] = [
+export const STORE_FLOW_ROSTER: readonly StoreFlowAgentProfile[] = [
   flowProfile,
-  storyProfile,
+  drieleProfile,
 ];

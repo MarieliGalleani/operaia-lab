@@ -1,5 +1,5 @@
 /**
- * Manual de vendas da Story — as taticas de afiliado que mais convertem,
+ * Manual de vendas da Driele — as taticas de afiliado que mais convertem,
  * transformadas em regras que o codigo aplica:
  *
  * 1. Angulo certo para o produto: o sinal que a Flow achou (em alta,
@@ -11,7 +11,7 @@
  *    substitui pelos horarios que venderam mais nos seus resultados.
  */
 
-import type { CuratedProduct, FlowStoryChannel } from "./types.js";
+import type { CuratedProduct, StoreFlowChannel } from "./types.js";
 
 export type SalesAngle = "em-alta" | "oferta" | "prova-social" | "dor-solucao" | "curiosidade";
 export type DraftVariant = "A" | "B";
@@ -73,7 +73,7 @@ export function anglesFor(
  * Horarios de partida por canal (horario de Brasilia). Sao hipoteses para o
  * primeiro teste — a versao A e a B saem em horarios diferentes para medir.
  */
-export const DEFAULT_POST_TIMES: Readonly<Record<FlowStoryChannel, readonly [string, string]>> = {
+export const DEFAULT_POST_TIMES: Readonly<Record<StoreFlowChannel, readonly [string, string]>> = {
   instagram: ["12:00", "19:30"],
   whatsapp: ["12:00", "20:00"],
   telegram: ["09:00", "20:00"],
@@ -87,7 +87,7 @@ function formatPrice(price: number): string {
 /** Texto seguro por angulo (usado quando o LLM falha ou quebra regra). */
 export function angleTemplate(
   product: CuratedProduct,
-  channel: FlowStoryChannel,
+  channel: StoreFlowChannel,
   angle: SalesAngle,
 ): string {
   const p = product.product;

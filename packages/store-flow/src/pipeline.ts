@@ -1,5 +1,5 @@
 /**
- * Pipeline do andar Flow Story: Flow escolhe -> Story escreve -> humano aprova.
+ * Pipeline do andar Store Flow: Flow escolhe -> Driele escreve -> humano aprova.
  *
  * Nada e publicado aqui. A saida e uma fila de rascunhos PENDING_APPROVAL.
  */
@@ -12,18 +12,18 @@ import {
 import { FlowRobot } from "./flow-robot.js";
 import type { LearningReport } from "./learning.js";
 import { anglesFor, type DraftVariant } from "./sales-playbook.js";
-import { StoryWriter } from "./story-writer.js";
+import { DrieleWriter } from "./driele-writer.js";
 import type {
   DraftStatus,
-  FlowStoryConfig,
-  FlowStoryRun,
+  StoreFlowConfig,
+  StoreFlowRun,
   PostDraft,
   ProductCandidate,
 } from "./types.js";
 
-export interface FlowStoryRunInput {
+export interface StoreFlowRunInput {
   readonly products: readonly ProductCandidate[];
-  readonly config: FlowStoryConfig;
+  readonly config: StoreFlowConfig;
   readonly llm: LLMProvider;
   readonly links?: AffiliateLinkProvider;
   readonly campaignId?: string;
@@ -33,14 +33,14 @@ export interface FlowStoryRunInput {
   readonly learning?: Pick<LearningReport, "bestAngle" | "bestTimes">;
 }
 
-export async function runFlowStory(input: FlowStoryRunInput): Promise<FlowStoryRun> {
+export async function runStoreFlow(input: StoreFlowRunInput): Promise<StoreFlowRun> {
   if (input.config.channels.length === 0) {
-    throw new Error("Flow Story: informe ao menos um canal declarado no cadastro de afiliado.");
+    throw new Error("Store Flow: informe ao menos um canal declarado no cadastro de afiliado.");
   }
   const links = input.links ?? new ManualAffiliateLinkProvider();
   const flow = new FlowRobot(links);
-  const campaignId = input.campaignId ?? "flowstory";
-  const story = new StoryWriter(input.llm);
+  const campaignId = input.campaignId ?? "storeflow";
+  const driele = new DrieleWriter(input.llm);
 
   const { curated, rejected } = await flow.curate(
     input.products,
@@ -57,7 +57,7 @@ export async function runFlowStory(input: FlowStoryRunInput): Promise<FlowStoryR
         const trackingSubId = `${campaignId}-${product.product.id}-${channel}-${variant}`;
         const link = await links.createLink({ productUrl: product.product.url, subId: trackingSubId });
         drafts.push(
-          await story.write(product, channel, input.config, {
+          await driele.write(product, channel, input.config, {
             variant,
             angle: angles[i]!,
             trackingSubId,

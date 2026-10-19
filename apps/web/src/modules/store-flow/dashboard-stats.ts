@@ -1,5 +1,5 @@
 /**
- * Números do painel do andar Flow Story, calculados a partir da mesma rodada
+ * Números do painel do andar Store Flow, calculados a partir da mesma rodada
  * que a Sala de Aprovação usa (review-queue.ts). Funções puras: a tela só
  * desenha o que sai daqui.
  */
@@ -9,7 +9,7 @@ import {
   SIGNAL_LABEL,
   countByStatus,
   type DraftStatus,
-  type FlowStoryChannel,
+  type StoreFlowChannel,
   type ReviewRun,
 } from "./review-queue";
 
@@ -40,7 +40,7 @@ export interface ReasonBucket {
 }
 
 export interface ChannelRow {
-  readonly channel: FlowStoryChannel;
+  readonly channel: StoreFlowChannel;
   readonly label: string;
   readonly approved: number;
   readonly pending: number;
@@ -138,7 +138,7 @@ export function computeDashboard(run: ReviewRun): DashboardStats {
     .map(([id, v]) => ({ id, ...v }))
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 
-  const channelMap = new Map<FlowStoryChannel, ChannelRow>();
+  const channelMap = new Map<StoreFlowChannel, ChannelRow>();
   for (const d of run.drafts) {
     const row = channelMap.get(d.channel) ?? {
       channel: d.channel,
@@ -156,7 +156,7 @@ export function computeDashboard(run: ReviewRun): DashboardStats {
       total: row.total + 1,
     });
   }
-  const order = Object.keys(CHANNEL_LABEL) as FlowStoryChannel[];
+  const order = Object.keys(CHANNEL_LABEL) as StoreFlowChannel[];
   const channels = order.flatMap((c) => {
     const row = channelMap.get(c);
     return row ? [row] : [];
@@ -165,7 +165,7 @@ export function computeDashboard(run: ReviewRun): DashboardStats {
   const funnel: FunnelStep[] = [
     { id: "analyzed", label: "Analisados", value: chosen + rejectedProducts, hint: "produtos que a Flow avaliou" },
     { id: "chosen", label: "Escolhidos", value: chosen, hint: "passaram na curadoria da Flow" },
-    { id: "written", label: "Posts escritos", value: totalDrafts, hint: "textos que a Story preparou" },
+    { id: "written", label: "Posts escritos", value: totalDrafts, hint: "textos que a Driele preparou" },
     { id: "approved", label: "Aprovados", value: drafts.APPROVED, hint: "liberados por você para publicar" },
   ];
 

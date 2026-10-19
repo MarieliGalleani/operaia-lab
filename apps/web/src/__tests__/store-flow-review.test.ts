@@ -12,13 +12,13 @@ import {
   parseRun,
   reopen,
   replaceDraft,
-} from "@/modules/flow-story/review-queue";
+} from "@/modules/store-flow/review-queue";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 /** Saída real do CLI `run:csv` com o CSV de exemplo (modo deterministic). */
-const FIXTURE = readFileSync(join(HERE, "fixtures", "flow-story-rodada.json"), "utf8");
+const FIXTURE = readFileSync(join(HERE, "fixtures", "store-flow-rodada.json"), "utf8");
 
-describe("Sala de Aprovação — Flow Story", () => {
+describe("Sala de Aprovação — Store Flow", () => {
   it("lê a rodada gerada pelo CLI do pacote", () => {
     const run = parseRun(FIXTURE);
     expect(run.curated.length).toBe(2);

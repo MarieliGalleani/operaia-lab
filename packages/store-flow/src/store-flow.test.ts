@@ -12,10 +12,10 @@ import {
   flowProfile,
   parseProductsCsv,
   reviewDraft,
-  runFlowStory,
-  storyProfile,
+  runStoreFlow,
+  drieleProfile,
   type AffiliateLinkProvider,
-  type FlowStoryConfig,
+  type StoreFlowConfig,
   type ProductCandidate,
 } from "./index.js";
 
@@ -52,18 +52,18 @@ function product(overrides: Partial<ProductCandidate> = {}): ProductCandidate {
   };
 }
 
-const config: FlowStoryConfig = {
+const config: StoreFlowConfig = {
   niche: "casa e organização",
   categories: ["casa"],
   channels: ["instagram", "whatsapp"],
 };
 
-describe("Flow Story — elenco", () => {
-  it("Flow é o Robô de Ofertas e Story é a Escritora", () => {
+describe("Store Flow — elenco", () => {
+  it("Flow é o Robô de Ofertas e Driele é a Escritora", () => {
     expect(flowProfile.id).toBe("flow");
     expect(flowProfile.role).toBe("Robô de Ofertas");
-    expect(storyProfile.id).toBe("story");
-    expect(storyProfile.role).toBe("Escritora");
+    expect(drieleProfile.id).toBe("driele");
+    expect(drieleProfile.role).toBe("Escritora");
   });
 });
 
@@ -115,7 +115,7 @@ describe("Flow — curadoria", () => {
   });
 });
 
-describe("Story — guardrails", () => {
+describe("Driele — guardrails", () => {
   it("bloqueia promessa proibida e preço inventado", () => {
     const curated = {
       product: product(),
@@ -133,12 +133,12 @@ describe("Story — guardrails", () => {
   });
 });
 
-describe("Pipeline Flow -> Story -> aprovação", () => {
+describe("Pipeline Flow -> Driele -> aprovação", () => {
   it("gera um rascunho por produto e canal, sempre aguardando aprovação", async () => {
     const llm = new StubLLM(
       JSON.stringify({ text: "Gaveta bagunçada nunca mais! Por R$ 49,90.", hashtags: ["organização", "casa"] }),
     );
-    const run = await runFlowStory({ products: [product()], config, llm, links: trackedLinks });
+    const run = await runStoreFlow({ products: [product()], config, llm, links: trackedLinks });
 
     expect(run.drafts).toHaveLength(4); // 1 produto × 2 canais × versões A e B
     for (const draft of run.drafts) {
@@ -150,12 +150,12 @@ describe("Pipeline Flow -> Story -> aprovação", () => {
     }
     expect(run.drafts[0]?.hashtags).toContain("#organizacao");
     const system = llm.calls[0]?.[0]?.content ?? "";
-    expect(system).toContain("Story");
+    expect(system).toContain("Driele");
     expect(system).toContain("casa e organização");
   });
 
   it("usa o template seguro quando o LLM viola regra ou falha", async () => {
-    const bad = await runFlowStory({
+    const bad = await runStoreFlow({
       products: [product()],
       config: { ...config, channels: ["whatsapp"] },
       llm: new StubLLM(JSON.stringify({ text: "Melhor preço do Brasil, garantido!" })),
@@ -163,7 +163,7 @@ describe("Pipeline Flow -> Story -> aprovação", () => {
     expect(bad.drafts[0]?.source).toBe("template");
     expect(bad.drafts[0]?.text).toContain("R$ 49,90");
 
-    const down = await runFlowStory({
+    const down = await runStoreFlow({
       products: [product()],
       config: { ...config, channels: ["tiktok"] },
       llm: new StubLLM(new Error("timeout")),
@@ -174,12 +174,12 @@ describe("Pipeline Flow -> Story -> aprovação", () => {
 
   it("exige canal declarado", async () => {
     await expect(
-      runFlowStory({ products: [product()], config: { ...config, channels: [] }, llm: new StubLLM("{}") }),
+      runStoreFlow({ products: [product()], config: { ...config, channels: [] }, llm: new StubLLM("{}") }),
     ).rejects.toThrow(/canal/);
   });
 
   it("aprovação humana não deixa tirar o aviso de afiliado nem revisar duas vezes", async () => {
-    const run = await runFlowStory({
+    const run = await runStoreFlow({
       products: [product()],
       config: { ...config, channels: ["telegram"] },
       llm: new StubLLM("sem json"),
@@ -247,7 +247,7 @@ describe("Táticas de vendedor", () => {
 
   it("teste A/B: versões com ângulo, horário e subId próprios", async () => {
     const llm = new StubLLM(JSON.stringify({ text: "Nota 4.8 e mais de 3200 vendidos!" }));
-    const run = await runFlowStory({
+    const run = await runStoreFlow({
       products: [product()],
       config: { ...config, channels: ["instagram"] },
       llm,
@@ -266,7 +266,7 @@ describe("Táticas de vendedor", () => {
   });
 
   it("com A/B desligado sai uma versão só", async () => {
-    const run = await runFlowStory({
+    const run = await runStoreFlow({
       products: [product()],
       config: { ...config, channels: ["whatsapp"] },
       llm: new StubLLM("{}"),
