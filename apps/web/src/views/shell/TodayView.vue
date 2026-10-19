@@ -322,7 +322,7 @@ const ariaSummary = computed(() => {
         <section>
           <div class="op-section-head">
             <h3>Quem está no escritório agora</h3>
-            <router-link :to="floor.teamRoute" class="op-section-link">Ver equipe</router-link>
+            <router-link :to="floor.officeRoute" class="op-section-link">Ver no escritório 3D</router-link>
           </div>
           <div v-for="d in onDuty.slice(0, 6)" :key="d.employee.id" class="op-person-row">
             <span class="op-avatar-circle">{{ d.employee.emoji }}</span>

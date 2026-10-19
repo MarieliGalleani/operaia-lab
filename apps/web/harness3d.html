@@ -1,0 +1,9 @@
+<!doctype html><html><body style="margin:0;background:#000"><canvas id="c" style="width:1200px;height:760px;display:block"></canvas>
+<script type="module">
+import { OfficeScene } from "/src/modules/office-3d/office-scene.ts";
+import { OFFICE_3D_FLOORS } from "/src/modules/office-3d/floors-3d.ts";
+const q = new URLSearchParams(location.search);
+const s = new OfficeScene(document.getElementById("c"), { theme: q.get("t") || "dark", reducedMotion: false });
+s.resize(1200, 760);
+s.load(OFFICE_3D_FLOORS[q.get("f") || "dev"], [{ id: "luna", state: "busy" }, { id: "operaia-ceo", state: "busy" }]);
+</script></body></html>

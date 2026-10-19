@@ -42,6 +42,8 @@ export interface CastMember {
   readonly hair: string;
   readonly longHair?: boolean;
   readonly robot?: boolean;
+  /** Sprite pixel-art do boneco (os mesmos do Campus). */
+  readonly sprite: string;
   /** true quando o status vem do Command Center (Equipe Digital). */
   readonly live: boolean;
 }
@@ -62,17 +64,17 @@ export interface Office3DFloor {
 }
 
 export const CAST: Readonly<Record<string, CastMember>> = {
-  "operaia-ceo": { id: "operaia-ceo", name: "Opera", role: "CEO · coordena o prédio", color: "#5b8cff", skin: "#f1d3b3", hair: "#2b1d14", live: true },
-  aurora: { id: "aurora", name: "Aurora", role: "Finanças", color: "#c3e86b", skin: "#c98f63", hair: "#1b130d", live: true },
-  themis: { id: "themis", name: "Themis", role: "Jurídico", color: "#e0a3ff", skin: "#e8b98f", hair: "#5a3a22", live: true },
-  "cto-mag": { id: "cto-mag", name: "Mag", role: "CTO · coordena o andar", color: "#8b7bff", skin: "#f1d3b3", hair: "#20160f", live: true },
-  luna: { id: "luna", name: "Luna", role: "Product Designer", color: "#ff8fb1", skin: "#e8b98f", hair: "#3a2318", longHair: true, live: true },
-  nexus: { id: "nexus", name: "Nexus", role: "Product Manager", color: "#ffb35c", skin: "#c98f63", hair: "#111111", live: true },
-  atlas: { id: "atlas", name: "Atlas", role: "Especialista em automação", color: "#3ddc97", skin: "#8d5a3b", hair: "#0e0a08", live: true },
-  orion: { id: "orion", name: "Orion", role: "Operações", color: "#5cd0ff", skin: "#f1d3b3", hair: "#7a4b23", live: true },
-  mercurio: { id: "mercurio", name: "Mercúrio", role: "Marketing", color: "#ffd25c", skin: "#e8b98f", hair: "#2b1d14", live: true },
-  "sf-driele": { id: "sf-driele", name: "Driele", role: "Escritora de ofertas", color: "#ff9d7a", skin: "#c98f63", hair: "#4a2a16", longHair: true, live: false },
-  "sf-flow": { id: "sf-flow", name: "Flow", role: "Robô de ofertas", color: "#5cd0ff", skin: "#c9d3e6", hair: "#c9d3e6", robot: true, live: false },
+  "operaia-ceo": { id: "operaia-ceo", name: "Opera", role: "CEO · coordena o prédio", color: "#5b8cff", skin: "#f1d3b3", hair: "#2b1d14", sprite: "/assets/office/avatars/av1.png", live: true },
+  aurora: { id: "aurora", name: "Aurora", role: "Finanças", color: "#c3e86b", skin: "#c98f63", hair: "#1b130d", sprite: "/assets/office/avatars/av5.png", live: true },
+  themis: { id: "themis", name: "Themis", role: "Jurídico", color: "#e0a3ff", skin: "#e8b98f", hair: "#5a3a22", sprite: "/assets/office/avatars/av6.png", live: true },
+  "cto-mag": { id: "cto-mag", name: "Mag", role: "CTO · coordena o andar", color: "#8b7bff", skin: "#f1d3b3", hair: "#20160f", sprite: "/assets/office/avatars/av4.png", live: true },
+  luna: { id: "luna", name: "Luna", role: "Product Designer", color: "#ff8fb1", skin: "#e8b98f", hair: "#3a2318", longHair: true, sprite: "/assets/office/avatars/av3.png", live: true },
+  nexus: { id: "nexus", name: "Nexus", role: "Product Manager", color: "#ffb35c", skin: "#c98f63", hair: "#111111", sprite: "/assets/office/avatars/av6.png", live: true },
+  atlas: { id: "atlas", name: "Atlas", role: "Especialista em automação", color: "#3ddc97", skin: "#8d5a3b", hair: "#0e0a08", sprite: "/assets/office/avatars/av6.png", live: true },
+  orion: { id: "orion", name: "Orion", role: "Operações", color: "#5cd0ff", skin: "#f1d3b3", hair: "#7a4b23", sprite: "/assets/office/avatars/av5.png", live: true },
+  mercurio: { id: "mercurio", name: "Mercúrio", role: "Marketing", color: "#ffd25c", skin: "#e8b98f", hair: "#2b1d14", sprite: "/assets/office/avatars/av3.png", live: true },
+  "sf-driele": { id: "sf-driele", name: "Driele", role: "Escritora de ofertas", color: "#ff9d7a", skin: "#c98f63", hair: "#4a2a16", longHair: true, sprite: "/assets/office/avatars/av3.png", live: false },
+  "sf-flow": { id: "sf-flow", name: "Flow", role: "Robô de ofertas", color: "#5cd0ff", skin: "#c9d3e6", hair: "#c9d3e6", robot: true, sprite: "/assets/office/avatars/av6.png", live: false },
 };
 
 export const OFFICE_3D_FLOORS: Readonly<Record<Office3DFloorId, Office3DFloor>> = {

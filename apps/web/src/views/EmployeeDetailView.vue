@@ -67,7 +67,7 @@ const completed = computed(() => missions.value.filter((m) => m.status === "COMP
     :show-refresh="false"
   >
     <template #extra>
-      <router-link :to="floor.teamRoute" class="op-btn">← Equipe</router-link>
+      <router-link :to="floor.officeRoute" class="op-btn">← Escritório 3D</router-link>
     </template>
   </OperationalHeader>
   <div class="op-content">

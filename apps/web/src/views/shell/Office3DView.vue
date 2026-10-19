@@ -18,6 +18,7 @@ import {
   type Office3DFloorId,
 } from "@/modules/office-3d/floors-3d";
 import type { OfficeScene, PersonStatus } from "@/modules/office-3d/office-scene";
+import { createEmployeeStatsClient, type EmployeeStats } from "@/data/adapters/employee-stats-client";
 
 const props = defineProps<{ floorId: Office3DFloorId }>();
 
@@ -33,6 +34,8 @@ const live = ref<ReadonlyMap<string, LiveAgentStatus>>(new Map());
 const liveLoaded = ref(false);
 const selectedId = ref<string | null>(null);
 const autoRotate = ref(false);
+const stats = ref<ReadonlyMap<string, EmployeeStats>>(new Map());
+const statsClient = createEmployeeStatsClient();
 let poll: ReturnType<typeof setInterval> | null = null;
 let observer: ResizeObserver | null = null;
 let downAt: { x: number; y: number } | null = null;
@@ -72,6 +75,38 @@ function nowText(entry: RosterEntry): string {
   if (!entry.member.live) return "O status ao vivo do Store Flow ainda não está ligado a esta tela.";
   if (entry.busy) return entry.objective ?? "Executando uma missão agora.";
   return "Livre agora. Quando chegar uma demanda para este andar, a mesa acende.";
+}
+
+async function loadStats(): Promise<void> {
+  try {
+    const list = await statsClient.listStats();
+    stats.value = new Map(list.map((x) => [x.employeeId, x]));
+  } catch (error) {
+    console.log("[office-3d] desempenho da equipe indisponivel", error);
+  }
+}
+
+function missionsLabel(id: string): string {
+  const st = stats.value.get(id);
+  return st && st.totalFinished > 0 ? String(st.missionsCompleted) : "—";
+}
+
+function successLabel(id: string): string {
+  const st = stats.value.get(id);
+  return st && st.successRate !== null ? `${Math.round(st.successRate * 100)}%` : "—";
+}
+
+function durationLabel(id: string): string {
+  const st = stats.value.get(id);
+  if (!st || st.avgDurationMs === null) return "—";
+  const min = st.avgDurationMs / 60000;
+  if (min < 1) return `${Math.round(st.avgDurationMs / 1000)}s`;
+  if (min < 60) return `${Math.round(min)}min`;
+  return `${(min / 60).toFixed(1)}h`;
+}
+
+function profileRoute(id: string): string {
+  return `/app/floor/${props.floorId === "portaria" ? "dev" : props.floorId}/team/${id}`;
 }
 
 async function refreshLive(): Promise<void> {
@@ -136,7 +171,7 @@ onMounted(async () => {
     console.log("[office-3d] falha ao iniciar a cena", error);
     failed.value = true;
   }
-  await refreshLive();
+  await Promise.all([refreshLive(), loadStats()]);
   poll = setInterval(() => void refreshLive(), POLL_MS);
 });
 
@@ -233,6 +268,12 @@ watch(
           <button type="button" class="o3d__close" aria-label="Fechar" @click="selectedId = null">×</button>
         </div>
         <p class="o3d__now">{{ nowText(selected) }}</p>
+        <dl v-if="selected.member.live" class="o3d__stats">
+          <div><dt>MISSÕES</dt><dd>{{ missionsLabel(selected.member.id) }}</dd></div>
+          <div><dt>SUCESSO</dt><dd>{{ successLabel(selected.member.id) }}</dd></div>
+          <div><dt>TEMPO MÉDIO</dt><dd>{{ durationLabel(selected.member.id) }}</dd></div>
+        </dl>
+        <router-link v-if="selected.member.live" :to="profileRoute(selected.member.id)" class="o3d__profile">Ver perfil completo</router-link>
         <div class="o3d__meta">
           <span>{{ stateLabel(selected).toUpperCase() }}</span>
           <span>{{ floor.code === "T" ? "TÉRREO" : `ANDAR ${floor.code}` }}</span>
@@ -253,6 +294,24 @@ watch(
 
       <p v-if="failed" class="o3d__fallback">Não foi possível iniciar o 3D neste navegador.</p>
     </section>
+
+    <section class="o3d__team" aria-labelledby="o3d-team">
+      <h2 id="o3d-team" class="o3d__team-title">EQUIPE DO ANDAR</h2>
+      <ul class="o3d__team-list">
+        <li v-for="r in roster" :key="r.member.id">
+          <button type="button" class="o3d__row" :class="{ 'is-selected': selectedId === r.member.id }" @click="selectedId = r.member.id">
+            <img :src="r.member.sprite" alt="" class="o3d__row-sprite" />
+            <span class="o3d__row-copy">
+              <span class="o3d__row-name">{{ r.member.name }}</span>
+              <span class="o3d__row-role">{{ r.member.role }}</span>
+            </span>
+            <span class="o3d__row-state" :class="{ 'is-busy': r.busy, 'is-off': !r.member.live }">{{ stateLabel(r) }}</span>
+            <span class="o3d__row-num" :title="'Missões concluídas'">{{ r.member.live ? missionsLabel(r.member.id) : "—" }}</span>
+            <span class="o3d__row-num" :title="'Taxa de sucesso'">{{ r.member.live ? successLabel(r.member.id) : "—" }}</span>
+          </button>
+        </li>
+      </ul>
+    </section>
   </div>
 </template>
 
@@ -261,14 +320,17 @@ watch(
   flex: 1;
   min-height: 0;
   display: flex;
+  flex-direction: column;
+  gap: 16px;
   padding: 16px;
   box-sizing: border-box;
+  overflow-y: auto;
 }
 
 .o3d__stage {
   position: relative;
-  flex: 1;
-  min-height: 480px;
+  flex: none;
+  height: max(480px, 72vh);
   border: 1px solid var(--op-line);
   border-radius: var(--op-radius);
   background: var(--op-panel-2);
@@ -567,6 +629,143 @@ watch(
   margin: 0;
   color: var(--op-muted);
   font-size: 14px;
+}
+
+.o3d__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.o3d__stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.o3d__stats dt {
+  font-family: var(--op-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--op-muted-3);
+}
+
+.o3d__stats dd {
+  margin: 0;
+  font-family: var(--op-font-mono);
+  font-size: 16px;
+  color: var(--op-ink-2);
+}
+
+.o3d__profile {
+  font-size: 13px;
+  color: var(--op-blue);
+  text-decoration: none;
+}
+
+.o3d__profile:hover {
+  text-decoration: underline;
+}
+
+.o3d__team {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.o3d__team-title {
+  margin: 0;
+  font-family: var(--op-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  color: var(--op-muted-3);
+}
+
+.o3d__team-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
+  gap: 8px;
+}
+
+.o3d__row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto 40px 44px;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--op-line);
+  border-radius: var(--op-radius-sm);
+  background: var(--op-panel);
+  color: var(--op-ink-3);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.o3d__row:hover,
+.o3d__row.is-selected {
+  border-color: var(--op-bd-sel);
+  background: var(--op-sel);
+}
+
+.o3d__row:focus-visible {
+  outline: 2px solid var(--op-cta);
+  outline-offset: 2px;
+}
+
+.o3d__row-sprite {
+  width: 32px;
+  height: 44px;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.o3d__row-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.o3d__row-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.o3d__row-role {
+  font-size: 12px;
+  color: var(--op-muted-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.o3d__row-state {
+  font-family: var(--op-font-mono);
+  font-size: 11px;
+  color: var(--op-amber);
+}
+
+.o3d__row-state.is-busy {
+  color: var(--op-green);
+}
+
+.o3d__row-state.is-off {
+  color: var(--op-muted-3);
+}
+
+.o3d__row-num {
+  font-family: var(--op-font-mono);
+  font-size: 12px;
+  color: var(--op-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 720px) {

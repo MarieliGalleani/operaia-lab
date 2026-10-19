@@ -20,7 +20,6 @@ import SignalsView from "@/views/shell/SignalsView.vue";
 import MarketingWorkView from "@/views/shell/MarketingWorkView.vue";
 import AutomationWorkView from "@/views/shell/AutomationWorkView.vue";
 import WorkView from "@/views/shell/WorkView.vue";
-import TeamView from "@/views/shell/TeamView.vue";
 import InfraView from "@/views/shell/InfraView.vue";
 import LoginView from "@/views/LoginView.vue";
 import CampusWorldPage from "@/views/CampusWorldPage.vue";
@@ -48,7 +47,6 @@ import ExecutionDetailView from "@/views/executions/ExecutionDetailView.vue";
 import ScheduleRulesView from "@/views/system/ScheduleRulesView.vue";
 import StoreFlowReviewView from "@/views/store-flow/StoreFlowReviewView.vue";
 import StoreFlowDashboardView from "@/views/store-flow/StoreFlowDashboardView.vue";
-import StoreFlowTeamView from "@/views/store-flow/StoreFlowTeamView.vue";
 
 const routes: RouteRecordRaw[] = [
   { path: "/", redirect: "/app" },
@@ -173,7 +171,8 @@ const routes: RouteRecordRaw[] = [
             path: "team",
             component: RouterView,
             children: [
-              { path: "", name: "team", component: TeamView },
+              // Equipe agora vive no Escritorio 3D (Interface 3.0).
+              { path: "", name: "team", redirect: "/app/floor/dev/office" },
               {
                 path: ":employeeId",
                 name: "employee-detail",
@@ -228,7 +227,8 @@ const routes: RouteRecordRaw[] = [
             path: "team",
             component: RouterView,
             children: [
-              { path: "", name: "automation-team", component: TeamView },
+              // Equipe agora vive no Escritorio 3D (Interface 3.0).
+              { path: "", name: "automation-team", redirect: "/app/floor/automation/office" },
               {
                 path: ":employeeId",
                 name: "automation-employee-detail",
@@ -260,7 +260,8 @@ const routes: RouteRecordRaw[] = [
             path: "team",
             component: RouterView,
             children: [
-              { path: "", name: "marketing-team", component: TeamView },
+              // Equipe agora vive no Escritorio 3D (Interface 3.0).
+              { path: "", name: "marketing-team", redirect: "/app/floor/marketing/office" },
               {
                 path: ":employeeId",
                 name: "marketing-employee-detail",
@@ -294,7 +295,7 @@ const routes: RouteRecordRaw[] = [
           { path: "office", name: "store-flow-office", component: Office3DView, props: { floorId: "store-flow" } },
           { path: "command", name: "store-flow", component: StoreFlowDashboardView },
           { path: "work", name: "store-flow-review", component: StoreFlowReviewView },
-          { path: "team", name: "store-flow-team", component: StoreFlowTeamView },
+          { path: "team", name: "store-flow-team", redirect: "/app/floor/store-flow/office" },
           { path: "signals", name: "store-flow-signals", component: SignalsView },
         ],
       },

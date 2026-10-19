@@ -58,17 +58,13 @@ interface Person {
   readonly id: string;
   readonly cast: CastMember;
   readonly group: THREE.Group;
-  readonly head: THREE.Object3D;
-  readonly armL: THREE.Object3D;
-  readonly armR: THREE.Object3D;
-  readonly legL: THREE.Object3D | null;
-  readonly legR: THREE.Object3D | null;
-  readonly headY: number;
-  readonly seatPos: THREE.Vector3 | null;
-  readonly seatRot: number;
+  readonly sprite: THREE.Sprite;
+  readonly height: number;
+  /** Posicao "de trabalho": em pe ao lado da mesa. */
+  readonly homePos: THREE.Vector3 | null;
   readonly screen: THREE.Mesh | null;
   state: PersonState;
-  seated: boolean;
+  atHome: boolean;
   path: THREE.Vector2[] | null;
   seg: number;
   t: number;
@@ -105,6 +101,8 @@ export class OfficeScene {
   private sized = false;
   private disposed = false;
   private readonly tmp = new THREE.Vector3();
+  private readonly loader = new THREE.TextureLoader();
+  private readonly textures = new Map<string, THREE.Texture>();
 
   constructor(private readonly canvas: HTMLCanvasElement, options: OfficeSceneOptions) {
     this.theme = options.theme;
@@ -159,7 +157,7 @@ export class OfficeScene {
       if (next === p.state) continue;
       p.state = next;
       if (p.screen) this.setScreen(p.screen, next === "busy");
-      if (next === "busy" && !p.seated && p.seatPos) this.goBackToSeat(p);
+      if (next === "busy" && !p.atHome && p.homePos) this.goBackToSeat(p);
     }
   }
 
@@ -231,6 +229,8 @@ export class OfficeScene {
     this.controls.dispose();
     for (const m of this.materials.values()) m.dispose();
     this.materials.clear();
+    for (const tex of this.textures.values()) tex.dispose();
+    this.textures.clear();
     this.renderer.dispose();
   }
 
@@ -258,6 +258,8 @@ export class OfficeScene {
       p.group.traverse((o) => {
         const mesh = o as THREE.Mesh;
         if (mesh.geometry) mesh.geometry.dispose();
+        const m = mesh.material as THREE.Material | undefined;
+        if (m && !(m instanceof THREE.MeshLambertMaterial)) m.dispose();
       });
     }
     this.floorGroup = null;
@@ -289,16 +291,17 @@ export class OfficeScene {
       const state = id ? this.statuses.get(id) ?? "idle" : "idle";
       const screen = this.desk(g, d.x, d.z, Boolean(id) && state === "busy");
       if (id) {
-        this.addPerson(id, new THREE.Vector3(d.x, 0, d.z - 0.62), 0, screen);
+        // em pe ao lado da mesa (lado esquerdo de quem olha), de frente para a camera
+        this.addPerson(id, new THREE.Vector3(d.x - 1.25, 0, d.z + 0.15), screen);
       }
     });
     if (floor.ceo) {
       const ceoRoom = floor.rooms.find((r) => r.kind === "ceo");
-      if (ceoRoom) this.addPerson(floor.ceo, new THREE.Vector3(ceoRoom.x, 0, ceoRoom.z - 0.35), 0, null);
+      if (ceoRoom) this.addPerson(floor.ceo, new THREE.Vector3(ceoRoom.x - 1.75, 0, ceoRoom.z + 0.7), null);
     }
     for (const id of floor.cast.filter((x) => CAST[x]?.robot)) {
       const start = floor.hangouts[0] ?? [0, 2];
-      const robot = this.addPerson(id, null, 0, null);
+      const robot = this.addPerson(id, null, null);
       robot.group.position.set(start[0], 0, start[1]);
       robot.path = this.robotLoop();
       robot.seg = 0;
@@ -548,79 +551,64 @@ export class OfficeScene {
   }
 
   // --------------------------------------------------------------- gente
+  //
+  // Os bonecos sao os mesmos sprites pixel-art do Campus, desenhados como
+  // "cartoes" que sempre olham para a camera (billboard). Ficam em pe ao
+  // lado da mesa — sprite nao senta — e a mesa acende quando trabalham.
 
-  private addPerson(id: string, seat: THREE.Vector3 | null, rot: number, screen: THREE.Mesh | null): Person {
-    const cast = CAST[id] ?? { id, name: id, role: "", color: "#8590a3", skin: "#e8b98f", hair: "#2b1d14", live: false };
-    const g = new THREE.Group();
-    let head: THREE.Object3D;
-    let armL: THREE.Object3D;
-    let armR: THREE.Object3D;
-    let legL: THREE.Group | null = null;
-    let legR: THREE.Group | null = null;
-    let headY = 2.05;
-
-    if (cast.robot) {
-      this.box(g, 0.55, 0.6, 0.45, "#c9d3e6", 0, 0.25, 0);
-      head = this.box(g, 0.6, 0.42, 0.48, "#dfe6f2", 0, 0.9, 0);
-      this.box(g, 0.46, 0.22, 0.02, "#0b1220", 0, 0.99, 0.245);
-      this.box(g, 0.08, 0.06, 0.01, cast.color, -0.1, 1.06, 0.256, { emissive: cast.color, emissiveIntensity: 1 });
-      this.box(g, 0.08, 0.06, 0.01, cast.color, 0.1, 1.06, 0.256, { emissive: cast.color, emissiveIntensity: 1 });
-      this.cyl(g, 0.02, 0.02, 0.25, "#8a94a8", 0, 1.32, 0, 6);
-      const ant = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), this.mat(cast.color, { emissive: cast.color, emissiveIntensity: 1 }, true));
-      ant.position.set(0, 1.6, 0);
-      g.add(ant);
-      this.blink(ant, 3);
-      const wheel = this.cyl(g, 0.25, 0.25, 0.22, "#3a4560", 0, 0, 0, 14);
-      wheel.rotation.x = Math.PI / 2;
-      wheel.position.y = 0.13;
-      armL = this.box(g, 0.12, 0.42, 0.12, cast.color, -0.36, 0.38, 0);
-      armR = this.box(g, 0.12, 0.42, 0.12, cast.color, 0.36, 0.38, 0);
-      headY = 1.75;
-    } else {
-      legL = new THREE.Group();
-      legR = new THREE.Group();
-      legL.position.set(-0.12, 0.62, 0);
-      legR.position.set(0.12, 0.62, 0);
-      for (const leg of [legL, legR]) {
-        this.box(leg, 0.18, 0.62, 0.2, "#1d2840", 0, -0.62, 0);
-        this.box(leg, 0.2, 0.1, 0.28, "#0b0e14", 0, -0.62, 0.03);
-        g.add(leg);
-      }
-      this.box(g, 0.5, 0.6, 0.3, cast.color, 0, 0.62, 0);
-      const aL = new THREE.Group();
-      const aR = new THREE.Group();
-      aL.position.set(-0.32, 1.18, 0);
-      aR.position.set(0.32, 1.18, 0);
-      for (const arm of [aL, aR]) {
-        this.box(arm, 0.14, 0.5, 0.16, cast.color, 0, -0.5, 0);
-        this.box(arm, 0.13, 0.12, 0.14, cast.skin, 0, -0.62, 0);
-        g.add(arm);
-      }
-      armL = aL;
-      armR = aR;
-      const h = new THREE.Group();
-      h.position.set(0, 1.24, 0);
-      this.box(h, 0.42, 0.42, 0.4, cast.skin, 0, 0, 0);
-      this.box(h, 0.46, 0.14, 0.44, cast.hair, 0, 0.36, 0);
-      this.box(h, 0.46, 0.3, 0.1, cast.hair, 0, 0.16, -0.19);
-      if (cast.longHair) this.box(h, 0.48, 0.5, 0.12, cast.hair, 0, -0.12, -0.2);
-      this.box(h, 0.05, 0.05, 0.01, "#141414", -0.09, 0.2, 0.205);
-      this.box(h, 0.05, 0.05, 0.01, "#141414", 0.09, 0.2, 0.205);
-      g.add(h);
-      head = h;
+  private texture(url: string): THREE.Texture {
+    let tex = this.textures.get(url);
+    if (!tex) {
+      tex = this.loader.load(url, (t) => {
+        // Corrige a proporcao assim que a imagem chega.
+        for (const p of this.people) {
+          if (p.cast.sprite === url && t.image) {
+            const img = t.image as { width: number; height: number };
+            p.sprite.scale.set((p.height * img.width) / img.height, p.height, 1);
+          }
+        }
+      });
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.magFilter = THREE.NearestFilter;
+      tex.minFilter = THREE.LinearMipMapLinearFilter;
+      this.textures.set(url, tex);
     }
+    return tex;
+  }
+
+  private addPerson(id: string, home: THREE.Vector3 | null, screen: THREE.Mesh | null): Person {
+    const cast: CastMember = CAST[id] ?? {
+      id, name: id, role: "", color: "#8590a3", skin: "#e8b98f", hair: "#2b1d14",
+      sprite: "/assets/office/avatars/av2.png", live: false,
+    };
+    const g = new THREE.Group();
+    const tex = this.texture(cast.sprite);
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, alphaTest: 0.35, depthWrite: true });
+    const sprite = new THREE.Sprite(mat);
+    const height = 2.3;
+    const img = tex.image as { width: number; height: number } | undefined;
+    const aspect = img && img.height ? img.width / img.height : 0.5;
+    sprite.scale.set(height * aspect, height, 1);
+    sprite.center.set(0.5, 0.02);
+    g.add(sprite);
+    // sombra no chao
+    const shadow = new THREE.Mesh(
+      new THREE.CircleGeometry(0.42, 20),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.28, depthWrite: false }),
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = 0.02;
+    shadow.scale.set(1, 0.6, 1);
+    g.add(shadow);
 
     g.userData["personId"] = id;
-    g.traverse((o) => {
-      o.userData["personId"] = id;
-    });
+    sprite.userData["personId"] = id;
     const person: Person = {
-      id, cast, group: g, head, armL, armR, legL, legR, headY,
-      seatPos: seat ? seat.clone() : null,
-      seatRot: rot,
+      id, cast, group: g, sprite, height,
+      homePos: home ? home.clone() : null,
       screen,
       state: this.statuses.get(id) ?? "idle",
-      seated: false,
+      atHome: false,
       path: null,
       seg: 0,
       t: 0,
@@ -628,55 +616,36 @@ export class OfficeScene {
       nextStroll: 8 + Math.random() * 20,
       tag: null,
     };
-    if (seat) this.sit(person);
+    if (home) this.goHome(person);
     this.scene.add(g);
     this.people.push(person);
     return person;
   }
 
-  private sit(p: Person): void {
-    if (!p.seatPos) return;
-    p.group.position.set(p.seatPos.x, -0.12, p.seatPos.z);
-    p.group.rotation.y = p.seatRot;
-    if (p.legL && p.legR) {
-      p.legL.rotation.x = -Math.PI / 2;
-      p.legR.rotation.x = -Math.PI / 2;
-    }
-    p.seated = true;
+  private goHome(p: Person): void {
+    if (!p.homePos) return;
+    p.group.position.set(p.homePos.x, 0, p.homePos.z);
+    p.atHome = true;
     p.path = null;
   }
 
-  private stand(p: Person): void {
-    if (p.legL && p.legR) {
-      p.legL.rotation.x = 0;
-      p.legR.rotation.x = 0;
-    }
-    p.armL.rotation.x = 0;
-    p.armR.rotation.x = 0;
-    p.head.rotation.set(0, 0, 0);
-    p.group.position.y = 0;
-    p.seated = false;
-  }
-
-  /** Quem esta livre levanta de vez em quando, vai ate a copa/lounge e volta. */
+  /** Quem esta livre sai de vez em quando ate a copa/lounge e volta. */
   private stroll(p: Person): void {
-    if (!p.seatPos || !this.floor) return;
+    if (!p.homePos || !this.floor) return;
     const spots = this.floor.hangouts;
     const spot = spots[Math.floor(Math.random() * spots.length)] ?? [0, 2];
-    const out = new THREE.Vector2(p.seatPos.x, p.seatPos.z - 0.7);
-    const aisle = new THREE.Vector2(p.seatPos.x, p.seatPos.z - 1.5);
-    this.stand(p);
-    p.group.position.set(out.x, 0, out.y);
-    p.path = [out, aisle, new THREE.Vector2(spot[0], spot[1]), aisle, out];
+    const home = new THREE.Vector2(p.homePos.x, p.homePos.z);
+    const aisle = new THREE.Vector2(p.homePos.x, p.homePos.z + 1.1);
+    p.atHome = false;
+    p.path = [home, aisle, new THREE.Vector2(spot[0], spot[1]), aisle, home];
     p.seg = 0;
     p.t = 0;
   }
 
   private goBackToSeat(p: Person): void {
-    if (!p.seatPos) return;
+    if (!p.homePos) return;
     const here = new THREE.Vector2(p.group.position.x, p.group.position.z);
-    const out = new THREE.Vector2(p.seatPos.x, p.seatPos.z - 0.7);
-    p.path = [here, out];
+    p.path = [here, new THREE.Vector2(p.homePos.x, p.homePos.z)];
     p.seg = 0;
     p.t = 0;
   }
@@ -707,22 +676,19 @@ export class OfficeScene {
         this.walk(p, dt, t);
         continue;
       }
-      if (!p.seated) continue;
+      if (!p.atHome) continue;
       if (p.state === "busy") {
-        const a = Math.sin(t * 14 + p.phase) * 0.18;
-        p.armL.rotation.x = -1.1 + a;
-        p.armR.rotation.x = -1.1 - a;
-        p.head.rotation.x = Math.sin(t * 1.3 + p.phase) * 0.05;
-        p.head.rotation.y = 0;
+        // trabalhando: balanço curto e rapido, tela pulsando
+        p.sprite.position.y = Math.abs(Math.sin(t * 6 + p.phase)) * 0.03;
+        p.sprite.material.rotation = 0;
         if (p.screen) {
           (p.screen.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.45 + Math.sin(t * 3 + p.phase) * 0.12;
         }
       } else {
-        p.armL.rotation.x = -0.5;
-        p.armR.rotation.x = -0.5;
-        p.head.rotation.x = 0;
-        p.head.rotation.y = Math.sin(t * 0.6 + p.phase) * 0.35;
-        p.group.position.y = -0.12 + Math.sin(t * 1.6 + p.phase) * 0.008;
+        // livre: respiracao lenta
+        const k = 1 + Math.sin(t * 1.6 + p.phase) * 0.012;
+        p.sprite.scale.y = p.height * k;
+        p.sprite.position.y = 0;
         p.nextStroll -= dt;
         if (p.nextStroll <= 0) {
           p.nextStroll = 25 + Math.random() * 35;
@@ -740,16 +706,18 @@ export class OfficeScene {
     const a = path[p.seg]!;
     const b = path[p.seg + 1];
     if (!b) {
-      if (p.cast.robot) {
+      if (p.cast.robot || !p.homePos) {
         p.seg = 0;
         p.t = 0;
       } else {
-        this.sit(p);
+        this.goHome(p);
+        p.sprite.position.y = 0;
+        p.sprite.material.rotation = 0;
       }
       return;
     }
     const len = Math.max(0.01, a.distanceTo(b));
-    p.t += (dt * (p.cast.robot ? 1.0 : 1.3)) / len;
+    p.t += (dt * 1.3) / len;
     if (p.t >= 1) {
       p.t = 0;
       p.seg += 1;
@@ -757,19 +725,9 @@ export class OfficeScene {
     }
     p.group.position.x = a.x + (b.x - a.x) * p.t;
     p.group.position.z = a.y + (b.y - a.y) * p.t;
-    p.group.rotation.y = Math.atan2(b.x - a.x, b.y - a.y);
-    const s = Math.sin(t * 9) * 0.6;
-    if (p.legL && p.legR) {
-      p.legL.rotation.x = s;
-      p.legR.rotation.x = -s;
-      p.armL.rotation.x = -s * 0.7;
-      p.armR.rotation.x = s * 0.7;
-      p.group.position.y = Math.abs(Math.cos(t * 9)) * 0.04;
-    } else {
-      p.group.position.y = Math.sin(t * 6) * 0.03;
-      p.armL.rotation.x = s * 0.3;
-      p.armR.rotation.x = -s * 0.3;
-    }
+    // passinho: pulo curto + leve balanço lateral
+    p.sprite.position.y = Math.abs(Math.sin(t * 9 + p.phase)) * 0.09;
+    p.sprite.material.rotation = Math.sin(t * 9 + p.phase) * 0.05;
   }
 
   private placeTags(): void {
@@ -777,7 +735,7 @@ export class OfficeScene {
     for (const p of this.people) {
       if (!p.tag) continue;
       this.tmp
-        .set(p.group.position.x, p.group.position.y + (p.seated ? p.headY - 0.15 : p.headY), p.group.position.z)
+        .set(p.group.position.x, p.group.position.y + p.height + 0.15, p.group.position.z)
         .project(this.camera);
       p.tag.style.left = `${((this.tmp.x + 1) / 2) * rect.width}px`;
       p.tag.style.top = `${((1 - this.tmp.y) / 2) * rect.height - 6}px`;
