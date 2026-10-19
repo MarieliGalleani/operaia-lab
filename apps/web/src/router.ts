@@ -14,6 +14,8 @@ import {
 import OfficeLayout from "@/layouts/OfficeLayout.vue";
 import OperationalShellLayout from "@/layouts/OperationalShellLayout.vue";
 import TodayView from "@/views/shell/TodayView.vue";
+import PortariaView from "@/views/shell/PortariaView.vue";
+import Office3DView from "@/views/shell/Office3DView.vue";
 import SignalsView from "@/views/shell/SignalsView.vue";
 import MarketingWorkView from "@/views/shell/MarketingWorkView.vue";
 import AutomationWorkView from "@/views/shell/AutomationWorkView.vue";
@@ -68,10 +70,19 @@ const routes: RouteRecordRaw[] = [
     component: RouterView,
     meta: { requiresAuth: true },
     children: [
-      { path: "", redirect: "/app/floor/dev/command" },
+      { path: "", redirect: "/app/portaria" },
+      // ---- Terreo — Portaria (Interface 3.0) -------------------------------
+      {
+        path: "portaria",
+        component: OperationalShellLayout,
+        children: [
+          { path: "", name: "portaria", component: PortariaView },
+          { path: "office", name: "portaria-office", component: Office3DView, props: { floorId: "portaria" } },
+        ],
+      },
       {
         path: "campus",
-        component: OfficeLayout,
+        component: OperationalShellLayout,
         children: [
           { path: "", name: "campus", component: CampusWorldPage },
         ],
@@ -82,6 +93,9 @@ const routes: RouteRecordRaw[] = [
         component: OperationalShellLayout,
         children: [
           { path: "", redirect: "/app/floor/dev/command" },
+          { path: "office", name: "dev-office", component: Office3DView, props: { floorId: "dev" } },
+          // /work nao existia no 1º andar (os trabalhos sao os workspaces).
+          { path: "work", redirect: "/app/floor/dev/workspaces" },
           {
             path: "command",
             component: RouterView,
@@ -176,6 +190,7 @@ const routes: RouteRecordRaw[] = [
         component: OperationalShellLayout,
         children: [
           { path: "", redirect: "/app/floor/automation/command" },
+          { path: "office", name: "automation-office", component: Office3DView, props: { floorId: "automation" } },
           {
             path: "command",
             name: "automation-command",
@@ -230,6 +245,7 @@ const routes: RouteRecordRaw[] = [
         component: OperationalShellLayout,
         children: [
           { path: "", redirect: "/app/floor/marketing/command" },
+          { path: "office", name: "marketing-office", component: Office3DView, props: { floorId: "marketing" } },
           {
             path: "command",
             name: "marketing-command",
@@ -275,6 +291,7 @@ const routes: RouteRecordRaw[] = [
         component: OperationalShellLayout,
         children: [
           { path: "", redirect: "/app/floor/store-flow/command" },
+          { path: "office", name: "store-flow-office", component: Office3DView, props: { floorId: "store-flow" } },
           { path: "command", name: "store-flow", component: StoreFlowDashboardView },
           { path: "work", name: "store-flow-review", component: StoreFlowReviewView },
           { path: "team", name: "store-flow-team", component: StoreFlowTeamView },

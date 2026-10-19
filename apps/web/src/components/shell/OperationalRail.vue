@@ -7,15 +7,22 @@
  * Vue Router em vez de estado local de aba (o handoff era uma
  * maquete solta; aqui cada item e uma pagina real, com URL propria).
  */
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { OFFICE_FLOORS, floorIdFromPath, type OfficeFloorDef } from "@/data/office-floors";
+import {
+  ELEVATOR_ORDER,
+  OFFICE_FLOORS,
+  PORTARIA,
+  floorIdFromPath,
+  isPortariaPath,
+  type OfficeFloorDef,
+} from "@/data/office-floors";
 import { useAppTheme } from "@/composables/useAppTheme";
 import { useAuth } from "@/composables/useAuth";
 
 const route = useRoute();
 const router = useRouter();
-const { theme, toggle: toggleTheme } = useAppTheme();
+const { theme, set: setTheme } = useAppTheme();
 const auth = useAuth();
 
 const props = defineProps<{
@@ -24,7 +31,7 @@ const props = defineProps<{
   todayCount: number | null;
 }>();
 
-const railFloorOpen = ref(false);
+const onPortaria = computed(() => isPortariaPath(route.path));
 
 const activeFloor = computed<OfficeFloorDef>(() => {
   const id = floorIdFromPath(route.path);
@@ -37,8 +44,15 @@ function isActive(path: string): boolean {
 
 function goFloor(id: string): void {
   const floor = OFFICE_FLOORS.find((f) => f.id === id);
-  if (floor) router.push(floor.todayRoute);
-  railFloorOpen.value = false;
+  if (!floor) return;
+  // Mantem a mesma "sala" ao trocar de andar: quem esta no Escritorio 3D
+  // continua no 3D do andar de destino.
+  const inOffice = route.path.endsWith("/office");
+  void router.push(inOffice ? floor.officeRoute : floor.todayRoute);
+}
+
+function goPortaria(): void {
+  void router.push(route.path.endsWith("/office") ? PORTARIA.officeRoute : PORTARIA.homeRoute);
 }
 
 async function signOut(): Promise<void> {
@@ -49,6 +63,7 @@ async function signOut(): Promise<void> {
 const adminLogin = computed(() => auth.user.value?.login ?? "administradora");
 
 const NAV_ICONS: Record<string, string> = {
+  office: "M3 9l9-6 9 6-9 6-9-6zm0 0v6l9 6 9-6V9M12 15v6",
   today: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 0 0 1 1h3m10-11l2 2m-2-2v10a1 1 0 0 1-1 1h-3m-6 0a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1m-6 0h6",
 };
 </script>
@@ -64,8 +79,10 @@ const NAV_ICONS: Record<string, string> = {
             type="button"
             class="op-theme-btn"
             :class="{ 'is-active': theme === 'dark' }"
-            aria-label="Escuro"
-            @click="toggleTheme"
+            :aria-pressed="theme === 'dark'"
+            aria-label="Modo escuro"
+            title="Modo escuro"
+            @click="setTheme('dark')"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
           </button>
@@ -73,8 +90,10 @@ const NAV_ICONS: Record<string, string> = {
             type="button"
             class="op-theme-btn"
             :class="{ 'is-active': theme === 'light' }"
-            aria-label="Claro"
-            @click="toggleTheme"
+            :aria-pressed="theme === 'light'"
+            aria-label="Modo claro"
+            title="Modo claro"
+            @click="setTheme('light')"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" /></svg>
           </button>
@@ -83,14 +102,16 @@ const NAV_ICONS: Record<string, string> = {
     </div>
 
     <div class="op-rail__floor">
-      <p class="op-eyebrow">Andar</p>
-      <div v-if="railFloorOpen" class="op-floor-list">
+      <p class="op-eyebrow">Elevador</p>
+      <div class="op-floor-list" role="list">
         <button
-          v-for="f in OFFICE_FLOORS"
+          v-for="f in ELEVATOR_ORDER"
           :key="f.id"
           type="button"
+          role="listitem"
           class="op-floor-option"
-          :class="{ 'is-active': f.id === activeFloor.id }"
+          :class="{ 'is-active': !onPortaria && f.id === activeFloor.id }"
+          :aria-current="!onPortaria && f.id === activeFloor.id ? 'page' : undefined"
           @click="goFloor(f.id)"
         >
           <span class="op-floor-badge">{{ f.code }}</span>
@@ -99,24 +120,45 @@ const NAV_ICONS: Record<string, string> = {
             <span class="op-floor-meta">{{ f.meta }}</span>
           </span>
         </button>
+        <button
+          type="button"
+          role="listitem"
+          class="op-floor-option"
+          :class="{ 'is-active': onPortaria }"
+          :aria-current="onPortaria ? 'page' : undefined"
+          @click="goPortaria"
+        >
+          <span class="op-floor-badge">{{ PORTARIA.code }}</span>
+          <span class="op-floor-copy">
+            <span class="op-floor-name">{{ PORTARIA.name }}</span>
+            <span class="op-floor-meta">{{ PORTARIA.meta }}</span>
+          </span>
+        </button>
       </div>
-      <button
-        v-else
-        type="button"
-        class="op-floor-collapsed"
-        :aria-label="`Andar atual: ${activeFloor.name}. Trocar andar`"
-        @click="railFloorOpen = true"
-      >
-        <span class="op-floor-badge">{{ activeFloor.code }}</span>
-        <span class="op-floor-name" style="flex: 1">{{ activeFloor.name }}</span>
-        <span class="op-floor-switch" aria-hidden="true">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" /></svg>
-        </span>
-      </button>
     </div>
 
     <div class="op-rail__nav">
+      <template v-if="onPortaria">
+        <p class="op-eyebrow">Portaria</p>
+        <router-link :to="PORTARIA.homeRoute" class="op-nav-item" aria-label="Visão do prédio" :class="{ 'is-active': route.path === PORTARIA.homeRoute }">
+          <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path :d="NAV_ICONS.today" /></svg>
+          <span class="op-nav-label">Visão do prédio</span>
+          <span class="op-nav-count"></span>
+        </router-link>
+        <router-link :to="PORTARIA.officeRoute" class="op-nav-item" aria-label="Escritório 3D" :class="{ 'is-active': isActive(PORTARIA.officeRoute) }">
+          <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path :d="NAV_ICONS.office" /></svg>
+          <span class="op-nav-label">Escritório 3D</span>
+          <span class="op-nav-count"></span>
+        </router-link>
+      </template>
+      <template v-else>
       <p class="op-eyebrow">{{ activeFloor.name }}</p>
+
+      <router-link :to="activeFloor.officeRoute" class="op-nav-item" aria-label="Escritório 3D" :class="{ 'is-active': isActive(activeFloor.officeRoute) }">
+        <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path :d="NAV_ICONS.office" /></svg>
+        <span class="op-nav-label">Escritório 3D</span>
+        <span class="op-nav-count"></span>
+      </router-link>
 
       <router-link :to="activeFloor.todayRoute" class="op-nav-item" aria-label="Hoje" :class="{ 'is-active': isActive(activeFloor.todayRoute) }">
         <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path :d="NAV_ICONS.today" /></svg>
@@ -141,6 +183,8 @@ const NAV_ICONS: Record<string, string> = {
         <span class="op-nav-label">Sinais</span>
         <span class="op-nav-count"></span>
       </router-link>
+
+      </template>
 
       <p class="op-eyebrow op-eyebrow--building">Prédio</p>
       <router-link to="/app/system/infra" class="op-nav-item" aria-label="Infraestrutura" :class="{ 'is-active': isActive('/app/system/infra') }">

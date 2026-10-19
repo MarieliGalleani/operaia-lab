@@ -13,6 +13,8 @@ export interface OfficeFloorDef {
   readonly meta: string;
   readonly missionFloor: MissionFloorResult | null;
   readonly todayRoute: string;
+  /** Escritorio 3D do andar (Interface 3.0). */
+  readonly officeRoute: string;
   readonly workRoute: string;
   readonly teamRoute: string;
   readonly signalsRoute: string;
@@ -28,6 +30,7 @@ export const OFFICE_FLOORS: readonly OfficeFloorDef[] = [
     meta: "equipe digital",
     missionFloor: "DEVELOPMENT",
     todayRoute: "/app/floor/dev/command",
+    officeRoute: "/app/floor/dev/office",
     workRoute: "/app/floor/dev/workspaces",
     teamRoute: "/app/floor/dev/team",
     signalsRoute: "/app/floor/dev/signals",
@@ -41,6 +44,7 @@ export const OFFICE_FLOORS: readonly OfficeFloorDef[] = [
     meta: "escritório",
     missionFloor: "AUTOMATION",
     todayRoute: "/app/floor/automation/command",
+    officeRoute: "/app/floor/automation/office",
     workRoute: "/app/floor/automation/automations",
     teamRoute: "/app/floor/automation/team",
     signalsRoute: "/app/floor/automation/signals",
@@ -54,6 +58,7 @@ export const OFFICE_FLOORS: readonly OfficeFloorDef[] = [
     meta: "agência",
     missionFloor: null,
     todayRoute: "/app/floor/marketing/command",
+    officeRoute: "/app/floor/marketing/office",
     workRoute: "/app/floor/marketing/work",
     teamRoute: "/app/floor/marketing/team",
     signalsRoute: "/app/floor/marketing/signals",
@@ -70,6 +75,7 @@ export const OFFICE_FLOORS: readonly OfficeFloorDef[] = [
     meta: "afiliados",
     missionFloor: null,
     todayRoute: "/app/floor/store-flow/command",
+    officeRoute: "/app/floor/store-flow/office",
     workRoute: "/app/floor/store-flow/work",
     teamRoute: "/app/floor/store-flow/team",
     signalsRoute: "/app/floor/store-flow/signals",
@@ -88,3 +94,19 @@ export function floorIdFromPath(path: string): OfficeFloorDef["id"] {
   if (path.startsWith("/app/floor/store-flow")) return "store-flow";
   return "dev";
 }
+
+/** Terreo do predio (Portaria): visao geral + escritorio do CEO. */
+export const PORTARIA = {
+  code: "T",
+  name: "Portaria",
+  meta: "térreo",
+  homeRoute: "/app/portaria",
+  officeRoute: "/app/portaria/office",
+} as const;
+
+export function isPortariaPath(path: string): boolean {
+  return path === PORTARIA.homeRoute || path.startsWith(`${PORTARIA.homeRoute}/`);
+}
+
+/** Ordem do elevador: andar mais alto primeiro, terreo por ultimo. */
+export const ELEVATOR_ORDER: readonly OfficeFloorDef[] = [...OFFICE_FLOORS].reverse();

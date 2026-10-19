@@ -6,16 +6,25 @@ export type AppTheme = "dark" | "light";
 
 function readStored(): AppTheme {
   try {
-    return localStorage.getItem(STORAGE_KEY) === "light" ? "light" : "dark";
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === "light" || stored === "dark") return stored;
   } catch {
-    return "dark";
+    // localStorage indisponivel — cai na preferencia do sistema.
   }
+  // Primeira visita: segue o modo claro/escuro do sistema operacional.
+  try {
+    if (window.matchMedia?.("(prefers-color-scheme: light)").matches) return "light";
+  } catch {
+    // ambiente sem matchMedia (testes) — escuro por padrao.
+  }
+  return "dark";
 }
 
 const theme = ref<AppTheme>(readStored());
 
 watchEffect(() => {
   document.documentElement.dataset.theme = theme.value;
+  document.documentElement.style.colorScheme = theme.value;
   try {
     localStorage.setItem(STORAGE_KEY, theme.value);
   } catch {

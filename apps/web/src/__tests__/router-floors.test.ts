@@ -18,8 +18,10 @@ function authenticatedSession(): AuthSession {
 
 describe("Floor routing (Fase 1)", () => {
   it.each([
-    ["/", "/app/floor/dev/command"],
-    ["/app", "/app/floor/dev/command"],
+    // Interface 3.0: a entrada do app e a Portaria (terreo).
+    ["/", "/app/portaria"],
+    ["/app", "/app/portaria"],
+    ["/app/floor/dev/work", "/app/floor/dev/workspaces"],
     ["/app/command", "/app/floor/dev/command"],
     ["/app/command/new", "/app/floor/dev/command/new"],
     ["/app/command/approvals", "/app/floor/dev/command/approvals"],
@@ -52,6 +54,12 @@ describe("Floor routing (Fase 1)", () => {
   });
 
   it.each([
+    "/app/portaria",
+    "/app/portaria/office",
+    "/app/floor/dev/office",
+    "/app/floor/automation/office",
+    "/app/floor/marketing/office",
+    "/app/floor/store-flow/office",
     "/app/floor/dev/command",
     "/app/floor/dev/missions",
     "/app/floor/automation/command",
