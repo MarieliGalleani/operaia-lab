@@ -34,6 +34,7 @@ jobs:
       - name: Executar pedidos pendentes
         env:
           VM_HOST: ${{ secrets.VM_HOST }}
+          APP_GITHUB_TOKEN: ${{ secrets.APP_GITHUB_TOKEN }}
         run: |
           set +e
           shopt -s nullglob
@@ -43,7 +44,8 @@ jobs:
             echo "::group::pedido $id"
             start=$(date -u +%FT%TZ)
             timeout 1800 ssh -i ~/.ssh/id_bridge -o BatchMode=yes -o StrictHostKeyChecking=yes \
-              -o ConnectTimeout=20 -o ServerAliveInterval=30 "ubuntu@$VM_HOST" 'bash -s' < "$req" > out.txt 2>&1
+              -o ConnectTimeout=20 -o ServerAliveInterval=30 "ubuntu@$VM_HOST" 'bash -s' \
+              < <(printf 'export APP_GITHUB_TOKEN=%q\n' "${APP_GITHUB_TOKEN:-}"; cat "$req") > out.txt 2>&1
             code=$?
             { echo "### id=$id start=$start end=$(date -u +%FT%TZ) exit=$code"; cat out.txt; } > plain.txt
             openssl rand -out k.bin 32
