@@ -1,0 +1,65 @@
+# Ponte Claude -> VM OperaIA.lab
+# Cada arquivo novo em bridge/requests/*.sh e executado na VM via SSH.
+# A saida e criptografada com bridge/pubkey.pem (so o Claude consegue ler)
+# e gravada em bridge/results/<id>.enc. Revogar: remover a chave
+# "github-bridge" de ~/.ssh/authorized_keys na VM.
+name: vm-bridge
+on:
+  push:
+    branches: [vm-bridge]
+    paths: ["bridge/requests/**"]
+permissions:
+  contents: write
+concurrency:
+  group: vm-bridge
+  cancel-in-progress: false
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: vm-bridge
+      - name: Preparar SSH
+        env:
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+        run: |
+          test -n "$VM_SSH_KEY" || { echo "Secret VM_SSH_KEY ausente"; exit 1; }
+          test -n "$VM_HOST" || { echo "Secret VM_HOST ausente"; exit 1; }
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VM_SSH_KEY" > ~/.ssh/id_bridge && chmod 600 ~/.ssh/id_bridge
+          printf '%s %s\n' "$VM_HOST" "$(cat bridge/host_key.pub)" > ~/.ssh/known_hosts
+      - name: Executar pedidos pendentes
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+        run: |
+          set +e
+          shopt -s nullglob
+          for req in bridge/requests/*.sh; do
+            id=$(basename "$req" .sh)
+            [ -f "bridge/results/$id.enc" ] && continue
+            echo "::group::pedido $id"
+            start=$(date -u +%FT%TZ)
+            timeout 1800 ssh -i ~/.ssh/id_bridge -o BatchMode=yes -o StrictHostKeyChecking=yes \
+              -o ConnectTimeout=20 -o ServerAliveInterval=30 "ubuntu@$VM_HOST" 'bash -s' < "$req" > out.txt 2>&1
+            code=$?
+            { echo "### id=$id start=$start end=$(date -u +%FT%TZ) exit=$code"; cat out.txt; } > plain.txt
+            openssl rand -out k.bin 32
+            openssl enc -aes-256-cbc -pbkdf2 -salt -pass file:k.bin -in plain.txt -out body.bin
+            openssl pkeyutl -encrypt -pubin -inkey bridge/pubkey.pem -pkeyopt rsa_padding_mode:oaep -in k.bin -out k.enc
+            { echo "KEY:$(base64 -w0 k.enc)"; echo "BODY:$(base64 -w0 body.bin)"; } > "bridge/results/$id.enc"
+            rm -f out.txt plain.txt k.bin k.enc body.bin
+            echo "pedido $id terminou com exit=$code"
+            echo "::endgroup::"
+          done
+          rm -f ~/.ssh/id_bridge
+      - name: Gravar resultados
+        run: |
+          git config user.name "vm-bridge"
+          git config user.email "vm-bridge@users.noreply.github.com"
+          git add bridge/results
+          git diff --cached --quiet && exit 0
+          git commit -qm "bridge: resultados"
+          for i in 1 2 3; do git pull -q --rebase origin vm-bridge && git push -q origin HEAD:vm-bridge && break; sleep 3; done
