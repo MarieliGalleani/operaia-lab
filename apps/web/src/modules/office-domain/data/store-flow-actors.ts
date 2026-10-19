@@ -16,7 +16,7 @@ export const STORE_FLOW_ACTORS: readonly ActorDescriptor[] = [
     kind: "agent",
     homeTile: STORE_FLOW_STATIONS.flow,
     stateId: "WORKING",
-    spriteId: "char-atlas", // TODO: sprite proprio
+    spriteId: "agent-flow",
     tags: ["store-flow", "affiliate", "curation", "station:radar"],
   },
   {
@@ -25,7 +25,7 @@ export const STORE_FLOW_ACTORS: readonly ActorDescriptor[] = [
     kind: "agent",
     homeTile: STORE_FLOW_STATIONS.driele,
     stateId: "DOCUMENTING",
-    spriteId: "char-luna", // TODO: sprite proprio
+    spriteId: "agent-driele",
     tags: ["store-flow", "affiliate", "copy", "station:redacao"],
   },
 ];

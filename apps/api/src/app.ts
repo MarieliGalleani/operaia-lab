@@ -32,6 +32,8 @@ import { liveStatusRoutes } from "./modules/runtime/live-status.routes.js";
 import { createRuntimeRoutes } from "./modules/runtime/runtime.routes.js";
 import { enqueueSignalCoordinateMission } from "./modules/runtime/signal-mission-converter.js";
 import { createGithubWebhookRoutes } from "./modules/signals/github-webhook.routes.js";
+import { signalsReadRoutes } from "./modules/signals/signals-read.routes.js";
+import { storeFlowRoutes } from "./modules/store-flow/store-flow.routes.js";
 import { createSignalRuntime } from "./modules/signals/signal-runtime.js";
 import { resolveWebhookSecret } from "./modules/signals/secret-resolver.js";
 import { taskRoutes } from "./modules/tasks/tasks.routes.js";
@@ -123,6 +125,8 @@ export function buildApp(): AppBundle {
     protectedApi.register(createCrmRoutes, { prefix: "/api/v1" });
     protectedApi.register(createGoogleAdsRoutes, { prefix: "/api/v1" });
     protectedApi.register(scheduleRuleRoutes, { prefix: "/api/v1" });
+    protectedApi.register(signalsReadRoutes, { prefix: "/api/v1" });
+    protectedApi.register(storeFlowRoutes, { prefix: "/api/v1" });
     protectedApi.register(liveStatusRoutes, { prefix: "/api/v1/ws" });
   });
   app.register(

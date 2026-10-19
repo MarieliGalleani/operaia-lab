@@ -92,6 +92,9 @@ importers:
       '@operaia/specialist-kit':
         specifier: workspace:*
         version: link:../../packages/employees/specialist-kit
+      '@operaia/store-flow':
+        specifier: workspace:*
+        version: link:../../packages/store-flow
       '@operaia/tool-runtime':
         specifier: workspace:*
         version: link:../../packages/tool-runtime

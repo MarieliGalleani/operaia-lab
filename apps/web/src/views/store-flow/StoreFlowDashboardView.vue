@@ -2,9 +2,72 @@
 import { computed, reactive, ref } from "vue";
 import { computeDashboard } from "@/modules/store-flow/dashboard-stats";
 import { loadSavedRun, parseRun, saveRun, type ReviewRun } from "@/modules/store-flow/review-queue";
+import { createHttpClient } from "@/data/adapters/http-client";
 
 const run = ref<ReviewRun | null>(loadSavedRun());
 const loadError = ref<string | null>(null);
+
+// —— Nova rodada pelo app (antes: CLI na VM + upload do .json) ——————————————
+const http = createHttpClient();
+const CHANNELS = [
+  { id: "instagram", label: "Instagram" },
+  { id: "whatsapp", label: "WhatsApp" },
+  { id: "telegram", label: "Telegram" },
+  { id: "tiktok", label: "TikTok" },
+] as const;
+const form = reactive({
+  niche: "",
+  channels: ["instagram"] as string[],
+  maxProducts: 5,
+  tone: "",
+  csv: "",
+  csvName: "",
+});
+const running = ref(false);
+const runMessage = ref<string | null>(null);
+const showForm = ref(run.value === null);
+
+async function onCsv(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+  if (!file) return;
+  if (file.size > 1_000_000) {
+    loadError.value = "CSV muito grande (máximo 1 MB). Exporte menos produtos.";
+    return;
+  }
+  form.csv = await file.text();
+  form.csvName = file.name;
+  loadError.value = null;
+}
+
+const canRun = computed(
+  () => !running.value && form.csv.length > 0 && form.niche.trim().length >= 2 && form.channels.length > 0,
+);
+
+async function startRun(): Promise<void> {
+  if (!canRun.value) return;
+  running.value = true;
+  runMessage.value = null;
+  loadError.value = null;
+  try {
+    const result = await http.post<{ run: unknown; productCount: number }>("/store-flow/runs", {
+      csv: form.csv,
+      niche: form.niche.trim(),
+      channels: form.channels,
+      maxProducts: form.maxProducts,
+      ...(form.tone.trim() ? { tone: form.tone.trim() } : {}),
+    });
+    run.value = parseRun(JSON.stringify(result.run));
+    saveRun(run.value);
+    showForm.value = false;
+    runMessage.value = `Flow analisou ${result.productCount} produto(s) e escolheu ${run.value.curated.length}. Driele escreveu ${run.value.drafts.length} rascunho(s) — revise na Sala de Aprovação.`;
+  } catch (error) {
+    loadError.value = error instanceof Error ? error.message : "Não deu para rodar agora. Tente de novo.";
+  } finally {
+    running.value = false;
+  }
+}
 const stats = computed(() => (run.value ? computeDashboard(run.value) : null));
 
 /** Tabela visível por gráfico (alternativa acessível ao desenho). */
@@ -79,8 +142,11 @@ const tipStyle = computed(() => {
         <h1 class="page__title">Painel do andar</h1>
       </div>
       <div class="sfd__actions">
-        <label class="btn btn--ghost sfd__upload">
-          {{ run ? "Carregar outra rodada" : "Carregar rodada (.json)" }}
+        <button type="button" class="btn btn--ghost" @click="showForm = !showForm">
+          {{ showForm ? "Fechar" : "Nova rodada" }}
+        </button>
+        <label class="btn btn--ghost sfd__upload" title="Para rodadas geradas pelo CLI">
+          Abrir .json
           <input type="file" accept="application/json,.json" class="sr-only" @change="onFile" />
         </label>
         <router-link to="/app/floor/store-flow/work" class="btn btn--primary">
@@ -94,6 +160,45 @@ const tipStyle = computed(() => {
 
     <div class="studio__stage">
       <p v-if="loadError" class="panel sfd__alert sfd__alert--danger" role="alert">{{ loadError }}</p>
+      <p v-if="runMessage" class="panel sfd__alert sfd__alert--ok" role="status">{{ runMessage }}</p>
+
+      <!-- Nova rodada: CSV do portal de afiliados -> Flow escolhe -> Driele escreve -->
+      <form v-if="showForm" class="panel sfd__run" @submit.prevent="startRun">
+        <h2 class="section__title">Nova rodada</h2>
+        <p class="sfd__muted">
+          Suba o CSV exportado do portal de afiliados. A Flow escolhe os melhores produtos e a Driele escreve os
+          posts. Nada é publicado: tudo vai para a Sala de Aprovação.
+        </p>
+        <div class="sfd__run-grid">
+          <label class="sfd__field" for="sf-csv">
+            <span>Produtos (.csv)</span>
+            <span class="btn btn--ghost sfd__upload">{{ form.csvName || "Escolher arquivo" }}</span>
+            <input id="sf-csv" type="file" accept=".csv,text/csv" class="sr-only" @change="onCsv" />
+          </label>
+          <label class="sfd__field" for="sf-niche">
+            <span>Nicho do perfil</span>
+            <input id="sf-niche" v-model="form.niche" type="text" placeholder="ex.: casa e organização" required />
+          </label>
+          <label class="sfd__field" for="sf-max">
+            <span>Produtos por rodada</span>
+            <input id="sf-max" v-model.number="form.maxProducts" type="number" min="1" max="20" />
+          </label>
+          <label class="sfd__field" for="sf-tone">
+            <span>Tom de voz (opcional)</span>
+            <input id="sf-tone" v-model="form.tone" type="text" placeholder="ex.: leve e divertido" />
+          </label>
+        </div>
+        <fieldset class="sfd__channels">
+          <legend>Canais</legend>
+          <label v-for="c in CHANNELS" :key="c.id" :for="`sf-ch-${c.id}`">
+            <input :id="`sf-ch-${c.id}`" v-model="form.channels" type="checkbox" :value="c.id" />
+            {{ c.label }}
+          </label>
+        </fieldset>
+        <button type="submit" class="btn btn--primary" :disabled="!canRun">
+          {{ running ? "Flow e Driele trabalhando…" : "Rodar Flow + Driele" }}
+        </button>
+      </form>
 
       <!-- Equipe do andar -->
       <section class="sfd__crew" aria-label="Equipe do andar">
@@ -138,8 +243,8 @@ const tipStyle = computed(() => {
       <section v-if="!stats" class="panel sfd__empty">
         <h2 class="section__title">Nenhuma rodada ainda</h2>
         <p class="sfd__muted">
-          Rode <code>pnpm --filter @operaia/store-flow run:csv -- produtos.csv --nicho "..." --canais instagram</code>
-          na VM e carregue o <code>.json</code> aqui. O painel e a Sala de Aprovação usam a mesma rodada.
+          Clique em <strong>Nova rodada</strong>, suba o CSV do portal de afiliados e a equipe faz o resto.
+          O painel e a Sala de Aprovação usam a mesma rodada.
         </p>
       </section>
 
@@ -405,6 +510,72 @@ const tipStyle = computed(() => {
 .sfd__empty {
   padding: 14px 18px;
   margin-bottom: 14px;
+}
+
+.sfd__alert--ok {
+  border-color: var(--success);
+  background: var(--success-soft);
+}
+
+.sfd__run {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.sfd__run-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.sfd__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.sfd__field input[type="text"],
+.sfd__field input[type="number"] {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+}
+
+.sfd__channels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.sfd__channels legend {
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.sfd__channels label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+}
+
+.sfd__run .btn--primary {
+  align-self: flex-start;
 }
 
 .sfd__alert--warn {

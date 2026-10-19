@@ -38,6 +38,9 @@ import { useOffice } from "@/composables/useOffice";
 import { useAuth } from "@/composables/useAuth";
 import type { ApprovalListItem, DecisionTraceDto, AutomationListItem } from "@/data/office-command";
 import { originToFloor } from "@/lib/office-floor";
+import { CAST, OFFICE_3D_FLOORS, floorCastIds, type CastMember } from "@/modules/office-3d/floors-3d";
+import { fetchLiveAgentStatus, type LiveAgentStatus } from "@/modules/office-domain/live-agent-status";
+import { createMarketingOfficeClient, type MarketingCampaign } from "@/data/adapters/marketing-office-client";
 import type { MissionListItemDTO } from "@/data/dto";
 
 const route = useRoute();
@@ -53,6 +56,9 @@ const missions = ref<readonly MissionListItemDTO[]>([]);
 const approvals = ref<readonly ApprovalListItem[]>([]);
 const decisions = ref<readonly DecisionTraceDto[]>([]);
 const automations = ref<readonly AutomationListItem[]>([]);
+const live = ref<ReadonlyMap<string, LiveAgentStatus>>(new Map());
+const campaigns = ref<readonly MarketingCampaign[]>([]);
+const marketingClient = createMarketingOfficeClient();
 const loading = ref(true);
 const refreshing = ref(false);
 const loadError = ref<string | null>(null);
@@ -67,7 +73,11 @@ async function loadAll(): Promise<void> {
     officeCommandClient.listApprovals().then((v) => { approvals.value = v; }),
     officeCommandClient.listDecisions().then((v) => { decisions.value = v; }),
     office.load(),
+    fetchLiveAgentStatus().then((v) => { live.value = v; }),
   ];
+  if (floor.value.id === "marketing") {
+    calls.push(marketingClient.listCampaigns().then((v) => { campaigns.value = v; }));
+  }
   if (floor.value.id === "automation") {
     calls.push(officeCommandClient.listAutomations().then((v) => { automations.value = v; }));
   }
@@ -105,12 +115,32 @@ const greeting = computed(() => {
 
 const adminName = computed(() => auth.user.value?.login ?? "");
 
-const QUICK_ACTIONS = computed(() => [
-  { to: floor.value.newWorkRoute, title: floor.value.newWorkLabel, desc: "Descreva o trabalho que você precisa realizar." },
-  { to: floor.value.workRoute, title: "Ver meu trabalho", desc: "Acompanhe missões, resultados e próximos passos." },
-  { to: "/app/floor/dev/decisions", title: "Revisar decisões", desc: "Veja o que precisa da sua análise." },
-  { to: "/app/floor/automation/triggers", title: "Gatilhos automáticos", desc: "Configure trabalho recorrente que roda sozinho." },
-]);
+// Atalhos de cada andar levam ao fluxo daquele andar (antes eram iguais em todos).
+const QUICK_ACTIONS = computed(() => {
+  switch (floor.value.id) {
+    case "automation":
+      return [
+        { to: "/app/floor/automation/clients", title: "Briefing para o Atlas", desc: "Diagnóstico e plano de automação de um cliente." },
+        { to: "/app/floor/automation/automations", title: "Automações", desc: "Fluxos do N8N ligados ao escritório." },
+        { to: "/app/floor/automation/triggers", title: "Gatilhos automáticos", desc: "Trabalho recorrente que roda sozinho." },
+        { to: floor.value.officeRoute, title: "Escritório 3D", desc: "Veja Atlas e Orion trabalhando." },
+      ];
+    case "marketing":
+      return [
+        { to: "/app/floor/marketing/work", title: "Briefing para o Mercúrio", desc: "Gera o pipeline completo de uma campanha." },
+        { to: "/app/floor/marketing/work?tab=trafego", title: "Tráfego pago", desc: "Planos de mídia das campanhas." },
+        { to: "/app/floor/marketing/work?tab=clientes", title: "Clientes", desc: "Clientes e métricas acompanhadas." },
+        { to: floor.value.officeRoute, title: "Escritório 3D", desc: "Veja o Mercúrio no andar." },
+      ];
+    default:
+      return [
+        { to: floor.value.newWorkRoute, title: floor.value.newWorkLabel, desc: "Descreva o trabalho que você precisa realizar." },
+        { to: "/app/floor/dev/missions", title: "Meu trabalho", desc: "Acompanhe missões, resultados e próximos passos." },
+        { to: "/app/floor/dev/decisions", title: "Revisar decisões", desc: "Veja o que precisa da sua análise." },
+        { to: floor.value.workRoute, title: "Projetos", desc: "Repositórios e projetos deste andar." },
+      ];
+  }
+});
 
 const floorMissions = computed(() =>
   floor.value.missionFloor
@@ -123,6 +153,15 @@ const delivered = computed(() =>
   floorMissions.value
     .filter((m) => m.status === "COMPLETED")
     .sort((a, b) => (b.finishedAt ?? "").localeCompare(a.finishedAt ?? ""))
+    .slice(0, 6),
+);
+
+/** Marketing nao tem missoes: as entregas sao as campanhas concluidas. */
+const deliveredCampaigns = computed(() =>
+  campaigns.value
+    .filter((c) => c.status === "DONE")
+    .slice()
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 6),
 );
 
@@ -159,19 +198,29 @@ function elapsedFrom(iso: string): string {
   const min = Math.max(0, Math.round(ms / 60000));
   if (min < 60) return `${min}min`;
   const h = Math.floor(min / 60);
-  return `${h}h ${min % 60}min`;
+  if (h < 48) return `${h}h ${min % 60}min`;
+  return `${Math.floor(h / 24)}d`;
 }
 
 function ownerName(employeeId: string): string {
   return office.employeeById(employeeId)?.name ?? employeeId;
 }
 
-const onDuty = computed(() =>
-  office.employees.value.map((e) => {
-    const runningMission = running.value.find((m) => m.ownerEmployeeId === e.id);
-    return { employee: e, currentObjective: runningMission?.objective ?? null };
-  }),
-);
+// So quem trabalha NESTE andar (antes listava o escritorio inteiro em todo andar).
+const onDuty = computed(() => {
+  const ids = floorCastIds(OFFICE_3D_FLOORS[floor.value.id]);
+  return ids
+    .map((id) => CAST[id])
+    .filter((m): m is CastMember => Boolean(m))
+    .map((member) => {
+      const runningMission = running.value.find((m) => m.ownerEmployeeId === member.id);
+      const status = live.value.get(member.id);
+      return {
+        member,
+        currentObjective: runningMission?.objective ?? (status?.busy ? status.objective : null),
+      };
+    });
+});
 
 const viewState = computed<"loading" | "error" | "ready">(() => {
   if (loading.value) return "loading";
@@ -181,7 +230,7 @@ const viewState = computed<"loading" | "error" | "ready">(() => {
 
 const ariaSummary = computed(() => {
   if (!status.value) return "";
-  return `Estado: ${levelInfo.value.label}. ${status.value.activity.message}. ${pendingApprovals.value.length} aprovações pendentes.`;
+  return `Estado: ${levelInfo.value.label}. ${status.value.activity.message.replace(/\.+$/, "")}. ${pendingApprovals.value.length} aprovações pendentes.`;
 });
 </script>
 
@@ -273,8 +322,25 @@ const ariaSummary = computed(() => {
         <section>
           <div class="op-section-head">
             <h3>Entregue recentemente</h3>
-            <span class="op-mono op-section-count">{{ delivered.length }}</span>
+            <span class="op-mono op-section-count">{{ floor.id === "marketing" ? deliveredCampaigns.length : delivered.length }}</span>
           </div>
+          <template v-if="floor.id === 'marketing'">
+            <router-link
+              v-for="c in deliveredCampaigns"
+              :key="c.id"
+              to="/app/floor/marketing/work"
+              class="op-list-row op-list-row--link"
+            >
+              <span class="op-dot" style="background: var(--op-green); margin-top: 5px" />
+              <div class="op-list-row__main">
+                <p class="op-list-row__title">Campanha "{{ c.clientName ? `${c.clientName} · ` : "" }}{{ c.niche }}"</p>
+                <p class="op-list-row__meta">Mercúrio</p>
+              </div>
+              <span class="op-mono op-list-row__when">{{ elapsedFrom(c.createdAt) }}</span>
+            </router-link>
+            <p v-if="deliveredCampaigns.length === 0" class="op-empty-inline">Nenhuma campanha concluída ainda.</p>
+          </template>
+          <template v-else>
           <router-link
             v-for="d in delivered"
             :key="d.id"
@@ -289,6 +355,7 @@ const ariaSummary = computed(() => {
             <span class="op-mono op-list-row__when">{{ d.finishedAt ? elapsedFrom(d.finishedAt) : "" }}</span>
           </router-link>
           <p v-if="delivered.length === 0" class="op-empty-inline">Nenhuma entrega registrada recentemente.</p>
+          </template>
         </section>
 
         <section>
@@ -324,12 +391,12 @@ const ariaSummary = computed(() => {
             <h3>Quem está no escritório agora</h3>
             <router-link :to="floor.officeRoute" class="op-section-link">Ver no escritório 3D</router-link>
           </div>
-          <div v-for="d in onDuty.slice(0, 6)" :key="d.employee.id" class="op-person-row">
-            <span class="op-avatar-circle">{{ d.employee.emoji }}</span>
+          <div v-for="d in onDuty" :key="d.member.id" class="op-person-row">
+            <img :src="d.member.sprite" alt="" class="op-person-sprite" />
             <div class="op-person-row__main">
-              <p class="op-person-row__name">{{ d.employee.name }}</p>
+              <p class="op-person-row__name">{{ d.member.name }} <span class="op-person-row__role">· {{ d.member.role }}</span></p>
               <p class="op-person-row__meta">
-                {{ d.currentObjective ? `Trabalhando em: ${d.currentObjective}` : "Disponível agora" }}
+                {{ !d.member.live ? "Status ao vivo ainda não conectado" : d.currentObjective ? `Trabalhando em: ${d.currentObjective}` : "Disponível agora" }}
               </p>
             </div>
           </div>
@@ -854,6 +921,19 @@ const ariaSummary = computed(() => {
   justify-content: center;
   font-size: 14px;
   flex-shrink: 0;
+}
+
+.op-person-sprite {
+  width: 28px;
+  height: 40px;
+  flex: none;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.op-person-row__role {
+  font-weight: 400;
+  color: var(--op-muted-2);
 }
 
 .op-person-row__main {

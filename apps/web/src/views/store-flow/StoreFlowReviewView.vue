@@ -179,10 +179,10 @@ function clearRun(): void {
         <h2 class="section__title">Nenhuma rodada carregada</h2>
         <ol class="fs__steps">
           <li>
-            Na VM, rode
-            <code>pnpm --filter @operaia/store-flow run:csv -- produtos.csv --nicho "..." --canais instagram</code>
+            No <router-link to="/app/floor/store-flow/command">Painel do andar</router-link>, clique em
+            <strong>Nova rodada</strong> e suba o CSV do portal de afiliados.
           </li>
-          <li>Clique em <strong>Carregar rodada</strong> e escolha o arquivo <code>.json</code> gerado.</li>
+          <li>A Flow escolhe os produtos e a Driele escreve os posts — eles aparecem aqui.</li>
           <li>Revise cada texto: aprove, edite ou recuse.</li>
         </ol>
       </section>

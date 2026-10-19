@@ -48,8 +48,9 @@ export const OFFICE_FLOORS: readonly OfficeFloorDef[] = [
     workRoute: "/app/floor/automation/automations",
     teamRoute: "/app/floor/automation/team",
     signalsRoute: "/app/floor/automation/signals",
-    newWorkRoute: "/app/floor/automation/command",
-    newWorkLabel: "Delegar automação",
+    // CTA abre o briefing do Atlas (antes apontava para a propria Hoje).
+    newWorkRoute: "/app/floor/automation/clients",
+    newWorkLabel: "Briefing para o Atlas",
   },
   {
     id: "marketing",
@@ -62,8 +63,9 @@ export const OFFICE_FLOORS: readonly OfficeFloorDef[] = [
     workRoute: "/app/floor/marketing/work",
     teamRoute: "/app/floor/marketing/team",
     signalsRoute: "/app/floor/marketing/signals",
-    newWorkRoute: "/app/floor/marketing/command",
-    newWorkLabel: "Delegar campanha",
+    // CTA abre o briefing do Mercurio (antes apontava para a propria Hoje).
+    newWorkRoute: "/app/floor/marketing/work",
+    newWorkLabel: "Briefing para o Mercúrio",
   },
   {
     // Andar de afiliados com elenco proprio (Flow + Driele). Nao usa a
@@ -79,8 +81,9 @@ export const OFFICE_FLOORS: readonly OfficeFloorDef[] = [
     workRoute: "/app/floor/store-flow/work",
     teamRoute: "/app/floor/store-flow/team",
     signalsRoute: "/app/floor/store-flow/signals",
-    newWorkRoute: "/app/floor/store-flow/work",
-    newWorkLabel: "Carregar rodada",
+    // Nova rodada agora sai do Painel (CSV direto pelo app).
+    newWorkRoute: "/app/floor/store-flow/command",
+    newWorkLabel: "Nova rodada",
   },
 ];
 

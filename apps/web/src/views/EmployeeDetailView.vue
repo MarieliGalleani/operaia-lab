@@ -5,6 +5,8 @@
  * Nenhum modelo novo, nenhuma tabela Agent — roster real vem de useOffice().
  */
 import { computed, onMounted, ref, watch } from "vue";
+import { CAST } from "@/modules/office-3d/floors-3d";
+
 import { useRoute } from "vue-router";
 import MissionStatusBadge from "@/components/MissionStatusBadge.vue";
 import OperationalHeader from "@/components/shell/OperationalHeader.vue";
@@ -13,6 +15,10 @@ import { createMissionsClient } from "@/data/adapters/missions-client";
 import type { MissionListItemDTO } from "@/data/dto";
 import { findFloor, floorIdFromPath } from "@/data/office-floors";
 import { formatDateTime } from "@/utils/format";
+
+function spriteOf(id: string): string | null {
+  return CAST[id]?.sprite ?? null;
+}
 
 const props = defineProps<{ employeeId: string }>();
 const route = useRoute();
@@ -75,7 +81,7 @@ const completed = computed(() => missions.value.filter((m) => m.status === "COMP
     <template v-else>
       <section class="op-profile">
         <div class="op-profile__head">
-          <span class="op-profile__avatar">{{ employee.emoji }}</span>
+          <span class="op-profile__avatar"><img v-if="spriteOf(employee.id)" :src="spriteOf(employee.id)!" alt="" class="op-profile__sprite" /><template v-else>{{ employee.emoji }}</template></span>
           <div class="op-profile__head-copy">
             <h2 class="op-profile__name">{{ employee.role }} — {{ employee.name }}</h2>
             <p class="op-profile__spec">{{ employee.specialtyLabel }}</p>
@@ -317,5 +323,10 @@ const completed = computed(() => missions.value.filter((m) => m.status === "COMP
   .op-facts {
     grid-template-columns: 1fr;
   }
+}
+.op-profile__sprite {
+  height: 52px;
+  width: auto;
+  image-rendering: pixelated;
 }
 </style>

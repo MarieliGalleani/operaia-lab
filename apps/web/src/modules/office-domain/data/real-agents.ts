@@ -33,7 +33,7 @@ export const REAL_AGENT_ROSTER: readonly RealAgentMeta[] = [
     name: "CEO — Opera",
     kind: "agent",
     stateId: "STRATEGY",
-    spriteId: "char-opera",
+    spriteId: "agent-opera",
     tags: ["executive", "leader", "management"],
   },
   {
@@ -41,7 +41,7 @@ export const REAL_AGENT_ROSTER: readonly RealAgentMeta[] = [
     name: "CTO — Mag",
     kind: "agent",
     stateId: "CODING",
-    spriteId: "char-mag",
+    spriteId: "agent-mag",
     tags: ["technology", "software-engineering"],
   },
   {
@@ -49,7 +49,7 @@ export const REAL_AGENT_ROSTER: readonly RealAgentMeta[] = [
     name: "Product Designer — Luna",
     kind: "agent",
     stateId: "WORKING",
-    spriteId: "char-luna",
+    spriteId: "agent-luna",
     tags: ["design", "product-design"],
   },
   {
@@ -57,7 +57,7 @@ export const REAL_AGENT_ROSTER: readonly RealAgentMeta[] = [
     name: "Product Manager — Nexus",
     kind: "agent",
     stateId: "DOCUMENTING",
-    spriteId: "char-mag", // TODO Fase 2: sprite proprio
+    spriteId: "agent-nexus",
     tags: ["product", "product-management"],
   },
   {
@@ -65,7 +65,7 @@ export const REAL_AGENT_ROSTER: readonly RealAgentMeta[] = [
     name: "Automation Specialist — Atlas",
     kind: "agent",
     stateId: "WORKING",
-    spriteId: "char-atlas",
+    spriteId: "agent-atlas",
     tags: ["automation"],
   },
   {
@@ -73,7 +73,7 @@ export const REAL_AGENT_ROSTER: readonly RealAgentMeta[] = [
     name: "Finance Lead — Aurora",
     kind: "agent",
     stateId: "AVAILABLE",
-    spriteId: "char-aurora",
+    spriteId: "agent-aurora",
     tags: ["finance"],
   },
   {
@@ -81,7 +81,7 @@ export const REAL_AGENT_ROSTER: readonly RealAgentMeta[] = [
     name: "Legal — Themis",
     kind: "agent",
     stateId: "DOCUMENTING",
-    spriteId: "char-atlas", // TODO Fase 2: sprite proprio
+    spriteId: "agent-themis",
     tags: ["legal"],
   },
   {
@@ -89,7 +89,7 @@ export const REAL_AGENT_ROSTER: readonly RealAgentMeta[] = [
     name: "Marketing — Mercúrio",
     kind: "agent",
     stateId: "AVAILABLE",
-    spriteId: "char-luna", // TODO Fase 2: sprite proprio
+    spriteId: "agent-mercurio",
     tags: ["marketing"],
   },
   {
@@ -97,7 +97,7 @@ export const REAL_AGENT_ROSTER: readonly RealAgentMeta[] = [
     name: "Operations — Orion",
     kind: "agent",
     stateId: "AVAILABLE",
-    spriteId: "char-aurora", // TODO Fase 2: sprite proprio
+    spriteId: "agent-orion",
     tags: ["operations"],
   },
 ] as const;

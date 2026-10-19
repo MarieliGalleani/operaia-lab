@@ -23,6 +23,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import OperationalHeader from "@/components/shell/OperationalHeader.vue";
+import AgentFace from "@/components/AgentFace.vue";
 import RiskBadge from "@/components/command/RiskBadge.vue";
 import AutonomyBadge from "@/components/command/AutonomyBadge.vue";
 import { findFloor, floorIdFromPath } from "@/data/office-floors";
@@ -233,12 +234,15 @@ const AUTOMATION_STATUS_LABEL: Record<string, { label: string; tone: string }> =
           </div>
           <div class="op-work-card__foot">
             <div v-if="projectTeam(p.teamIds).length > 0" class="op-avatars">
-              <span
+              <AgentFace
                 v-for="e in projectTeam(p.teamIds).slice(0, 5)"
                 :key="e.id"
-                class="op-avatar-mini"
+                :employee-id="e.id"
+                :fallback="e.emoji"
+                :size="24"
                 :title="`${e.role} — ${e.name}`"
-              >{{ e.emoji }}</span>
+                class="op-avatar-face"
+              />
               <span v-if="projectTeam(p.teamIds).length > 5" class="op-avatar-mini is-more">
                 +{{ projectTeam(p.teamIds).length - 5 }}
               </span>
@@ -585,5 +589,8 @@ const AUTOMATION_STATUS_LABEL: Record<string, { label: string; tone: string }> =
   border-color: var(--op-bd-btn-h);
   color: var(--op-ink-3);
   background: var(--op-raise);
+}
+.op-avatar-face + .op-avatar-face {
+  margin-left: -6px;
 }
 </style>

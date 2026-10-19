@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { ref } from "vue";
 import { useRouter } from "vue-router";
-import { OFFICE_FLOORS, type OfficeFloorDef } from "@/data/office-floors";
+import type { OfficeFloorDef } from "@/data/office-floors";
 
 /**
  * P1.X-FIX: withDefaults e obrigatorio aqui. Prop opcional tipada como
@@ -33,13 +32,6 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
-const menuOpen = ref(false);
-
-function pick(id: string): void {
-  const floor = OFFICE_FLOORS.find((f) => f.id === id);
-  menuOpen.value = false;
-  if (floor) router.push(floor.todayRoute);
-}
 
 function goNewWork(): void {
   router.push(props.floor.newWorkRoute);
@@ -49,29 +41,11 @@ function goNewWork(): void {
 <template>
   <header class="op-header">
     <div class="op-header__left">
-      <div class="op-floor-dropdown">
-        <button type="button" class="op-floor-trigger" @click="menuOpen = !menuOpen">
-          <span class="op-floor-chip">{{ floor.code }}</span>
-          <span class="op-scope">{{ scopeLine }}</span>
-          <span class="op-caret" :style="{ transform: menuOpen ? 'rotate(180deg)' : 'none' }">▾</span>
-        </button>
-        <div v-if="menuOpen" class="op-floor-menu">
-          <button
-            v-for="f in OFFICE_FLOORS"
-            :key="f.id"
-            type="button"
-            class="op-floor-menu-item"
-            :class="{ 'is-active': f.id === floor.id }"
-            @click="pick(f.id)"
-          >
-            <span class="op-floor-chip">{{ f.code }}</span>
-            <span class="op-floor-menu-copy">
-              <span class="op-floor-menu-name">{{ f.name }}</span>
-              <span class="op-floor-menu-meta">{{ f.meta }}</span>
-            </span>
-          </button>
-        </div>
-      </div>
+      <!-- Interface 3.0: trocar de andar e no Elevador (menu lateral); aqui so o contexto. -->
+      <p class="op-floor-trigger op-floor-trigger--static">
+        <span class="op-floor-chip">{{ floor.code }}</span>
+        <span class="op-scope">{{ scopeLine }}</span>
+      </p>
       <h1 class="op-title">{{ title }}</h1>
       <p class="op-lede">{{ lede }}</p>
     </div>
@@ -126,8 +100,10 @@ function goNewWork(): void {
   font-family: inherit;
 }
 
-.op-floor-trigger:hover {
-  background: var(--op-sel);
+.op-floor-trigger--static {
+  margin: 0;
+  padding: 3px 0;
+  cursor: default;
 }
 
 .op-floor-chip {

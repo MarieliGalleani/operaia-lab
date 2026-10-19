@@ -46,6 +46,7 @@
     "@operaia/operational-health": "workspace:*",
     "@operaia/shared": "workspace:*",
     "@operaia/specialist-kit": "workspace:*",
+    "@operaia/store-flow": "workspace:*",
     "@operaia/tool-runtime": "workspace:*",
     "@operaia/workspace-runtime": "workspace:*",
     "argon2": "^0.45.1",
