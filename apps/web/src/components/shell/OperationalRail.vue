@@ -257,8 +257,8 @@ const NAV_ICONS: Record<string, string> = {
 }
 
 .op-theme-btn {
-  width: 26px;
-  height: 22px;
+  width: 32px;
+  height: 28px;
   display: grid;
   place-items: center;
   border: 0;
