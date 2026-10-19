@@ -79,7 +79,10 @@ describe("submitDemandToCore delegation (Opção A — mirror async)", () => {
     expect(admit).toHaveBeenCalledOnce();
     expect(enqueue).toHaveBeenCalledOnce();
     expect(bindExecute).toHaveBeenCalledOnce();
-    expect(bindExecute.mock.calls[0]?.[0]?.missionId).toBe("mission-abc");
+    expect(
+      (bindExecute.mock.calls[0] as unknown as [{ missionId: string }])[0]
+        .missionId,
+    ).toBe("mission-abc");
     expect(result.missionId).toBe("mission-abc");
     expect(result.accepted).toBe(true);
     expect(result.gateDecision).toBe("EXECUTE");
@@ -217,7 +220,10 @@ describe("submitDemandToCore delegation (Opção A — mirror async)", () => {
       contextHints: { issue: "99" },
     });
 
-    expect(admit.mock.calls[0]?.[0]?.contextHints).toEqual({
+    expect(
+      (admit.mock.calls[0] as unknown as [{ contextHints: unknown }])[0]
+        .contextHints,
+    ).toEqual({
       issue: "99",
       correlationId: "demand-fill",
     });

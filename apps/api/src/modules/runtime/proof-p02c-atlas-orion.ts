@@ -59,7 +59,8 @@ function writeFixtures(): void {
   );
 }
 
-async function parkMission(missionId: string): Promise<void> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function parkMission(missionId: string): Promise<void> {
   await prisma.mission.update({
     where: { id: missionId },
     data: { scheduledAt: new Date(Date.now() + PARK_MS) },
@@ -297,7 +298,8 @@ async function main(): Promise<void> {
     new NodeInfrastructureFileSystem(),
     [
       {
-        line: "proof journal line atlas/orion",
+        message: "proof journal line atlas/orion",
+        level: "info",
         timestamp: new Date().toISOString(),
       },
     ],

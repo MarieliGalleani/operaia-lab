@@ -123,6 +123,7 @@ function buildTools(): ToolContext {
               content: "# OperaIA.lab\nUX surface for harness.",
               encoding: "utf-8" as const,
               size: 40,
+              sha: null,
             },
           };
         },
@@ -161,7 +162,7 @@ async function main(): Promise<void> {
     | undefined;
   const delivery = result.output.decision.delivery;
   const toolExecutions = (result.output.decision.toolExecutions ??
-    []) as UxToolExecutionLike[];
+    []) as unknown as UxToolExecutionLike[];
   const resultJson = {
     delivery,
     toolExecutions,

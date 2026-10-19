@@ -45,8 +45,8 @@ describe("schedule-rules.service", () => {
     const result = await listScheduleRules();
 
     expect(result).toHaveLength(1);
-    expect(result[0].objective).toBe("Revisar pendências");
-    expect(result[0].workspaceName).toBe("OperaIA.lab");
+    expect(result[0]?.objective).toBe("Revisar pendências");
+    expect(result[0]?.workspaceName).toBe("OperaIA.lab");
   });
 
   it("cria regra apenas em workspace oficial", async () => {

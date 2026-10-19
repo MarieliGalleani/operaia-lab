@@ -109,6 +109,7 @@ function buildTools(): ToolContext {
               content: "# OperaIA.lab\nProduct surface for harness.",
               encoding: "utf-8" as const,
               size: 40,
+              sha: null,
             },
           };
         },
@@ -147,7 +148,7 @@ async function main(): Promise<void> {
     | undefined;
   const delivery = result.output.decision.delivery;
   const toolExecutions = (result.output.decision.toolExecutions ??
-    []) as ProductToolExecutionLike[];
+    []) as unknown as ProductToolExecutionLike[];
   const resultJson = {
     delivery,
     toolExecutions,

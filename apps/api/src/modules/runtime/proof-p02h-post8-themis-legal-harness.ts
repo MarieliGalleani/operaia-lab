@@ -115,6 +115,7 @@ function buildTools(): ToolContext {
               content: "# OperaIA.lab\nLegal surface for harness.",
               encoding: "utf-8" as const,
               size: 40,
+              sha: null,
             },
           };
         },
@@ -153,7 +154,7 @@ async function main(): Promise<void> {
     | undefined;
   const delivery = result.output.decision.delivery;
   const toolExecutions = (result.output.decision.toolExecutions ??
-    []) as LegalToolExecutionLike[];
+    []) as unknown as LegalToolExecutionLike[];
   const resultJson = {
     delivery,
     toolExecutions,

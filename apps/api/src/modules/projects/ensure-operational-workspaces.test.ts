@@ -168,7 +168,9 @@ describe("WorkspaceScanner — multi-workspace isolation", () => {
         updatedAt: new Date(),
         startedAt: null,
         lastError: null,
-        missionKind: "COORDINATE",
+        // EXECUTE: COORDINATE/CONSOLIDATE nao contam como "missao pronta"
+        // (ver classifyMissions em workspace-scanner.ts).
+        missionKind: "EXECUTE",
         ownerEmployeeId: "operaia-ceo",
       },
     ];
