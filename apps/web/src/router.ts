@@ -44,6 +44,8 @@ import AutomationDetailView from "@/views/automations/AutomationDetailView.vue";
 import ExecutionsView from "@/views/executions/ExecutionsView.vue";
 import ExecutionDetailView from "@/views/executions/ExecutionDetailView.vue";
 import ScheduleRulesView from "@/views/system/ScheduleRulesView.vue";
+import StoreFlowReviewView from "@/views/store-flow/StoreFlowReviewView.vue";
+import StoreFlowDashboardView from "@/views/store-flow/StoreFlowDashboardView.vue";
 
 const routes: RouteRecordRaw[] = [
   { path: "/", redirect: "/app" },
@@ -264,6 +266,15 @@ const routes: RouteRecordRaw[] = [
         children: [
           { path: "infra", name: "vps-panel", component: InfraView },
           { path: "settings", name: "settings", component: SettingsView },
+        ],
+      },
+      // ---- Store Flow — andar de afiliados (elenco proprio: Flow + Driele) ----
+      {
+        path: "store-flow",
+        component: OfficeLayout,
+        children: [
+          { path: "", name: "store-flow", component: StoreFlowDashboardView },
+          { path: "aprovacao", name: "store-flow-review", component: StoreFlowReviewView },
         ],
       },
       {
