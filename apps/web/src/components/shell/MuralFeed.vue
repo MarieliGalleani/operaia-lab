@@ -17,7 +17,7 @@ import { RISK_LABEL } from "@/data/office-command";
 import { connectLiveStatusSocket } from "@/modules/office-domain/live-status-socket";
 import { createMarketingOfficeClient, type MarketingCampaign } from "@/data/adapters/marketing-office-client";
 
-const props = defineProps<{ floorId: "dev" | "automation" | "marketing"; workspaceId?: string }>();
+const props = defineProps<{ floorId: "dev" | "automation" | "marketing" | "store-flow"; workspaceId?: string }>();
 
 type MuralItem =
   | { kind: "approval"; id: string; at: string; data: ApprovalListItem }

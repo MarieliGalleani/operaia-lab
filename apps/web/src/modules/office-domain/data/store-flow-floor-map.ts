@@ -1,5 +1,5 @@
 /**
- * 1º andar da sede — Store Flow (marketing de afiliados).
+ * 4º andar da sede — Store Flow (marketing de afiliados).
  *
  * Copia do molde do 2º andar da Geraí (celulas 9×7, grade 3×2), ligada a
  * recepcao da sede por elevador. O nivel 1 era o "reservado" da sede.
@@ -215,7 +215,7 @@ const ELEVATOR_TO_LAB: EntityBlueprint = {
 
 const FLOOR_1: FloorDef = {
   id: FLOOR_ID,
-  name: "Store Flow — 1º andar",
+  name: "Store Flow — 4º andar",
   level: 1,
   size: { cols: MAP_COLS, rows: MAP_ROWS },
   areas: AREAS,
@@ -227,7 +227,7 @@ export const STORE_FLOW_MAP_ID = "store-flow";
 
 export const STORE_FLOW_MAP: MapManifest = {
   id: STORE_FLOW_MAP_ID,
-  name: "Store Flow — 1º andar",
+  name: "Store Flow — 4º andar",
   themeId: CORPORATE_THEME_ID,
   tileWidth: 64,
   tileHeight: 32,

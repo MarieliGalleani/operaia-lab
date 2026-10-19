@@ -7,7 +7,7 @@ import type { MissionFloorResult } from "@/lib/office-floor";
  * ainda — nenhuma tela dele finge ter numero que nao existe.
  */
 export interface OfficeFloorDef {
-  readonly id: "dev" | "automation" | "marketing";
+  readonly id: "dev" | "automation" | "marketing" | "store-flow";
   readonly code: string;
   readonly name: string;
   readonly meta: string;
@@ -60,6 +60,22 @@ export const OFFICE_FLOORS: readonly OfficeFloorDef[] = [
     newWorkRoute: "/app/floor/marketing/command",
     newWorkLabel: "Delegar campanha",
   },
+  {
+    // Andar de afiliados com elenco proprio (Flow + Driele). Nao usa a
+    // Equipe Digital nem o fluxo de missoes: roda o pipeline do pacote
+    // @operaia/store-flow e espera aprovacao humana na Sala de Aprovacao.
+    id: "store-flow",
+    code: "04",
+    name: "Store Flow",
+    meta: "afiliados",
+    missionFloor: null,
+    todayRoute: "/app/floor/store-flow/command",
+    workRoute: "/app/floor/store-flow/work",
+    teamRoute: "/app/floor/store-flow/team",
+    signalsRoute: "/app/floor/store-flow/signals",
+    newWorkRoute: "/app/floor/store-flow/work",
+    newWorkLabel: "Carregar rodada",
+  },
 ];
 
 export function findFloor(id: string): OfficeFloorDef {
@@ -69,5 +85,6 @@ export function findFloor(id: string): OfficeFloorDef {
 export function floorIdFromPath(path: string): OfficeFloorDef["id"] {
   if (path.startsWith("/app/floor/automation")) return "automation";
   if (path.startsWith("/app/floor/marketing")) return "marketing";
+  if (path.startsWith("/app/floor/store-flow")) return "store-flow";
   return "dev";
 }

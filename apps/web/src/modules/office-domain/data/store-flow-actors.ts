@@ -1,5 +1,5 @@
 /**
- * Atores do 1º andar — Store Flow.
+ * Atores do 4º andar — Store Flow.
  *
  * Elenco proprio do andar (pacote @operaia/store-flow), nao a Equipe Digital.
  * Cargo antes do nome, como no resto do Campus. Sprites reaproveitam o tema

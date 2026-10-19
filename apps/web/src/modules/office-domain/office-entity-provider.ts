@@ -66,7 +66,7 @@ export class OfficeEntityProvider implements EntityProvider {
       return GERAI_F2_ACTORS;
     }
 
-    // 1º andar Store Flow: elenco proprio, sem status ao vivo da Equipe Digital.
+    // 4º andar Store Flow: elenco proprio, sem status ao vivo da Equipe Digital.
     if (mapId === STORE_FLOW_MAP_ID) {
       return STORE_FLOW_ACTORS;
     }

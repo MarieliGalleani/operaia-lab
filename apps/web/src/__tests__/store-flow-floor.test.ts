@@ -14,7 +14,7 @@ function portalsOf(map: typeof OFFICE_MAP) {
   );
 }
 
-describe("1º andar Store Flow", () => {
+describe("4º andar Store Flow", () => {
   it("carrega como mapa de dados no nível 1 com 6 salas e o elevador", () => {
     const world = new EcsWorld();
     const result = loadManifestIntoWorld(world, STORE_FLOW_MAP, new TypedEventBus());
@@ -37,7 +37,7 @@ describe("1º andar Store Flow", () => {
 
   it("está no catálogo de mapas e tem elenco próprio (Flow e Driele), sem a Equipe Digital", async () => {
     const map = await new OfficeMapProvider().getMap(STORE_FLOW_MAP_ID);
-    expect(map.name).toBe("Store Flow — 1º andar");
+    expect(map.name).toBe("Store Flow — 4º andar");
 
     const actors = await new OfficeEntityProvider().listActors(STORE_FLOW_MAP_ID);
     expect(actors.map((a) => a.id)).toEqual(["flow", "driele"]);

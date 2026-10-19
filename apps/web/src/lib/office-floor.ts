@@ -37,7 +37,7 @@ export function originToFloor(
  * entao nao aparecem em nenhum andar em vez de serem empurrados pra um
  * errado.
  */
-export type EmployeeFloorId = "dev" | "automation" | "marketing";
+export type EmployeeFloorId = "dev" | "automation" | "marketing" | "store-flow";
 
 const FLOOR_BY_SPECIALIZATION: Readonly<Record<string, EmployeeFloorId>> = {
   SOFTWARE_ENGINEERING: "dev",

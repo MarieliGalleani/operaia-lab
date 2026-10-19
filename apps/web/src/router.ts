@@ -46,6 +46,7 @@ import ExecutionDetailView from "@/views/executions/ExecutionDetailView.vue";
 import ScheduleRulesView from "@/views/system/ScheduleRulesView.vue";
 import StoreFlowReviewView from "@/views/store-flow/StoreFlowReviewView.vue";
 import StoreFlowDashboardView from "@/views/store-flow/StoreFlowDashboardView.vue";
+import StoreFlowTeamView from "@/views/store-flow/StoreFlowTeamView.vue";
 
 const routes: RouteRecordRaw[] = [
   { path: "/", redirect: "/app" },
@@ -268,15 +269,21 @@ const routes: RouteRecordRaw[] = [
           { path: "settings", name: "settings", component: SettingsView },
         ],
       },
-      // ---- Store Flow — andar de afiliados (elenco proprio: Flow + Driele) ----
+      // ---- 4º andar — Store Flow (afiliados; elenco proprio: Flow + Driele) ----
       {
-        path: "store-flow",
-        component: OfficeLayout,
+        path: "floor/store-flow",
+        component: OperationalShellLayout,
         children: [
-          { path: "", name: "store-flow", component: StoreFlowDashboardView },
-          { path: "aprovacao", name: "store-flow-review", component: StoreFlowReviewView },
+          { path: "", redirect: "/app/floor/store-flow/command" },
+          { path: "command", name: "store-flow", component: StoreFlowDashboardView },
+          { path: "work", name: "store-flow-review", component: StoreFlowReviewView },
+          { path: "team", name: "store-flow-team", component: StoreFlowTeamView },
+          { path: "signals", name: "store-flow-signals", component: SignalsView },
         ],
       },
+      // Enderecos antigos do Store Flow -> 4º andar
+      { path: "store-flow", redirect: "/app/floor/store-flow/command" },
+      { path: "store-flow/aprovacao", redirect: "/app/floor/store-flow/work" },
       {
         path: "office",
         component: OfficeLayout,

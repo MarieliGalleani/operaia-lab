@@ -48,7 +48,6 @@ const devGroups: readonly NavGroup[] = [
         to: "/app/floor/dev/command/approvals",
         badgeKey: "approvals",
       },
-      { label: "Store Flow", icon: "missions", to: "/app/store-flow" },
     ],
   },
 ];

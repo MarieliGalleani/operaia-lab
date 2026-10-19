@@ -75,7 +75,7 @@ const tipStyle = computed(() => {
   <div class="studio fsd">
     <header class="studio__topbar">
       <div class="topbar__left">
-        <p class="page__kicker">1º andar · Store Flow</p>
+        <p class="page__kicker">4º andar · Store Flow</p>
         <h1 class="page__title">Painel do andar</h1>
       </div>
       <div class="sfd__actions">
@@ -83,7 +83,7 @@ const tipStyle = computed(() => {
           {{ run ? "Carregar outra rodada" : "Carregar rodada (.json)" }}
           <input type="file" accept="application/json,.json" class="sr-only" @change="onFile" />
         </label>
-        <router-link to="/app/store-flow/aprovacao" class="btn btn--primary">
+        <router-link to="/app/floor/store-flow/work" class="btn btn--primary">
           Sala de Aprovação
           <span v-if="stats && stats.drafts.PENDING_APPROVAL > 0" class="sfd__pill">
             {{ stats.drafts.PENDING_APPROVAL }}

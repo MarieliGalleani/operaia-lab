@@ -1,4 +1,4 @@
-# Store Flow — 1º andar da sede (marketing de afiliados)
+# Store Flow — 4º andar (marketing de afiliados)
 
 Andar separado do escritório virtual, com elenco próprio. Copiado do molde do
 Mercúrio (Marketing) e do 2º andar da Geraí. **Não** entra no roster da Equipe
@@ -74,7 +74,7 @@ pnpm --filter @operaia/store-flow run:csv -- examples/produtos-exemplo.csv \
 
 ## Painel do andar (dashboard)
 
-Menu **Equipe › Store Flow** → `/app/store-flow`. Usa a mesma rodada da Sala de
+Barra de andares **04 · Store Flow** → **Hoje** (`/app/floor/store-flow/command`). Usa a mesma rodada da Sala de
 Aprovação (carregar em qualquer uma das duas telas vale para as duas).
 
 - Equipe: o que a Flow e a Driele fizeram nesta rodada.
@@ -85,7 +85,7 @@ Aprovação (carregar em qualquer uma das duas telas vale para as duas).
 
 ## Sala de Aprovação (tela)
 
-Menu **Equipe › Store Flow** → `/app/store-flow/aprovacao`.
+Barra de andares **04 · Store Flow** → **Trabalhos** (`/app/floor/store-flow/work`).
 
 1. Clique em **Carregar rodada** e escolha o `.json` gerado pelo `run:csv`.
 2. Cada card mostra o produto, a nota da Flow, a comissão estimada e os motivos da escolha.
@@ -99,7 +99,11 @@ A fila fica salva neste navegador até você clicar em **Limpar fila**.
 
 ## No escritório
 
-Elevador na recepção da sede → `store-flow` (nível 1, que era o reservado).
+Na barra de andares do Command Center é o **04 · Store Flow**: Hoje = Painel do andar,
+Trabalhos = Sala de Aprovação, Equipe = Flow e Driele, Sinais = ainda sem tela própria.
+
+No escritório virtual: elevador na recepção da sede → `store-flow` (slot interno de
+nível 1 no mapa; o rótulo exibido é 4º andar).
 Salas: Recepção · Radar de Ofertas · Sala de Aprovação · Redação · Estúdio de Vídeo · Lounge.
 
 ## Próximos passos

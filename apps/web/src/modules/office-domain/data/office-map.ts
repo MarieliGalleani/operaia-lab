@@ -232,7 +232,7 @@ const FRONT_DOOR: EntityBlueprint = {
   },
 };
 
-/** Elevador da recepção → 1º andar (Store Flow). Volta no spawn "elevator-lab". */
+/** Elevador da recepção → 4º andar (Store Flow). Volta no spawn "elevator-lab". */
 const ELEVATOR_TO_STORE_FLOW: EntityBlueprint = {
   id: "elevator-to-store-flow",
   ref: "portal-door",
@@ -246,7 +246,7 @@ const ELEVATOR_TO_STORE_FLOW: EntityBlueprint = {
       portalId: "elevator-to-store-flow",
       target: { mapId: "store-flow", spawnPointId: "elevator-in" },
       mode: "walk",
-      label: "Elevador · 1º andar Store Flow",
+      label: "Elevador · 4º andar Store Flow",
     },
     interactable: { kind: "portal", radiusTiles: 1, enabled: true, label: "Subir para o Store Flow" },
   },
