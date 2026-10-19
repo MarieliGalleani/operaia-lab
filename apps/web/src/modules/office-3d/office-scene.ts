@@ -52,7 +52,10 @@ const PALETTES: Record<SceneTheme, Palette> = {
 
 const W = 24;
 const D = 14;
-const HOME = new THREE.Vector3(22, 20, 22);
+// Alvo um pouco acima do piso: a planta desce na tela e deixa espaco
+// para o titulo e as etiquetas do fundo nao ficarem atras do HUD.
+const TARGET = new THREE.Vector3(0, 2.2, 0);
+const HOME = new THREE.Vector3(22, 22.2, 22);
 
 interface Person {
   readonly id: string;
@@ -114,6 +117,7 @@ export class OfficeScene {
 
     this.camera.position.copy(HOME);
     this.controls = new OrbitControls(this.camera, canvas);
+    this.controls.target.copy(TARGET);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
     this.controls.minZoom = 0.6;
@@ -197,7 +201,7 @@ export class OfficeScene {
     this.camera.position.copy(HOME);
     this.camera.zoom = this.fitZoom;
     this.camera.updateProjectionMatrix();
-    this.controls.target.set(0, 0, 0);
+    this.controls.target.copy(TARGET);
     this.controls.update();
   }
 
