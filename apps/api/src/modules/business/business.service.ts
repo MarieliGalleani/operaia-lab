@@ -1,0 +1,164 @@
+/**
+ * Andar 05 · Negócio — importação e leitura das vendas no banco.
+ *
+ * A análise em si (KPIs, alertas, saúde) é calculada na hora a partir das
+ * vendas guardadas (business-analysis.ts), então nunca fica desatualizada
+ * em relação ao que está no banco.
+ */
+import { prisma } from "@operaia/database";
+import { analyzeSales, type BusinessAnalysis, type SaleInput } from "./business-analysis.js";
+import { parseSalesCsv, type RejectedLine } from "./business-csv.js";
+
+const CHUNK = 1000;
+const MAX_REJECTED_KEPT = 50;
+
+export class BusinessImportError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BusinessImportError";
+  }
+}
+
+export interface BusinessImportSummary {
+  readonly id: string;
+  readonly fileName: string;
+  readonly rowsReceived: number;
+  readonly rowsAccepted: number;
+  readonly rowsDuplicated: number;
+  readonly rowsRejected: number;
+  readonly rejected: readonly RejectedLine[];
+  readonly hasCost: boolean;
+  readonly salesStored: number;
+  readonly createdBy: string | null;
+  readonly createdAt: string;
+}
+
+interface ImportRow {
+  readonly id: string;
+  readonly fileName: string;
+  readonly rowsReceived: number;
+  readonly rowsAccepted: number;
+  readonly rowsDuplicated: number;
+  readonly rowsRejected: number;
+  readonly rejectedJson: unknown;
+  readonly hasCost: boolean;
+  readonly createdBy: string | null;
+  readonly createdAt: Date;
+  readonly _count?: { readonly sales: number };
+}
+
+function toSummary(row: ImportRow): BusinessImportSummary {
+  const rejected = Array.isArray(row.rejectedJson) ? (row.rejectedJson as RejectedLine[]) : [];
+  return {
+    id: row.id,
+    fileName: row.fileName,
+    rowsReceived: row.rowsReceived,
+    rowsAccepted: row.rowsAccepted,
+    rowsDuplicated: row.rowsDuplicated,
+    rowsRejected: row.rowsRejected,
+    rejected,
+    hasCost: row.hasCost,
+    salesStored: row._count?.sales ?? row.rowsAccepted,
+    createdBy: row.createdBy,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+export async function importSalesCsv(input: {
+  readonly fileName: string;
+  readonly csv: string;
+  readonly createdBy: string | null;
+}): Promise<BusinessImportSummary> {
+  const parsed = parseSalesCsv(input.csv);
+  if (parsed.fatal) throw new BusinessImportError(parsed.fatal);
+  if (parsed.sales.length === 0) {
+    const first = parsed.rejected[0];
+    throw new BusinessImportError(
+      `Nenhuma venda válida na planilha${first ? ` (linha ${first.lineNumber}: ${first.reason})` : ""}.`,
+    );
+  }
+
+  const created = await prisma.$transaction(
+    async (tx) => {
+      const imp = await tx.businessImport.create({
+        data: {
+          fileName: input.fileName.slice(0, 200),
+          rowsReceived: parsed.sales.length + parsed.rejected.length,
+          rowsRejected: parsed.rejected.length,
+          rejectedJson: parsed.rejected.slice(0, MAX_REJECTED_KEPT).map((r) => ({ ...r })),
+          hasCost: parsed.hasCost,
+          createdBy: input.createdBy,
+        },
+      });
+      let accepted = 0;
+      for (let i = 0; i < parsed.sales.length; i += CHUNK) {
+        const chunk = parsed.sales.slice(i, i + CHUNK);
+        const result = await tx.businessSale.createMany({
+          data: chunk.map((s) => ({
+            importId: imp.id,
+            dedupKey: s.dedupKey,
+            occurredOn: new Date(`${s.date}T00:00:00.000Z`),
+            customer: s.customer,
+            product: s.product,
+            revenueBrl: s.revenue,
+            costBrl: s.cost,
+          })),
+          skipDuplicates: true,
+        });
+        accepted += result.count;
+      }
+      return tx.businessImport.update({
+        where: { id: imp.id },
+        data: { rowsAccepted: accepted, rowsDuplicated: parsed.sales.length - accepted },
+      });
+    },
+    { timeout: 60_000 },
+  );
+  return toSummary(created);
+}
+
+export async function listImports(): Promise<readonly BusinessImportSummary[]> {
+  const rows = await prisma.businessImport.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    include: { _count: { select: { sales: true } } },
+  });
+  return rows.map(toSummary);
+}
+
+/** Apaga a importação e as vendas dela. Retorna false se não existir. */
+export async function deleteImport(id: string): Promise<boolean> {
+  const result = await prisma.businessImport.deleteMany({ where: { id } });
+  return result.count > 0;
+}
+
+export async function loadSales(): Promise<readonly SaleInput[]> {
+  const rows = await prisma.businessSale.findMany({
+    select: { occurredOn: true, customer: true, product: true, revenueBrl: true, costBrl: true },
+  });
+  return rows.map((r) => ({
+    date: r.occurredOn.toISOString().slice(0, 10),
+    customer: r.customer,
+    product: r.product,
+    revenue: r.revenueBrl,
+    cost: r.costBrl,
+  }));
+}
+
+export interface BusinessDashboard extends BusinessAnalysis {
+  readonly importsCount: number;
+  readonly lastImportAt: string | null;
+}
+
+export async function getDashboard(): Promise<BusinessDashboard> {
+  const [sales, importsCount, last] = await Promise.all([
+    loadSales(),
+    prisma.businessImport.count(),
+    prisma.businessImport.findFirst({ orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
+  ]);
+  return {
+    ...analyzeSales(sales),
+    importsCount,
+    lastImportAt: last ? last.createdAt.toISOString() : null,
+  };
+}

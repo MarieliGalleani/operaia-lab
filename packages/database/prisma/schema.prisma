@@ -1094,3 +1094,44 @@ model StoreFlowRun {
   @@index([createdAt])
   @@map("store_flow_runs")
 }
+
+/// Andar 05 · Negócio: cada planilha de vendas enviada pelo app. Apagar a
+/// importacao apaga as vendas dela (cascade), sem tocar nas outras.
+model BusinessImport {
+  id             String   @id @default(uuid())
+  fileName       String
+  rowsReceived   Int      @default(0)
+  rowsAccepted   Int      @default(0)
+  rowsDuplicated Int      @default(0)
+  rowsRejected   Int      @default(0)
+  /// Primeiras linhas recusadas com o motivo (para mostrar na tela).
+  rejectedJson   Json
+  hasCost        Boolean  @default(true)
+  createdBy      String?
+  createdAt      DateTime @default(now())
+
+  sales BusinessSale[]
+
+  @@index([createdAt])
+  @@map("business_imports")
+}
+
+/// Uma venda da planilha. `dedupKey` evita contar duas vezes a mesma linha
+/// quando a mesma planilha (ou um trecho dela) e enviada de novo.
+model BusinessSale {
+  id         String         @id @default(uuid())
+  importId   String
+  import     BusinessImport @relation(fields: [importId], references: [id], onDelete: Cascade)
+  dedupKey   String         @unique
+  occurredOn DateTime       @db.Date
+  customer   String
+  product    String
+  revenueBrl Float
+  /// null quando a planilha nao tem coluna de custo.
+  costBrl    Float?
+  createdAt  DateTime       @default(now())
+
+  @@index([occurredOn])
+  @@index([importId])
+  @@map("business_sales")
+}

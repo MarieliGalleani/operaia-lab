@@ -6,7 +6,7 @@
  * Command Center na view. Nada aqui e dado de negocio: so layout.
  */
 
-export type Office3DFloorId = "portaria" | "dev" | "automation" | "marketing" | "store-flow";
+export type Office3DFloorId = "portaria" | "dev" | "automation" | "marketing" | "store-flow" | "negocio";
 
 export type RoomKind =
   | "meeting"
@@ -93,7 +93,8 @@ export const OFFICE_3D_FLOORS: Readonly<Record<Office3DFloorId, Office3DFloor>> 
       { x: -1.5, z: -3.2 },
       { x: 1.5, z: -3.2 },
     ],
-    cast: ["aurora", "themis"],
+    // Aurora (Financas) subiu para o andar 05 · Negocio, onde esta o trabalho dela.
+    cast: ["themis"],
     ceo: "operaia-ceo",
     hangouts: [[-3, 3.2], [3, 2.2]],
   },
@@ -179,6 +180,26 @@ export const OFFICE_3D_FLOORS: Readonly<Record<Office3DFloorId, Office3DFloor>> 
     ],
     cast: ["sf-driele", "sf-flow"],
     hangouts: [[-5, 1.8], [4, 2.6]],
+  },
+  negocio: {
+    id: "negocio",
+    code: "05",
+    title: "ANDAR 05 · NEGÓCIO",
+    accent: "#c3e86b",
+    rooms: [
+      { kind: "kanban", x: -7, z: -3.5 },
+      { kind: "meeting", x: 7, z: -4 },
+      { kind: "lounge", x: 3.5, z: 4 },
+      { kind: "copa", x: -8, z: 4.6 },
+    ],
+    desks: [
+      { x: -1.5, z: -2.5 },
+      { x: 1.5, z: -2.5 },
+      { x: -1.5, z: 0.8 },
+      { x: 1.5, z: 0.8 },
+    ],
+    cast: ["aurora"],
+    hangouts: [[-8, 3.2], [3.5, 2.6]],
   },
 };
 

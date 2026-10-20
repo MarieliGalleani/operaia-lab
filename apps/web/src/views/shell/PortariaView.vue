@@ -104,6 +104,7 @@ const FLOOR_3D_ID: Record<OfficeFloorDef["id"], Office3DFloorId> = {
   automation: "automation",
   marketing: "marketing",
   "store-flow": "store-flow",
+  negocio: "negocio",
 };
 
 interface Slab {
@@ -135,6 +136,8 @@ const slabs = computed<Slab[]>(() => {
       summary = open ? `${open} missões abertas.` : "Sem missões abertas agora.";
     } else if (f.id === "store-flow") {
       summary = "Ofertas e textos de afiliado. Rodadas pela Sala de Aprovação.";
+    } else if (f.id === "negocio") {
+      summary = "Planilha de vendas vira receita, margem e clientes em risco.";
     } else {
       summary = "Ainda sem missões ligadas a este andar.";
     }

@@ -32,12 +32,12 @@ export function originToFloor(
  * todos os andares (ver docs/operaia-ceo.md), entao aparece em todos —
  * nao e "nao segmentado", e um papel transversal real.
  *
- * FINANCE/LEGAL/OPERATIONS/UX_DESIGN/PRODUCT/COMMERCIAL tambem ficam de
- * fora: nao existe andar pra eles ainda (so Dev/Automacao/Marketing),
+ * FINANCE vai para o andar 05 · Negocio (Aurora). LEGAL/OPERATIONS/
+ * UX_DESIGN/PRODUCT/COMMERCIAL ficam de fora: nao existe andar pra eles ainda,
  * entao nao aparecem em nenhum andar em vez de serem empurrados pra um
  * errado.
  */
-export type EmployeeFloorId = "dev" | "automation" | "marketing" | "store-flow";
+export type EmployeeFloorId = "dev" | "automation" | "marketing" | "store-flow" | "negocio";
 
 const FLOOR_BY_SPECIALIZATION: Readonly<Record<string, EmployeeFloorId>> = {
   SOFTWARE_ENGINEERING: "dev",
@@ -45,6 +45,7 @@ const FLOOR_BY_SPECIALIZATION: Readonly<Record<string, EmployeeFloorId>> = {
   PRODUCT_MANAGEMENT: "dev",
   AUTOMATION: "automation",
   MARKETING: "marketing",
+  FINANCE: "negocio",
 };
 
 export function specializationToFloor(

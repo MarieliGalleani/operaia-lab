@@ -7,7 +7,7 @@ import type { MissionFloorResult } from "@/lib/office-floor";
  * ainda — nenhuma tela dele finge ter numero que nao existe.
  */
 export interface OfficeFloorDef {
-  readonly id: "dev" | "automation" | "marketing" | "store-flow";
+  readonly id: "dev" | "automation" | "marketing" | "store-flow" | "negocio";
   readonly code: string;
   readonly name: string;
   readonly meta: string;
@@ -85,6 +85,22 @@ export const OFFICE_FLOORS: readonly OfficeFloorDef[] = [
     newWorkRoute: "/app/floor/store-flow/command",
     newWorkLabel: "Nova rodada",
   },
+  {
+    // Planilha de vendas -> receita, margem, clientes em risco e prioridade.
+    // Dado real: so o que a planilha enviada traz (nada de conector fingido).
+    id: "negocio",
+    code: "05",
+    name: "Negócio",
+    meta: "vendas e margem",
+    missionFloor: null,
+    todayRoute: "/app/floor/negocio/command",
+    officeRoute: "/app/floor/negocio/office",
+    workRoute: "/app/floor/negocio/work",
+    teamRoute: "/app/floor/negocio/team",
+    signalsRoute: "/app/floor/negocio/signals",
+    newWorkRoute: "/app/floor/negocio/work",
+    newWorkLabel: "Enviar planilha",
+  },
 ];
 
 export function findFloor(id: string): OfficeFloorDef {
@@ -95,6 +111,7 @@ export function floorIdFromPath(path: string): OfficeFloorDef["id"] {
   if (path.startsWith("/app/floor/automation")) return "automation";
   if (path.startsWith("/app/floor/marketing")) return "marketing";
   if (path.startsWith("/app/floor/store-flow")) return "store-flow";
+  if (path.startsWith("/app/floor/negocio")) return "negocio";
   return "dev";
 }
 

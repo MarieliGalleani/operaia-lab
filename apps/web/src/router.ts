@@ -42,6 +42,8 @@ import ExecutionDetailView from "@/views/executions/ExecutionDetailView.vue";
 import ScheduleRulesView from "@/views/system/ScheduleRulesView.vue";
 import StoreFlowReviewView from "@/views/store-flow/StoreFlowReviewView.vue";
 import StoreFlowDashboardView from "@/views/store-flow/StoreFlowDashboardView.vue";
+import BusinessDashboardView from "@/views/business/BusinessDashboardView.vue";
+import BusinessImportsView from "@/views/business/BusinessImportsView.vue";
 
 const routes: RouteRecordRaw[] = [
   { path: "/", redirect: "/app" },
@@ -294,6 +296,19 @@ const routes: RouteRecordRaw[] = [
           { path: "work", name: "store-flow-review", component: StoreFlowReviewView },
           { path: "team", name: "store-flow-team", redirect: "/app/floor/store-flow/office" },
           { path: "signals", name: "store-flow-signals", component: SignalsView },
+        ],
+      },
+      // ---- 5º andar — Negócio (planilha de vendas -> receita, margem, risco; Aurora) ----
+      {
+        path: "floor/negocio",
+        component: OperationalShellLayout,
+        children: [
+          { path: "", redirect: "/app/floor/negocio/command" },
+          { path: "office", name: "negocio-office", component: Office3DView, props: { floorId: "negocio" } },
+          { path: "command", name: "negocio", component: BusinessDashboardView },
+          { path: "work", name: "negocio-imports", component: BusinessImportsView },
+          { path: "team", name: "negocio-team", redirect: "/app/floor/negocio/office" },
+          { path: "signals", name: "negocio-signals", component: SignalsView },
         ],
       },
       // Enderecos antigos do Store Flow -> 4º andar

@@ -41,12 +41,14 @@ const SOURCES: Record<string, readonly string[]> = {
   automation: [],
   marketing: [],
   "store-flow": [],
+  negocio: [],
 };
 
 const NO_SOURCE_TEXT: Record<string, string> = {
   automation: "Os gatilhos e automações deste andar ainda não mandam sinais para cá. Quando um fluxo do N8N for ligado como fonte, os acontecimentos aparecem nesta lista.",
   marketing: "Nenhuma fonte de marketing (anúncios, redes) está ligada como sinal ainda. As campanhas continuam pela aba Trabalhos.",
   "store-flow": "O Store Flow trabalha por rodadas, não por sinais. Acompanhe pelo Painel e pela Sala de Aprovação.",
+  negocio: "O andar Negócio trabalha com as planilhas de vendas que você envia. Os alertas aparecem no Painel do andar.",
 };
 
 const floorSources = computed(() => SOURCES[floor.value.id] ?? []);

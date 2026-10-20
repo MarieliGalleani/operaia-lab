@@ -54,4 +54,6 @@ export {
   AutomationStage,
   type GoogleAdsConnection,
   type ClientPayment,
+  type BusinessImport,
+  type BusinessSale,
 } from "@prisma/client";

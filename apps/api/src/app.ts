@@ -23,6 +23,7 @@ import { createAutomationOfficeRoutes } from "./modules/automation-office/index.
 import { createMarketingOfficeRoutes } from "./modules/marketing-office/index.js";
 import { createAutomationEngagementRoutes } from "./modules/automation-engagements/index.js";
 import { createCrmRoutes } from "./modules/crm/index.js";
+import { businessRoutes } from "./modules/business/index.js";
 import { createGoogleAdsCallbackRoute, createGoogleAdsRoutes } from "./modules/google-ads/index.js";
 import { scheduleRuleRoutes } from "./modules/schedule-rules/schedule-rules.routes.js";
 import { createProductLabRuntime } from "./modules/operations/product-lab-runtime.js";
@@ -131,6 +132,7 @@ export function buildApp(): AppBundle {
     protectedApi.register(scheduleRuleRoutes, { prefix: "/api/v1" });
     protectedApi.register(signalsReadRoutes, { prefix: "/api/v1" });
     protectedApi.register(storeFlowRoutes, { prefix: "/api/v1" });
+    protectedApi.register(businessRoutes, { prefix: "/api/v1" });
     protectedApi.register(liveStatusRoutes, { prefix: "/api/v1/ws" });
   });
   app.register(

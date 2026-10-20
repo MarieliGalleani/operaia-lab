@@ -8,6 +8,7 @@ describe("specializationToFloor (P1.21-FIX)", () => {
     ["PRODUCT_MANAGEMENT", "dev"],
     ["AUTOMATION", "automation"],
     ["MARKETING", "marketing"],
+    ["FINANCE", "negocio"],
   ] as const)("%s -> %s", (specialization, floorId) => {
     expect(specializationToFloor(specialization)).toBe(floorId);
   });
@@ -16,7 +17,7 @@ describe("specializationToFloor (P1.21-FIX)", () => {
     expect(specializationToFloor("MANAGEMENT")).toBeNull();
   });
 
-  it.each(["FINANCE", "LEGAL", "OPERATIONS", "UX_DESIGN", "PRODUCT", "COMMERCIAL"])(
+  it.each(["LEGAL", "OPERATIONS", "UX_DESIGN", "PRODUCT", "COMMERCIAL"])(
     "%s vira null: nao existe andar pra essa especialidade ainda",
     (specialization) => {
       expect(specializationToFloor(specialization)).toBeNull();
