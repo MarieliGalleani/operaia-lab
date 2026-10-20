@@ -408,6 +408,9 @@ onMounted(async () => {
   .topbar__left,
   .topbar__center,
   .topbar__right {
+    /* flex:1 tinha base 0: o centro ficava com 0px na linha de cima e o
+       conteudo vazava para fora da tela. */
+    flex: 1 1 100%;
     width: 100%;
     margin: 0 0 12px;
   }
