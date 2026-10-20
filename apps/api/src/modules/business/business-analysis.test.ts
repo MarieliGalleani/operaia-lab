@@ -65,6 +65,37 @@ describe("analyzeSales", () => {
     expect(risk[0]?.detail).toMatch(/80 dias/);
   });
 
+  it("com data de referência (pagamentos do crm), quem parou de pagar aparece mesmo sem venda nova de ninguém", () => {
+    const sales: SaleInput[] = [];
+    for (let d = 0; d <= 90; d += 30) sales.push(sale(day(d), "Cliente Mensal", "Mensalidade · Podologia", 900, null));
+    // Sem referência: a última venda é do próprio cliente, então nada parece errado.
+    expect(analyzeSales(sales).insights.some((i) => i.kind === "CUSTOMER_AT_RISK")).toBe(false);
+    // Hoje = 75 dias depois do último pagamento mensal: 2 mensalidades atrasadas.
+    const a = analyzeSales(sales, { asOf: day(165) });
+    const risk = a.insights.find((i) => i.kind === "CUSTOMER_AT_RISK");
+    expect(risk?.title).toBe("Cliente Mensal parou de comprar");
+    expect(risk?.impactLabel).toMatch(/900/);
+  });
+
+  it("setup cobrado uma vez não infla o valor mensal em risco", () => {
+    const sales: SaleInput[] = [sale(day(0), "Clínica", "Setup", 2500, null)];
+    for (let d = 30; d <= 120; d += 30) sales.push(sale(day(d), "Clínica", "Mensalidade", 900, null));
+    const risk = analyzeSales(sales, { asOf: day(220) }).insights.find((i) => i.kind === "CUSTOMER_AT_RISK");
+    expect(risk?.impactBrl).toBe(900);
+  });
+
+  it("cliente encerrado de propósito não vira alerta", () => {
+    const sales: SaleInput[] = [];
+    for (let d = 0; d <= 90; d += 30) sales.push(sale(day(d), "Ex-cliente", "Mensalidade", 900, null));
+    const a = analyzeSales(sales, { asOf: day(200), ignoreRiskFor: new Set(["Ex-cliente"]) });
+    expect(a.insights.some((i) => i.kind === "CUSTOMER_AT_RISK")).toBe(false);
+  });
+
+  it("referência nunca volta para antes da última venda", () => {
+    const a = analyzeSales([sale(day(0), "A", "X", 100), sale(day(10), "A", "X", 100)], { asOf: day(5) });
+    expect(a.topCustomers[0]?.daysSinceLastPurchase).toBe(0);
+  });
+
   it("planilha antiga sem sumiço não gera alerta de risco", () => {
     const sales: SaleInput[] = [];
     for (let d = 0; d <= 60; d += 7) sales.push(sale(day(d), "A", "X", 100), sale(day(d), "B", "Y", 100));

@@ -75,7 +75,16 @@ export interface BusinessDashboard {
   readonly topProducts: readonly RankedProduct[];
   readonly importsCount: number;
   readonly lastImportAt: string | null;
+  readonly sources: {
+    /** Recebimentos lançados na Carteira de Clientes (fonte principal). */
+    readonly crmPayments: number;
+    /** Vendas vindas de planilha (histórico/extra). */
+    readonly spreadsheetSales: number;
+  };
 }
+
+/** Onde os recebimentos são lançados hoje (Marketing › Trabalhos › Carteira de Clientes). */
+export const RECEIVABLES_ROUTE = "/app/floor/marketing/work";
 
 export interface BusinessImport {
   readonly id: string;

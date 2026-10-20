@@ -132,7 +132,19 @@ export async function deleteImport(id: string): Promise<boolean> {
   return result.count > 0;
 }
 
-export async function loadSales(): Promise<readonly SaleInput[]> {
+const TZ = "America/Sao_Paulo";
+
+/** Dia (aaaa-mm-dd) no fuso de São Paulo — pagamento das 22h não muda de dia. */
+export function dayInSaoPaulo(date: Date): string {
+  return date.toLocaleDateString("sv-SE", { timeZone: TZ });
+}
+
+export const PAYMENT_KIND_LABEL: Readonly<Record<string, string>> = {
+  SETUP: "Setup",
+  RECORRENTE: "Mensalidade",
+};
+
+export async function loadSpreadsheetSales(): Promise<readonly SaleInput[]> {
   const rows = await prisma.businessSale.findMany({
     select: { occurredOn: true, customer: true, product: true, revenueBrl: true, costBrl: true },
   });
@@ -145,20 +157,70 @@ export async function loadSales(): Promise<readonly SaleInput[]> {
   }));
 }
 
+export interface CrmSales {
+  readonly sales: readonly SaleInput[];
+  /** Clientes encerrados (active=false): saída conhecida, não é "risco". */
+  readonly inactiveClients: ReadonlySet<string>;
+}
+
+/**
+ * Recebimentos lançados na Carteira de Clientes (Marketing › Trabalhos).
+ * Cada pagamento é uma venda da OperaIA: cliente = nome do cliente,
+ * produto = tipo (Setup/Mensalidade) + nicho.
+ */
+export async function loadCrmSales(): Promise<CrmSales> {
+  const rows = await prisma.clientPayment.findMany({
+    select: {
+      kind: true,
+      amountBrl: true,
+      paidAt: true,
+      client: { select: { name: true, active: true, niche: { select: { name: true } } } },
+    },
+  });
+  const inactive = new Set<string>();
+  const sales = rows
+    .filter((r) => r.amountBrl > 0)
+    .map((r) => {
+      if (!r.client.active) inactive.add(r.client.name);
+      const kind = PAYMENT_KIND_LABEL[r.kind] ?? r.kind;
+      return {
+        date: dayInSaoPaulo(r.paidAt),
+        customer: r.client.name,
+        product: `${kind} · ${r.client.niche.name}`,
+        revenue: r.amountBrl,
+        cost: null,
+      };
+    });
+  return { sales, inactiveClients: inactive };
+}
+
 export interface BusinessDashboard extends BusinessAnalysis {
   readonly importsCount: number;
   readonly lastImportAt: string | null;
+  readonly sources: {
+    /** Recebimentos da Carteira de Clientes (fonte principal). */
+    readonly crmPayments: number;
+    /** Vendas vindas de planilha (histórico/extra). */
+    readonly spreadsheetSales: number;
+  };
 }
 
-export async function getDashboard(): Promise<BusinessDashboard> {
-  const [sales, importsCount, last] = await Promise.all([
-    loadSales(),
+export async function getDashboard(now: Date = new Date()): Promise<BusinessDashboard> {
+  const [crm, sheet, importsCount, last] = await Promise.all([
+    loadCrmSales(),
+    loadSpreadsheetSales(),
     prisma.businessImport.count(),
     prisma.businessImport.findFirst({ orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
   ]);
+  const sales = [...crm.sales, ...sheet];
   return {
-    ...analyzeSales(sales),
+    // Com recebimentos do crm o dado é contínuo: a referência é hoje.
+    ...analyzeSales(sales, {
+      ...(crm.sales.length > 0 ? { asOf: dayInSaoPaulo(now) } : {}),
+      ignoreRiskFor: crm.inactiveClients,
+    }),
     importsCount,
     lastImportAt: last ? last.createdAt.toISOString() : null,
+    sources: { crmPayments: crm.sales.length, spreadsheetSales: sheet.length },
   };
 }

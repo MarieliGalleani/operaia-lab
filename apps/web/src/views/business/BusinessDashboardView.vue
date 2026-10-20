@@ -2,6 +2,7 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import {
   CATEGORY_LABEL,
+  RECEIVABLES_ROUTE,
   SEVERITY_LABEL,
   brl,
   dateBr,
@@ -57,6 +58,15 @@ async function onFile(event: Event): Promise<void> {
 }
 
 const k = computed(() => data.value?.kpis);
+
+const sourceText = computed(() => {
+  const src = data.value?.sources;
+  if (!src) return "";
+  const parts: string[] = [];
+  if (src.crmPayments) parts.push(`${src.crmPayments} recebimento(s) da Carteira de Clientes`);
+  if (src.spreadsheetSales) parts.push(`${src.spreadsheetSales} venda(s) de planilha`);
+  return parts.length ? `Fonte: ${parts.join(" + ")}.` : "";
+});
 const others = computed<BusinessInsight[]>(() => {
   const d = data.value;
   if (!d) return [];
@@ -94,10 +104,7 @@ const ICON: Record<BusinessInsight["category"], string> = { RISK: "!", PROBLEM: 
           Vendas de {{ dateBr(data.period.from) }} a {{ dateBr(data.period.to) }}
         </span>
         <router-link to="/app/floor/negocio/work" class="btn btn--ghost">Planilhas</router-link>
-        <label class="btn btn--primary biz__upload" :class="{ 'is-busy': uploading }">
-          {{ uploading ? "Aurora lendo…" : "Enviar planilha" }}
-          <input type="file" accept=".csv,text/csv,.txt" class="sr-only" :disabled="uploading" @change="onFile" />
-        </label>
+        <router-link :to="RECEIVABLES_ROUTE" class="btn btn--primary">Lançar recebimento</router-link>
       </div>
     </header>
 
@@ -113,23 +120,25 @@ const ICON: Record<BusinessInsight["category"], string> = { RISK: "!", PROBLEM: 
           <img src="/assets/office/agents/aurora.png" alt="" class="biz__agent-img" />
           <div>
             <p class="eyebrow">Finanças · Andar 05</p>
-            <h2 class="biz__agent-name">Aurora ainda não tem vendas para analisar</h2>
+            <h2 class="biz__agent-name">Aurora ainda não tem recebimentos para analisar</h2>
             <p class="biz__muted">
-              Envie a planilha de vendas (CSV) e a Aurora mostra receita, margem, quem parou de comprar e o que fazer primeiro.
+              Cada pagamento que um cliente faz para a OperaIA é uma venda. Lance os recebimentos e a Aurora mostra
+              receita, tendência, quem parou de pagar e o que fazer primeiro — sem planilha.
             </p>
           </div>
         </div>
         <ol class="biz__steps">
-          <li>A primeira linha precisa ter: <strong>data, cliente, produto, valor</strong> e, se tiver, <strong>custo</strong>.</li>
-          <li>Pode ser do jeito que o Excel salva: <code>05/01/2026;Mercado;Café;1.250,00;800,00</code>.</li>
-          <li>Sem a coluna de custo dá para ver receita e clientes, mas não margem nem lucro.</li>
+          <li>Vá em <strong>Marketing › Trabalhos › Carteira de Clientes</strong> e abra o cliente.</li>
+          <li>Em pagamentos, lance cada <strong>setup</strong> e cada <strong>mensalidade</strong> recebida, com valor e data.</li>
+          <li>Pronto: este painel se atualiza sozinho. Tem histórico antigo numa planilha? Dá para enviar também.</li>
         </ol>
         <div class="biz__actions">
-          <label class="btn btn--primary biz__upload">
-            {{ uploading ? "Aurora lendo…" : "Enviar planilha" }}
+          <router-link :to="RECEIVABLES_ROUTE" class="btn btn--primary">Lançar recebimento</router-link>
+          <label class="btn btn--ghost biz__upload" :class="{ 'is-busy': uploading }">
+            {{ uploading ? "Aurora lendo…" : "Enviar planilha de histórico" }}
             <input type="file" accept=".csv,text/csv,.txt" class="sr-only" :disabled="uploading" @change="onFile" />
           </label>
-          <button type="button" class="btn btn--ghost" @click="downloadTemplate">Baixar modelo</button>
+          <button type="button" class="btn btn--ghost" @click="downloadTemplate">Modelo da planilha</button>
         </div>
       </section>
 
@@ -141,6 +150,7 @@ const ICON: Record<BusinessInsight["category"], string> = { RISK: "!", PROBLEM: 
             <div>
               <p class="eyebrow">Aurora · Finanças</p>
               <p class="biz__summary">{{ data.summary }}</p>
+              <p class="biz__source">{{ sourceText }}</p>
             </div>
           </article>
           <article class="panel biz__health" :class="`is-${data.health.level.toLowerCase()}`">
@@ -188,12 +198,12 @@ const ICON: Record<BusinessInsight["category"], string> = { RISK: "!", PROBLEM: 
           <div class="panel biz__kpi">
             <p class="biz__kpi-label">Lucro bruto</p>
             <p class="biz__kpi-value">{{ k.profit === null ? "—" : brl(k.profit) }}</p>
-            <p class="biz__kpi-hint">{{ k.profit === null ? "planilha sem custo" : "receita menos custo" }}</p>
+            <p class="biz__kpi-hint">{{ k.profit === null ? "sem custos lançados" : "receita menos custo" }}</p>
           </div>
           <div class="panel biz__kpi">
             <p class="biz__kpi-label">Margem</p>
             <p class="biz__kpi-value">{{ pct(k.marginPct) }}</p>
-            <p class="biz__kpi-hint">{{ k.marginPct === null ? "planilha sem custo" : "do que entra, quanto sobra" }}</p>
+            <p class="biz__kpi-hint">{{ k.marginPct === null ? "sem custos lançados" : "do que entra, quanto sobra" }}</p>
           </div>
           <div class="panel biz__kpi">
             <p class="biz__kpi-label">Ticket médio</p>
@@ -416,6 +426,12 @@ const ICON: Record<BusinessInsight["category"], string> = { RISK: "!", PROBLEM: 
 .biz__agent-name {
   margin: 0;
   font-size: 1.15rem;
+}
+
+.biz__source {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .biz__summary {

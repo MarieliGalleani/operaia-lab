@@ -201,7 +201,19 @@ const EMPTY_KPIS: BusinessKpis = {
   trendBasis: null,
 };
 
-export function analyzeSales(sales: readonly SaleInput[]): BusinessAnalysis {
+export interface AnalyzeOptions {
+  /**
+   * Data de referência (aaaa-mm-dd). Com dado contínuo (pagamentos do crm) é
+   * "hoje": se ninguém paga há 2 meses, isso precisa aparecer. Sem ela, vale a
+   * última venda (planilha antiga não marca todo mundo como em risco).
+   * Nunca fica antes da última venda.
+   */
+  readonly asOf?: string;
+  /** Clientes encerrados de propósito: não viram alerta de "parou de comprar". */
+  readonly ignoreRiskFor?: ReadonlySet<string>;
+}
+
+export function analyzeSales(sales: readonly SaleInput[], options: AnalyzeOptions = {}): BusinessAnalysis {
   if (sales.length === 0) {
     return {
       empty: true,
@@ -209,7 +221,7 @@ export function analyzeSales(sales: readonly SaleInput[]): BusinessAnalysis {
       hasCost: false,
       kpis: EMPTY_KPIS,
       health: { score: 0, level: "ATTENTION", label: "Sem dados" },
-      summary: "Envie a primeira planilha de vendas para o andar começar a analisar.",
+      summary: "Ainda não há vendas: lance os recebimentos dos clientes ou envie uma planilha.",
       priority: null,
       insights: [],
       months: [],
@@ -221,7 +233,7 @@ export function analyzeSales(sales: readonly SaleInput[]): BusinessAnalysis {
   const sorted = [...sales].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
   const from = sorted[0]!.date;
   const to = sorted[sorted.length - 1]!.date;
-  const asOf = toDay(to);
+  const asOf = Math.max(toDay(to), options.asOf ? toDay(options.asOf) : 0);
   const hasCost = sales.some((s) => s.cost !== null);
 
   const revenue = sum(sales, (s) => s.revenue);
@@ -295,7 +307,7 @@ export function analyzeSales(sales: readonly SaleInput[]): BusinessAnalysis {
 
   const insights = [
     ...revenueTrendInsights(kpis),
-    ...customerRiskInsights(byCustomer, asOf, topCustomers),
+    ...customerRiskInsights(byCustomer, asOf, topCustomers, options.ignoreRiskFor),
     ...marginInsights(byProduct, marginPct, revenue),
     ...concentrationInsights(topCustomers),
     ...growingCustomerInsights(byCustomer, asOf, spanDays),
@@ -382,10 +394,12 @@ function customerRiskInsights(
   byCustomer: Map<string, SaleInput[]>,
   asOf: number,
   ranked: readonly RankedCustomer[],
+  ignore: ReadonlySet<string> = new Set(),
 ): BusinessInsight[] {
   const top5 = new Set(ranked.slice(0, 5).map((c) => c.name));
   const out: BusinessInsight[] = [];
   for (const [name, list] of byCustomer) {
+    if (ignore.has(name)) continue;
     const days = [...new Set(list.map((s) => toDay(s.date)))].sort((a, b) => a - b);
     if (days.length < 2) continue;
     const first = days[0]!;
@@ -394,8 +408,10 @@ function customerRiskInsights(
     const silence = (asOf - last) / DAY_MS;
     const limit = Math.max(30, avgGap * 2);
     if (silence <= limit) continue;
-    const months = Math.max(1, (last - first) / DAY_MS / 30);
-    const monthly = sum(list, (s) => s.revenue) / months;
+    // Valor tipico de cada compra (mediana) x compras por mes. A media
+    // puxaria para cima com uma cobranca unica (ex.: setup + mensalidades).
+    const typical = median(list.map((s) => s.revenue));
+    const monthly = typical * Math.min(30, 30 / Math.max(avgGap, 1));
     const important = top5.has(name);
     out.push({
       key: `customer-at-risk:${slug(name)}`,
@@ -553,8 +569,14 @@ function buildSummary(kpis: BusinessKpis, insights: readonly BusinessInsight[]):
     if (opps) bits.push(`${opps} oportunidade(s)`);
     parts.push(`${bits.join(" e ")}.`.replace(/^./, (c) => c.toUpperCase()));
   }
-  if (kpis.marginPct === null) parts.push("Sem coluna de custo, não dá para calcular margem e lucro.");
+  if (kpis.marginPct === null) parts.push("Sem custos lançados, ainda não dá para calcular margem e lucro.");
   return parts.join(" ");
+}
+
+function median(values: readonly number[]): number {
+  const v = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(v.length / 2);
+  return v.length % 2 ? v[mid]! : (v[mid - 1]! + v[mid]!) / 2;
 }
 
 function slug(value: string): string {
