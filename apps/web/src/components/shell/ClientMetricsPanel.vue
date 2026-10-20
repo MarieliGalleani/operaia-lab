@@ -867,7 +867,7 @@ onMounted(() => {
 
 @media (max-width: 900px) {
   .op-gads__connect {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .op-gads__summary {

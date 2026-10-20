@@ -164,7 +164,7 @@ onMounted(loadAutomations);
 
 @media (max-width: 768px) {
   .automations__grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

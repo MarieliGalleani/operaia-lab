@@ -192,7 +192,7 @@ function formatWhen(iso: string | null | undefined): string {
 @media (max-width: 980px) {
   .work-grid,
   .work-split {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .work-split > section {

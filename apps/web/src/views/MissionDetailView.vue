@@ -535,10 +535,10 @@ const team = computed(() => {
 
 @media (max-width: 980px) {
   .op-mission-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .op-facts {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

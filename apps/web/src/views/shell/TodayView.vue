@@ -782,10 +782,10 @@ const ariaSummary = computed(() => {
 @media (max-width: 900px) {
   .op-hero,
   .op-two-col {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .op-running-card {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -992,7 +992,7 @@ const ariaSummary = computed(() => {
 
 @media (max-width: 768px) {
   .op-actions-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

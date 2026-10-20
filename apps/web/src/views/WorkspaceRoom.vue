@@ -854,7 +854,7 @@ watch(
 
 @media (max-width: 1100px) {
   .op-deck {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -862,7 +862,7 @@ watch(
   .op-context-grid,
   .op-work-grid,
   .op-kpi-strip {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

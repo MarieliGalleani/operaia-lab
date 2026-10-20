@@ -241,7 +241,7 @@ const hasTasks = computed(() => props.tasks.length > 0);
 
 @media (max-width: 820px) {
   .op-board {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .op-board--fill {
     min-height: auto;

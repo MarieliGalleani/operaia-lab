@@ -118,7 +118,7 @@ const emit = defineEmits<{
 }
 @media (max-width: 768px) {
   .impact__grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .impact__actions {
     position: sticky;

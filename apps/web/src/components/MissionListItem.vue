@@ -147,7 +147,7 @@ function specialists(root: MissionTreeNodeDTO): readonly string[] {
 
 @media (max-width: 900px) {
   .op-mission-card__meta {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

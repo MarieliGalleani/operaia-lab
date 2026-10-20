@@ -1172,7 +1172,7 @@ onUnmounted(() => {
 @media (max-width: 960px) {
   .stage,
   .deck {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-row-gap: 12px;
   }
   .kpi,

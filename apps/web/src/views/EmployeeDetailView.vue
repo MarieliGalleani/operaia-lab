@@ -322,7 +322,7 @@ const completed = computed(() => missions.value.filter((m) => m.status === "COMP
     text-align: center;
   }
   .op-facts {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 .op-profile__sprite {

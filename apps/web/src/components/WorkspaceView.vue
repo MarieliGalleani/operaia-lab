@@ -284,7 +284,7 @@ function authorName(id: string): string {
 
 @media (max-width: 860px) {
   .op-ws {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

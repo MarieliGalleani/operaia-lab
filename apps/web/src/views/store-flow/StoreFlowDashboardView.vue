@@ -915,7 +915,7 @@ const tipStyle = computed(() => {
 
 @media (max-width: 760px) {
   .sfd__grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .sfd__row {

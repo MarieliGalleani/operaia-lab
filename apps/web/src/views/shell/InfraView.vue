@@ -746,7 +746,7 @@ function onToggleDetails(event: Event): void {
   }
   .op-two-col,
   .op-details__grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

@@ -1414,13 +1414,13 @@ onBeforeUnmount(() => {
 
 @media (max-width: 720px) {
   .op-kanban {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 720px) {
   .op-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>

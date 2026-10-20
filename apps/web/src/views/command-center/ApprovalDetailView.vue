@@ -283,7 +283,7 @@ async function act(action: "approve" | "reject" | "modify"): Promise<void> {
 
 @media (max-width: 768px) {
   .op-impact__grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 </style>
