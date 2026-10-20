@@ -1,0 +1,1 @@
+curl -s -o /dev/null -D - -X OPTIONS http://127.0.0.1:3333/api/v1/schedule-rules/x -H 'Origin: https://lab.operaia.com.br' -H 'Access-Control-Request-Method: DELETE' | grep -i 'access-control-allow-methods\|^HTTP'
