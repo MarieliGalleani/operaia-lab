@@ -91,6 +91,8 @@ const turns = ref<Turn[]>(readStored());
 const draft = ref("");
 const sending = ref(false);
 const thread = ref<HTMLElement | null>(null);
+const waitSeconds = ref(0);
+let waitTimer: ReturnType<typeof setInterval> | null = null;
 
 async function loadBriefing(): Promise<void> {
   try {
@@ -125,6 +127,8 @@ async function send(text?: string): Promise<void> {
   turns.value.push({ role: "user", text: message, at: new Date().toISOString() });
   draft.value = "";
   sending.value = true;
+  waitSeconds.value = 0;
+  waitTimer = setInterval(() => (waitSeconds.value += 1), 1000);
   store();
   void scrollDown();
   try {
@@ -142,6 +146,7 @@ async function send(text?: string): Promise<void> {
     });
   } finally {
     sending.value = false;
+    if (waitTimer) clearInterval(waitTimer);
     store();
     void scrollDown();
     void loadBriefing();
@@ -248,7 +253,10 @@ function when(iso: string): string {
             </p>
           </div>
           <div v-if="sending" class="so__msg so__msg--opera">
-            <div class="so__bubble so__typing">Opera está olhando o escritório…</div>
+            <div class="so__bubble so__typing">
+              Opera está olhando o escritório… {{ waitSeconds }}s
+              <template v-if="waitSeconds >= 12"><br />A IA está lenta agora (limite da conta). Se passar de 40 s, respondo só com os fatos.</template>
+            </div>
           </div>
         </div>
 
@@ -565,6 +573,12 @@ function when(iso: string): string {
   border: 1px solid var(--op-red);
   color: var(--op-red);
   background: transparent;
+}
+
+.so__bubble :deep(p),
+.so__bubble :deep(li),
+.so__bubble :deep(strong) {
+  color: inherit;
 }
 
 .so__bubble :deep(p) {

@@ -193,10 +193,15 @@ export async function chatWithOpera(input: {
   readonly message: string;
   readonly history: readonly ChatTurn[];
   readonly briefing: CeoBriefing;
+  readonly timeoutMs?: number;
 }): Promise<OperaReply> {
   const messages = buildOperaMessages(input);
   try {
-    const completion = await input.llm.complete(messages, { temperature: 0.4, maxTokens: 1500 });
+    // Limite de espera: o proxy corta em 60 s; melhor responder com fatos.
+    const completion = await Promise.race([
+      input.llm.complete(messages, { temperature: 0.4, maxTokens: 1500 }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), input.timeoutMs ?? 40_000)),
+    ]);
     if (completion.model !== "deterministic") {
       const parsed = parseOperaAnswer(completion.content);
       const answer = parsed?.resposta ?? completion.content.trim().slice(0, 3000);

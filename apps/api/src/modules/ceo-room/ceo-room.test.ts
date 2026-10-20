@@ -65,6 +65,11 @@ describe("chat da Opera", () => {
     expect(r.usedAi).toBe(false);
     expect(r.answer).toContain("sem IA");
   });
+  it("IA lenta demais: responde com fatos no limite", async () => {
+    const llm: LLMProvider = { name: "x", complete: () => new Promise(() => {}) } as unknown as LLMProvider;
+    const r = await chatWithOpera({ llm, message: "oi", history: [], briefing, timeoutMs: 20 });
+    expect(r.usedAi).toBe(false);
+  });
   it("IA real: demanda com projeto inválido é descartada", async () => {
     const llm: LLMProvider = { name: "x", complete: async () => ({ content: '{"resposta":"Feito","demanda":{"workspaceId":"projeto-que-nao-existe","texto":"x"}}', model: "gemini" }) } as LLMProvider;
     const r = await chatWithOpera({ llm, message: "faça x", history: [], briefing });
