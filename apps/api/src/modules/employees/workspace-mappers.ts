@@ -15,6 +15,15 @@ export const PROJECT_NAME_SLUGS: Readonly<Record<string, string>> = {
   OdontoClinic: "odontoclinic",
   Estocai: "estocai",
   MenuFlow: "menuflow",
+  "Podiário": "podiario",
+  "Podiário Site": "podiario-site",
+  "OperaIA Host": "operaia-host",
+  "Atlas OperaIA": "atlas-operaia",
+  "Cardápio": "cardapio",
+  "Portfólio": "portfolio",
+  "Currículo": "curriculo",
+  "Opera Core Figma": "opera-core-figma",
+  "Design System Onii": "ds-onii",
   Plataforma: "plataforma",
 };
 

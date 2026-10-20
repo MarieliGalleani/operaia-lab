@@ -69,9 +69,9 @@ class FakeProjectRepository implements ProjectRepository {
 }
 
 describe("ensureOfficialOperationalCatalog", () => {
-  it("slug map cobre os 8 workspaces oficiais", () => {
+  it("slug map cobre os 17 workspaces oficiais", () => {
     expect(() => assertOfficialSlugConsistency()).not.toThrow();
-    expect(OFFICIAL_OPERATIONAL_WORKSPACES).toHaveLength(8);
+    expect(OFFICIAL_OPERATIONAL_WORKSPACES).toHaveLength(17);
   });
 
   it("cria Projects + bindings e e idempotente", async () => {
@@ -82,8 +82,8 @@ describe("ensureOfficialOperationalCatalog", () => {
       projects,
       upsertBinding: (input) => signals.upsertBinding(input),
     });
-    expect(first.projectsEnsured).toBe(8);
-    expect(first.bindingsUpserted).toBe(8);
+    expect(first.projectsEnsured).toBe(17);
+    expect(first.bindingsUpserted).toBe(17);
     expect(first.workspaceIds).toEqual(
       OFFICIAL_OPERATIONAL_WORKSPACES.map((e) => e.workspaceId),
     );
@@ -92,17 +92,17 @@ describe("ensureOfficialOperationalCatalog", () => {
       projects,
       upsertBinding: (input) => signals.upsertBinding(input),
     });
-    expect(second.projectsEnsured).toBe(8);
+    expect(second.projectsEnsured).toBe(17);
     expect(second.createdProjectIds).toHaveLength(0);
 
     const allProjects = await projects.findAll();
-    expect(allProjects).toHaveLength(8);
+    expect(allProjects).toHaveLength(17);
     expect(allProjects.every((p) => p.status === ProjectStatus.ACTIVE)).toBe(
       true,
     );
 
     const bindings = await signals.listBindings({ enabledOnly: true });
-    expect(bindings).toHaveLength(8);
+    expect(bindings).toHaveLength(17);
     expect(
       bindings.every(
         (b) =>

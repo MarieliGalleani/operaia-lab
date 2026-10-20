@@ -21,6 +21,9 @@ const REAL_CLIENTS: readonly ClientDef[] = [
   { workspaceId: "hexalife", displayName: "Hexalife" },
   { workspaceId: "odontoclinic", displayName: "OdontoClinic" },
   { workspaceId: "estocai", displayName: "Estocai" },
+  { workspaceId: "podiario", displayName: "Podiário" },
+  { workspaceId: "atlas-operaia", displayName: "Atlas OperaIA" },
+  { workspaceId: "cardapio", displayName: "Cardápio" },
 ];
 
 export const CLIENT_FLOORS: readonly ClientFloorBuild[] = REAL_CLIENTS.map(

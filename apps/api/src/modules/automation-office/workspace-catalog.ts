@@ -12,13 +12,9 @@ const NAME_BY_ID = new Map(
   ]),
 );
 
-const CLIENT_WORKSPACES = new Set([
-  "nexo",
-  "flowgrid",
-  "hexalife",
-  "odontoclinic",
-  "estocai",
-]);
+const KIND_BY_ID = new Map(
+  OFFICIAL_OPERATIONAL_WORKSPACES.map((workspace) => [workspace.workspaceId, workspace.kind]),
+);
 
 export function resolveWorkspaceName(workspaceId: string): string {
   return NAME_BY_ID.get(workspaceId) ?? workspaceId;
@@ -27,13 +23,9 @@ export function resolveWorkspaceName(workspaceId: string): string {
 export function resolveWorkspaceKind(
   workspaceId: string,
 ): "lab" | "client" {
-  if (workspaceId === "operaia-lab" || workspaceId === "infra" || workspaceId === "deploy") {
-    return "lab";
-  }
-  if (CLIENT_WORKSPACES.has(workspaceId)) {
-    return "client";
-  }
-  return "client";
+  // Catalogo oficial e a fonte: sites e design contam como "client"
+  // (trabalho de produto), so a estrutura do escritorio e "lab".
+  return KIND_BY_ID.get(workspaceId) === "lab" ? "lab" : "client";
 }
 
 export function officialWorkspaceFilter(

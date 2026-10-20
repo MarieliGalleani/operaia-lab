@@ -22,10 +22,19 @@ const expectedWorkspaces = [
   "hexalife",
   "odontoclinic",
   "estocai",
+  "podiario",
+  "podiario-site",
+  "operaia-host",
+  "atlas-operaia",
+  "cardapio",
+  "portfolio",
+  "curriculo",
+  "opera-core-figma",
+  "ds-onii",
 ] as const;
 
 describe("acesso single-admin aos workspaces oficiais", () => {
-  it("reutiliza exatamente os oito workspaces do catalogo oficial", () => {
+  it("reutiliza exatamente os workspaces do catalogo oficial", () => {
     expect(ADMIN_OFFICIAL_WORKSPACE_IDS).toEqual(expectedWorkspaces);
     for (const workspaceId of expectedWorkspaces) {
       expect(hasOfficialWorkspaceAccess(admin, workspaceId)).toBe(true);
