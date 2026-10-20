@@ -63,9 +63,16 @@ export function createProductLabRuntime(): ProductRuntime {
    */
   let llmOverrides: Readonly<Record<string, LLMProvider>> | undefined;
   if (env.ANTHROPIC_API_KEY) {
+    // Se o Claude falhar (ex.: conta sem credito — visto em 19/10), cai
+    // para o Gemini da equipe antes do modo deterministico. Antes caia
+    // direto no deterministico e CEO/Mag/Themis respondiam texto pronto
+    // sem ninguem perceber.
     const claude = createLLMStack({
       provider: "anthropic",
       anthropicApiKey: env.ANTHROPIC_API_KEY,
+      geminiApiKey: env.GEMINI_API_KEY,
+      ...(env.GEMINI_API_KEY ? { fallbackProviders: ["gemini" as const] } : {}),
+      maxTokensClamp: env.LLM_MAX_TOKENS_CLAMP,
       enableConsoleObservability: env.LLM_OBSERVABILITY,
     });
     llmOverrides = {
