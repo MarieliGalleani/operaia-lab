@@ -46,7 +46,9 @@ function resolveTargetStatus(
   autonomy: AutonomyLevel,
   risk: RiskLevel,
 ): InterpretResult["targetStatus"] {
-  if (risk === "CRITICAL" || autonomy === "HUMAN_APPROVAL") {
+  // HIGH tambem pede aprovacao: antes ficava PLANNED, mas a execucao
+  // recusava risco alto sem criar pedido de aprovacao (beco sem saida).
+  if (risk === "CRITICAL" || risk === "HIGH" || autonomy === "HUMAN_APPROVAL") {
     return "AWAITING_APPROVAL";
   }
   if (autonomy === "AUTONOMOUS") {

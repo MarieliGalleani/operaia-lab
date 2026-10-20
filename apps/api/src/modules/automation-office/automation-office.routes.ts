@@ -32,7 +32,7 @@ import {
 import { getAutomationById, listAutomations } from "./automation.service.js";
 import { buildCommandCenter } from "./command-center.service.js";
 import { getDecisionById, listDecisions } from "./decision-trace.service.js";
-import { executeDemand, interpretDemand } from "./demand.service.js";
+import { executeApprovedDemand, executeDemand, interpretDemand } from "./demand.service.js";
 import {
   getExecutionById,
   listExecutions,
@@ -173,11 +173,16 @@ export function createAutomationOfficeRoutes(
           response: { 200: approvalActionResponseSchema },
         },
       },
-      async (request) =>
-        approveApproval(
+      async (request) => {
+        const result = await approveApproval(
           request.params.id,
           request.authenticatedAdmin!.login,
-        ),
+        );
+        // Aprovar uma demanda ja a coloca para rodar: antes ela ficava READY
+        // e so a tela "Nova demanda" tinha o botao Executar.
+        const started = await executeApprovedDemand(deps, request.params.id, request.log);
+        return started ? { ...result, message: `Aprovação registrada. ${started}` } : result;
+      },
     );
 
     app.post(

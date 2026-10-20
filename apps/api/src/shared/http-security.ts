@@ -49,6 +49,9 @@ export function registerHttpSecurity(
   void app.register(cors, {
     origin: [...allowedWebOrigins(environment)],
     credentials: true,
+    // O padrao do @fastify/cors e so GET/HEAD/POST: o navegador bloqueava
+    // todo PATCH/DELETE do app (editar/remover gatilho, metricas, pagamentos).
+    methods: ["GET", "HEAD", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
   });
   void app.register(helmet, {
     contentSecurityPolicy: false,

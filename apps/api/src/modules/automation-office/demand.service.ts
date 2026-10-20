@@ -234,6 +234,11 @@ export function canExecuteDemand(input: {
   return { ok: false, message: `Demanda não está pronta para execução (status: ${input.status}).` };
 }
 
+/** PLANNED com risco alto: precisa abrir pedido de aprovacao. */
+export function needsApprovalRequest(status: string, risk: string | null): boolean {
+  return status === "PLANNED" && (risk === "HIGH" || risk === "CRITICAL");
+}
+
 export async function executeDemand(
   deps: AutomationOfficeDeps,
   input: {
@@ -265,6 +270,35 @@ export async function executeDemand(
   });
 
   if (!verdict.ok) {
+    // Demanda antiga de risco alto parada em PLANNED: em vez de 409 sem
+    // saida, abre o pedido na Sala de Aprovacao e avisa a usuaria.
+    if (needsApprovalRequest(demand.status, demand.risk)) {
+      const pending = await prisma.officeApprovalRequest.findFirst({
+        where: { demandId: demand.id, status: "PENDING" },
+        select: { id: true },
+      });
+      const approval =
+        pending ??
+        (await createApprovalForDemand({
+          demandId: demand.id,
+          workspaceId: demand.workspaceId,
+          action: `Executar demanda: ${demand.objective.slice(0, 80)}`,
+          risk: demand.risk as RiskLevel,
+          impact: "Execução de demanda de risco alto pelo escritório.",
+          reason: "Risco alto exige aprovação humana antes da execução.",
+          validated: ["Plano operacional revisado", "Workspace autorizado"],
+          approveEffect: "Demanda fica pronta para executar.",
+          rejectEffect: "Demanda permanece pausada até nova instrução.",
+          officeDecision: "Recomendamos revisar o plano antes de aprovar.",
+        }));
+      await prisma.officeDemand.update({
+        where: { id: demand.id },
+        data: { status: "AWAITING_APPROVAL" },
+      });
+      throw new ConflictError(
+        `Risco alto: enviamos para a Sala de Aprovação (pedido ${approval.id.slice(0, 8)}). Depois de aprovar, clique em Executar.`,
+      );
+    }
     throw new ConflictError(verdict.message);
   }
 
@@ -367,4 +401,37 @@ export function toDemandBrief(demand: {
     autonomy: demand.autonomy as AutonomyLevel,
     dependencies: [] as readonly string[],
   };
+}
+
+/**
+ * Depois de "Aprovar" na Sala de Aprovacao: se o pedido era de uma
+ * demanda, ja manda executar. Falha aqui nao desfaz a aprovacao — a
+ * demanda fica READY e pode ser executada de novo. Devolve a frase para a
+ * usuaria ou null quando nao havia demanda.
+ */
+export async function executeApprovedDemand(
+  deps: AutomationOfficeDeps,
+  approvalId: string,
+  log?: { warn(obj: unknown, msg?: string): void },
+): Promise<string | null> {
+  const approval = await prisma.officeApprovalRequest.findUnique({
+    where: { id: approvalId },
+    select: { demandId: true },
+  });
+  if (!approval?.demandId) return null;
+  const demand = await prisma.officeDemand.findUnique({
+    where: { id: approval.demandId },
+    select: { autonomy: true },
+  });
+  const autonomy = (demand?.autonomy as AutonomyLevel | null) ?? "CONTROLLED";
+  try {
+    await executeDemand(deps, {
+      demandId: approval.demandId,
+      autonomy: autonomy === "READ_PLAN" || autonomy === "HUMAN_APPROVAL" ? "CONTROLLED" : autonomy,
+    });
+    return "A demanda já foi enviada para execução.";
+  } catch (err) {
+    log?.warn({ err, approvalId }, "approved demand did not start");
+    return "A demanda ficou pronta, mas não começou sozinha — abra e clique em Executar.";
+  }
 }
