@@ -491,10 +491,7 @@ const AUTOMATION_STATUS_LABEL: Record<string, { label: string; tone: string }> =
   line-height: 1.5;
   color: var(--op-muted-3);
   margin-bottom: 12px;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .op-progress-track {
