@@ -6,7 +6,7 @@ import type {
   LLMProvider,
 } from "../llm-provider.js";
 
-const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5";
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-5-5";
 const DEFAULT_MAX_TOKENS = 4096;
 
 export interface AnthropicProviderOptions {
