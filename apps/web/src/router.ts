@@ -11,7 +11,6 @@ import {
   authSession,
   type AuthSession,
 } from "@/modules/auth/auth-session";
-import OfficeLayout from "@/layouts/OfficeLayout.vue";
 import OperationalShellLayout from "@/layouts/OperationalShellLayout.vue";
 import TodayView from "@/views/shell/TodayView.vue";
 import PortariaView from "@/views/shell/PortariaView.vue";
@@ -21,21 +20,17 @@ import MarketingWorkView from "@/views/shell/MarketingWorkView.vue";
 import AutomationWorkView from "@/views/shell/AutomationWorkView.vue";
 import WorkView from "@/views/shell/WorkView.vue";
 import InfraView from "@/views/shell/InfraView.vue";
+import SalaOperaView from "@/views/shell/SalaOperaView.vue";
+import KnowledgeShellView from "@/views/shell/KnowledgeShellView.vue";
+import NotFoundShellView from "@/views/shell/NotFoundShellView.vue";
 import LoginView from "@/views/LoginView.vue";
 import CampusWorldPage from "@/views/CampusWorldPage.vue";
-import OfficeWorldPage from "@/views/OfficeWorldPage.vue";
-import ExecutiveRoom from "@/views/ExecutiveRoom.vue";
 import WorkspaceRoom from "@/views/WorkspaceRoom.vue";
 import NewProjectView from "@/views/NewProjectView.vue";
 import EmployeeDetailView from "@/views/EmployeeDetailView.vue";
-import ActivityCenter from "@/views/ActivityCenter.vue";
-import KnowledgeView from "@/views/KnowledgeView.vue";
 import SettingsView from "@/views/SettingsView.vue";
 import MissionsView from "@/views/MissionsView.vue";
 import MissionDetailView from "@/views/MissionDetailView.vue";
-import OfficeStatusView from "@/views/OfficeStatusView.vue";
-import VirtualWorldTest from "@/views/VirtualWorldTest.vue";
-import NotFoundView from "@/views/NotFoundView.vue";
 import NewDemandView from "@/views/command-center/NewDemandView.vue";
 import ApprovalsView from "@/views/command-center/ApprovalsView.vue";
 import ApprovalDetailView from "@/views/command-center/ApprovalDetailView.vue";
@@ -76,6 +71,7 @@ const routes: RouteRecordRaw[] = [
         children: [
           { path: "", name: "portaria", component: PortariaView },
           { path: "office", name: "portaria-office", component: Office3DView, props: { floorId: "portaria" } },
+          { path: "sala-opera", name: "ceo-room", component: SalaOperaView },
         ],
       },
       {
@@ -284,6 +280,7 @@ const routes: RouteRecordRaw[] = [
         children: [
           { path: "infra", name: "vps-panel", component: InfraView },
           { path: "settings", name: "settings", component: SettingsView },
+          { path: "knowledge", name: "knowledge", component: KnowledgeShellView },
         ],
       },
       // ---- 4º andar — Store Flow (afiliados; elenco proprio: Flow + Driele) ----
@@ -302,51 +299,29 @@ const routes: RouteRecordRaw[] = [
       // Enderecos antigos do Store Flow -> 4º andar
       { path: "store-flow", redirect: "/app/floor/store-flow/command" },
       { path: "store-flow/aprovacao", redirect: "/app/floor/store-flow/work" },
+      // ---- Layout antigo (OfficeLayout) aposentado: tudo vive no shell 3.0.
+      // Enderecos antigos continuam funcionando por redirecionamento.
+      { path: "office", redirect: "/app/portaria" },
+      { path: "office/status", redirect: "/app/floor/dev/command" },
+      { path: "office/legacy-status", redirect: "/app/portaria" },
+      { path: "office/sala-ceo", redirect: "/app/portaria/sala-opera" },
+      { path: "office/equipe", redirect: "/app/floor/dev/office" },
+      { path: "office/projetos", redirect: "/app/floor/dev/workspaces" },
       {
-        path: "office",
-        component: OfficeLayout,
-        children: [
-          { path: "", name: "office", component: OfficeWorldPage },
-          {
-            path: "status",
-            redirect: "/app/floor/dev/command",
-          },
-          { path: "sala-ceo", name: "ceo-room", component: ExecutiveRoom },
-          { path: "equipe", redirect: "/app/floor/dev/team" },
-          { path: "projetos", redirect: "/app/floor/dev/workspaces" },
-          {
-            path: "projetos/:id",
-            redirect: (to) => `/app/floor/dev/workspaces/${String(to.params.id)}`,
-          },
-          { path: "missions", redirect: "/app/floor/dev/missions" },
-          {
-            path: "missions/:id",
-            redirect: (to) => `/app/floor/dev/missions/${String(to.params.id)}`,
-          },
-          {
-            path: "atividades",
-            name: "activities",
-            component: ActivityCenter,
-          },
-          {
-            path: "conhecimento",
-            name: "knowledge",
-            component: KnowledgeView,
-          },
-          { path: "vps", redirect: "/app/system/infra" },
-          { path: "configuracoes", redirect: "/app/system/settings" },
-          {
-            path: "legacy-status",
-            name: "office-status",
-            component: OfficeStatusView,
-          },
-        ],
+        path: "office/projetos/:id",
+        redirect: (to) => `/app/floor/dev/workspaces/${String(to.params.id)}`,
       },
+      { path: "office/missions", redirect: "/app/floor/dev/missions" },
       {
-        path: "virtual-world-test",
-        name: "virtual-world-test",
-        component: VirtualWorldTest,
+        path: "office/missions/:id",
+        redirect: (to) => `/app/floor/dev/missions/${String(to.params.id)}`,
       },
+      // Atividades repetia Execucoes + Mural do Hoje.
+      { path: "office/atividades", redirect: "/app/floor/dev/executions" },
+      { path: "office/conhecimento", redirect: "/app/system/knowledge" },
+      { path: "office/vps", redirect: "/app/system/infra" },
+      { path: "office/configuracoes", redirect: "/app/system/settings" },
+      { path: "virtual-world-test", redirect: "/app/portaria" },
       // ---- Compatibilidade: rotas antigas -> andar correspondente --------
       { path: "command", redirect: "/app/floor/dev/command" },
       { path: "command/new", redirect: "/app/floor/dev/command/new" },
@@ -392,14 +367,11 @@ const routes: RouteRecordRaw[] = [
       },
       // ---- P1.14A: rotas antigas sem capacidade real correspondente ------
       { path: "tasks", redirect: "/app/floor/dev/workspaces" },
-      { path: "vault", redirect: "/app/office/conhecimento" },
-      { path: "calendar", component: OfficeLayout, children: [{ path: "", component: NotFoundView }] },
-      { path: "maps", component: OfficeLayout, children: [{ path: "", component: NotFoundView }] },
-      { path: "map/:id", component: OfficeLayout, children: [{ path: "", component: NotFoundView }] },
-      { path: "notes", component: OfficeLayout, children: [{ path: "", component: NotFoundView }] },
+      { path: "vault", redirect: "/app/system/knowledge" },
+      { path: "notes", redirect: "/app/system/knowledge" },
       // Catch-all dentro de /app: qualquer rota não mapeada cai aqui,
       // nunca em tela branca silenciosa.
-      { path: ":pathMatch(.*)*", component: OfficeLayout, children: [{ path: "", component: NotFoundView }] },
+      { path: ":pathMatch(.*)*", component: OperationalShellLayout, children: [{ path: "", name: "not-found", component: NotFoundShellView }] },
     ],
   },
   { path: "/campus", redirect: "/app/campus" },
@@ -413,7 +385,7 @@ const routes: RouteRecordRaw[] = [
       return `/app/office${suffix ? `/${suffix}` : ""}`;
     },
   },
-  { path: "/virtual-world-test", redirect: "/app/virtual-world-test" },
+  { path: "/virtual-world-test", redirect: "/app/portaria" },
 ];
 
 export function createAppRouter(

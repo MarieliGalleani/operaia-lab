@@ -363,7 +363,7 @@ watch(
           <article v-else class="op-rail-empty">
             <p class="op-eyebrow-sm">Workflow</p>
             <p class="op-rail-empty__body">Sem fluxo registrado ainda — peça um plano à Opera.</p>
-            <router-link to="/app/office/sala-ceo" class="op-btn">Abrir Sala da CEO</router-link>
+            <router-link to="/app/portaria/sala-opera" class="op-btn">Abrir Sala da CEO</router-link>
           </article>
 
           <section class="op-rail-feed op-stack-gap">
@@ -381,7 +381,7 @@ watch(
                 <p class="op-rail-empty-state__body">
                   Quando a equipe agir neste workspace, o feed aparece aqui.
                 </p>
-                <router-link to="/app/office/atividades" class="op-btn">Ver atividades do lab</router-link>
+                <router-link to="/app/floor/dev/executions" class="op-btn">Ver atividades do lab</router-link>
               </div>
             </div>
           </section>

@@ -18,7 +18,7 @@ const rows = computed(() => [
 const shortcuts = [
   { label: "Command Center", to: "/app/command", desc: "Porta do escritório" },
   { label: "Nova demanda", to: "/app/command/new", desc: "Pedir ao escritório" },
-  { label: "Sala da Opera", to: "/app/office/sala-ceo", desc: "Decidir com a CEO" },
+  { label: "Sala da Opera", to: "/app/portaria/sala-opera", desc: "Decidir com a CEO" },
   { label: "Infra", to: "/app/system/infra", desc: "Profundidade técnica" },
   { label: "Workspaces", to: "/app/workspaces", desc: "Clientes e projetos" },
 ];

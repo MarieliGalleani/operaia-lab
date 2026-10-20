@@ -75,7 +75,7 @@ function authorName(id: string): string {
           <p class="op-ws__dec-empty__body">
             Use a Sala da CEO para registrar o próximo direcionamento deste workspace.
           </p>
-          <router-link to="/app/office/sala-ceo" class="op-btn">Falar com a Opera</router-link>
+          <router-link to="/app/portaria/sala-opera" class="op-btn">Falar com a Opera</router-link>
         </li>
       </ul>
     </article>

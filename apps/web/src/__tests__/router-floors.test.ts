@@ -45,6 +45,13 @@ describe("Floor routing (Fase 1)", () => {
     ["/app/office/missions", "/app/floor/dev/missions"],
     ["/app/office/missions/abc", "/app/floor/dev/missions/abc"],
     ["/app/office/status", "/app/floor/dev/command"],
+    // layout antigo aposentado: enderecos antigos caem nas telas 3.0
+    ["/app/office", "/app/portaria"],
+    ["/app/office/sala-ceo", "/app/portaria/sala-opera"],
+    ["/app/office/conhecimento", "/app/system/knowledge"],
+    ["/app/office/atividades", "/app/floor/dev/executions"],
+    ["/app/office/legacy-status", "/app/portaria"],
+    ["/app/virtual-world-test", "/app/portaria"],
     ["/app/floor/dev", "/app/floor/dev/command"],
     ["/app/floor/automation", "/app/floor/automation/command"],
   ])("redireciona %s -> %s", async (from, expected) => {
@@ -70,8 +77,8 @@ describe("Floor routing (Fase 1)", () => {
     "/app/floor/automation/triggers",
     "/app/system/infra",
     "/app/system/settings",
-    "/app/office",
-    "/app/office/sala-ceo",
+    "/app/portaria/sala-opera",
+    "/app/system/knowledge",
     "/app/campus",
   ])("resolve %s diretamente (sem redirect)", async (path) => {
     const router = createAppRouter(

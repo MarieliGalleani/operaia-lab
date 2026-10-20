@@ -28,7 +28,8 @@ const { projects, load } = useOffice();
 void load();
 
 const step = ref<Step>("input");
-const text = ref("");
+// A Sala da Opera manda o pedido ja escrito (?text=...).
+const text = ref(String(route.query.text ?? "").slice(0, 2000));
 const workspaceId = ref(String(route.query.workspace ?? ""));
 const interpreting = ref(false);
 const executing = ref(false);

@@ -195,6 +195,11 @@ const NAV_ICONS: Record<string, string> = {
           <span class="op-nav-label">Visão do prédio</span>
           <span class="op-nav-count"></span>
         </router-link>
+        <router-link to="/app/portaria/sala-opera" class="op-nav-item" aria-label="Sala da Opera" :class="{ 'is-active': isActive('/app/portaria/sala-opera') }">
+          <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+          <span class="op-nav-label">Sala da Opera</span>
+          <span class="op-nav-count"></span>
+        </router-link>
         <router-link :to="PORTARIA.officeRoute" class="op-nav-item" aria-label="Escritório 3D" :class="{ 'is-active': isActive(PORTARIA.officeRoute) }">
           <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path :d="NAV_ICONS.office" /></svg>
           <span class="op-nav-label">Escritório 3D</span>
@@ -232,6 +237,11 @@ const NAV_ICONS: Record<string, string> = {
       </template>
 
       <p class="op-eyebrow op-eyebrow--building">Prédio</p>
+      <router-link to="/app/system/knowledge" class="op-nav-item op-nav-item--building" aria-label="Conhecimento" :class="{ 'is-active': isActive('/app/system/knowledge') }">
+        <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z" /><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5" /></svg>
+        <span class="op-nav-label">Conhecimento</span>
+        <span class="op-nav-count"></span>
+      </router-link>
       <router-link to="/app/system/infra" class="op-nav-item op-nav-item--building" aria-label="Infraestrutura" :class="{ 'is-active': isActive('/app/system/infra') }">
         <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="14" width="6" height="7" /><rect x="9" y="8" width="6" height="13" /><rect x="16" y="3" width="6" height="18" /></svg>
         <span class="op-nav-label">Infraestrutura</span>

@@ -18,6 +18,7 @@ import { publicStatusRoutes } from "./modules/health/public-status.routes.js";
 import { infraRoutes } from "./modules/infra/vps.routes.js";
 import { knowledgeRoutes } from "./modules/knowledge/knowledge.routes.js";
 import { createOfficeStatusRoutes } from "./modules/office/office-status.routes.js";
+import { createCeoRoomRoutes } from "./modules/ceo-room/ceo-room.routes.js";
 import { createAutomationOfficeRoutes } from "./modules/automation-office/index.js";
 import { createMarketingOfficeRoutes } from "./modules/marketing-office/index.js";
 import { createAutomationEngagementRoutes } from "./modules/automation-engagements/index.js";
@@ -109,6 +110,9 @@ export function buildApp(): AppBundle {
       prefix: "/api/v1",
     });
     protectedApi.register(createOfficeStatusRoutes(continuous), {
+      prefix: "/api/v1",
+    });
+    protectedApi.register(createCeoRoomRoutes(continuous), {
       prefix: "/api/v1",
     });
     protectedApi.register(
