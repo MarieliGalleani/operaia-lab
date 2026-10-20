@@ -34,6 +34,8 @@ const campaigns = ref<readonly MarketingCampaign[]>([]);
 const state = ref<"idle" | "loading" | "ready" | "error">("idle");
 const error = ref<string | null>(null);
 const acting = ref<string | null>(null);
+/** Resultado por aprovacao: antes erro so ia pro console e nada aparecia. */
+const actResult = ref<Record<string, { ok: boolean; text: string }>>({});
 const live = ref(false);
 
 let disconnectLive: (() => void) | null = null;
@@ -158,12 +160,15 @@ function executionStatusLabel(status: ExecutionListItem["status"]): string {
 async function act(approval: ApprovalListItem, action: "approve" | "reject"): Promise<void> {
   acting.value = approval.id;
   try {
-    await officeCommandClient.actOnApproval(approval.id, action);
+    const res = await officeCommandClient.actOnApproval(approval.id, action);
     approvals.value = approvals.value.map((a) =>
       a.id === approval.id ? { ...a, status: action === "approve" ? "APPROVED" : "REJECTED" } : a,
     );
+    actResult.value = { ...actResult.value, [approval.id]: { ok: true, text: res.message } };
   } catch (err) {
-    console.log("[mural] falha ao agir na aprovação", err);
+    const text = err instanceof Error ? err.message : "Não foi possível registrar. Tente de novo.";
+    actResult.value = { ...actResult.value, [approval.id]: { ok: false, text } };
+    void load();
   } finally {
     acting.value = null;
   }
@@ -255,7 +260,7 @@ onBeforeUnmount(() => {
               :disabled="acting === item.data.id"
               @click="act(item.data, 'approve')"
             >
-              {{ acting === item.data.id ? "…" : "Aprovar" }}
+              {{ acting === item.data.id ? "Enviando…" : "Aprovar" }}
             </button>
             <button
               type="button"
@@ -273,7 +278,16 @@ onBeforeUnmount(() => {
             </router-link>
           </div>
           <p v-else-if="item.kind === 'approval'" class="op-mural-card__resolved">
-            {{ item.data.status === "APPROVED" ? "Aprovada" : item.data.status === "REJECTED" ? "Rejeitada" : item.data.status }}
+            {{ item.data.status === "APPROVED" ? "✓ Aprovada" : item.data.status === "REJECTED" ? "Rejeitada" : item.data.status }}
+          </p>
+          <p
+            v-if="item.kind === 'approval' && actResult[item.data.id]"
+            class="op-mural-card__result"
+            :class="actResult[item.data.id]!.ok ? 'is-ok' : 'is-error'"
+            role="status"
+            aria-live="polite"
+          >
+            {{ actResult[item.data.id]!.text }}
           </p>
 
           <router-link
@@ -420,6 +434,20 @@ onBeforeUnmount(() => {
   color: var(--op-ink-3);
   margin: 0 0 8px;
   line-height: 1.5;
+}
+
+.op-mural-card__result {
+  margin: 6px 0 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.op-mural-card__result.is-ok {
+  color: var(--op-green);
+}
+
+.op-mural-card__result.is-error {
+  color: var(--op-red);
 }
 
 .op-mural-card__resolved {

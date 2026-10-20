@@ -16,6 +16,16 @@ const id = props.id || String(route.params.id);
 const detail = ref<ApprovalDetailDto | null>(null);
 const state = ref<"loading" | "ready" | "error">("loading");
 const feedback = ref("");
+const feedbackTone = ref<"ok" | "error">("ok");
+const busy = ref<"approve" | "reject" | "modify" | null>(null);
+
+const STATUS_LABEL: Record<string, string> = {
+  PENDING: "Aguardando sua decisão",
+  APPROVED: "Aprovada",
+  REJECTED: "Recusada",
+  MODIFIED: "Enviada para modificar",
+};
+const isPending = computed(() => detail.value?.status === "PENDING");
 
 async function load(): Promise<void> {
   state.value = "loading";
@@ -30,11 +40,34 @@ async function load(): Promise<void> {
 
 onMounted(load);
 
+/**
+ * Antes: sem estado de envio, erro engolido (ex.: 409 "ja resolvida") e
+ * botoes sempre visiveis — a usuaria clicava e nao sabia se tinha ido.
+ */
 async function act(action: "approve" | "reject" | "modify"): Promise<void> {
-  const res = await officeCommandClient.actOnApproval(id, action);
-  feedback.value = res.message;
-  if (detail.value) {
-    detail.value = { ...detail.value, status: res.status };
+  if (busy.value) return;
+  busy.value = action;
+  feedback.value = "";
+  try {
+    const res = await officeCommandClient.actOnApproval(id, action);
+    feedback.value = res.message;
+    feedbackTone.value = "ok";
+    if (detail.value) {
+      detail.value = { ...detail.value, status: res.status };
+    }
+  } catch (error) {
+    feedbackTone.value = "error";
+    feedback.value = error instanceof Error ? error.message : "Não foi possível registrar. Tente de novo.";
+    // Se ja foi resolvida em outro lugar, mostra o estado real.
+    try {
+      const fresh = await officeCommandClient.getApproval(id);
+      if (fresh) detail.value = fresh;
+    } catch {
+      /* mantem a tela como esta */
+    }
+    return;
+  } finally {
+    busy.value = null;
   }
   if (action === "modify") {
     await router.push({
@@ -65,9 +98,9 @@ async function act(action: "approve" | "reject" | "modify"): Promise<void> {
       <p class="op-error__body">Ela pode já ter sido resolvida ou o link está incorreto.</p>
     </div>
     <template v-else-if="detail">
-      <p v-if="feedback" class="op-feedback" role="status">{{ feedback }}</p>
       <section class="op-impact">
-        <p class="op-eyebrow-sm">Aprovação necessária</p>
+        <p class="op-eyebrow-sm">{{ isPending ? "Aprovação necessária" : "Aprovação resolvida" }}</p>
+        <p class="op-status" :class="`is-${detail.status.toLowerCase()}`">{{ STATUS_LABEL[detail.status] ?? detail.status }}</p>
         <h2 class="op-impact__question">Por que estou pedindo sua aprovação?</h2>
 
         <dl class="op-impact__grid">
@@ -117,17 +150,25 @@ async function act(action: "approve" | "reject" | "modify"): Promise<void> {
           </div>
         </dl>
 
-        <div class="op-impact__actions" role="group" aria-label="Ações de aprovação">
-          <button type="button" class="op-btn op-btn--approve" @click="act('approve')">
-            Aprovar
+        <div v-if="isPending" class="op-impact__actions" role="group" aria-label="Ações de aprovação">
+          <button type="button" class="op-btn op-btn--approve" :disabled="busy !== null" @click="act('approve')">
+            {{ busy === "approve" ? "Enviando…" : "Aprovar" }}
           </button>
-          <button type="button" class="op-btn op-btn--danger" @click="act('reject')">
-            Recusar
+          <button type="button" class="op-btn op-btn--danger" :disabled="busy !== null" @click="act('reject')">
+            {{ busy === "reject" ? "Enviando…" : "Recusar" }}
           </button>
-          <button type="button" class="op-btn" @click="act('modify')">
+          <button type="button" class="op-btn" :disabled="busy !== null" @click="act('modify')">
             Modificar
           </button>
         </div>
+        <p v-if="feedback" class="op-feedback" :class="`is-${feedbackTone}`" role="status" aria-live="polite">
+          {{ feedbackTone === "ok" ? "✓ " : "" }}{{ feedback }}
+        </p>
+        <router-link
+          v-if="detail.status === 'APPROVED'"
+          to="/app/floor/dev/executions"
+          class="op-btn op-impact__next"
+        >Ver execuções</router-link>
       </section>
     </template>
   </div>
@@ -173,9 +214,49 @@ async function act(action: "approve" | "reject" | "modify"): Promise<void> {
   color: var(--op-muted-3);
 }
 
+.op-status {
+  display: inline-block;
+  margin: 6px 0 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--op-line-strong);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--op-amber);
+}
+
+.op-status.is-approved {
+  color: var(--op-green);
+}
+
+.op-status.is-rejected {
+  color: var(--op-red);
+}
+
+.op-impact__next {
+  display: inline-block;
+  margin-top: 12px;
+  text-decoration: none;
+}
+
+.op-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.op-feedback.is-ok {
+  border-color: var(--op-green);
+  color: var(--op-green);
+}
+
+.op-feedback.is-error {
+  border-color: var(--op-red);
+  color: var(--op-red);
+}
+
 .op-feedback {
   max-width: 720px;
-  margin-bottom: 14px;
+  margin: 16px 0 0;
   padding: 10px 14px;
   border: 1px solid var(--op-line-strong);
   border-radius: var(--op-radius-sm);
