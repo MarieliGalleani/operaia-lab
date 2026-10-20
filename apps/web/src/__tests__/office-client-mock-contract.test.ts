@@ -18,6 +18,9 @@ function httpStub(overrides: {
       (async () => {
         throw new Error("post not stubbed");
       })) as HttpClient["post"],
+    put: (async () => {
+      throw new Error("put not stubbed");
+    }) as HttpClient["put"],
     patch: (async () => {
       throw new Error("patch not stubbed");
     }) as HttpClient["patch"],

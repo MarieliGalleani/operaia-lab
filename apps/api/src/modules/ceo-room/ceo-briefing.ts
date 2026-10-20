@@ -80,6 +80,14 @@ export interface BriefingProject {
   readonly failures24h: number;
 }
 
+export interface BriefingStoreFlow {
+  readonly niche: string;
+  readonly pending: number;
+  readonly approved: number;
+  readonly rejected: number;
+  readonly updatedAt: string;
+}
+
 export interface CeoBriefing {
   readonly generatedAt: string;
   readonly health: BriefingHealth | null;
@@ -95,7 +103,26 @@ export interface CeoBriefing {
     readonly automatic: number;
   };
   readonly floorRuns: readonly BriefingFloorRun[];
+  readonly storeFlow: BriefingStoreFlow | null;
   readonly projects: readonly BriefingProject[];
+}
+
+/** Ultima rodada do Store Flow (null se nao ha rodada ou tabela ainda nao existe). */
+async function loadStoreFlow(): Promise<BriefingStoreFlow | null> {
+  try {
+    const row = await prisma.storeFlowRun.findFirst({ orderBy: { createdAt: "desc" }, select: { niche: true, runJson: true, updatedAt: true } });
+    if (!row) return null;
+    const drafts = ((row.runJson as { drafts?: { status?: string }[] } | null)?.drafts ?? []);
+    return {
+      niche: row.niche,
+      pending: drafts.filter((d) => d.status === "PENDING_APPROVAL").length,
+      approved: drafts.filter((d) => d.status === "APPROVED").length,
+      rejected: drafts.filter((d) => d.status === "REJECTED").length,
+      updatedAt: row.updatedAt.toISOString(),
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** Objetivo como a usuaria escreveu, sem marcas internas do runtime. */
@@ -159,7 +186,7 @@ export async function buildCeoBriefing(deps: BriefingDeps): Promise<CeoBriefing>
   const since7d = new Date(now - 7 * DAY_MS);
   const official = officialWorkspaceFilter();
 
-  const [health, approvals, roots, active, deliveriesRaw, engagements, campaigns] = await Promise.all([
+  const [health, approvals, roots, active, deliveriesRaw, engagements, campaigns, storeFlow] = await Promise.all([
     deps.loadHealth().catch(() => null),
     prisma.officeApprovalRequest.findMany({
       where: { status: "PENDING", ...official },
@@ -202,6 +229,7 @@ export async function buildCeoBriefing(deps: BriefingDeps): Promise<CeoBriefing>
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
+    loadStoreFlow(),
   ]);
 
   const toMission = (m: { id: string; workspaceId: string; objective: string }, at: Date): BriefingMission => ({
@@ -287,6 +315,7 @@ export async function buildCeoBriefing(deps: BriefingDeps): Promise<CeoBriefing>
       automatic: roots.filter((m) => !m.objective.includes(HUMAN_DEMAND)).length,
     },
     floorRuns,
+    storeFlow,
     projects: OFFICIAL_OPERATIONAL_WORKSPACES.map((w) => ({
       workspaceId: w.workspaceId,
       name: w.name,

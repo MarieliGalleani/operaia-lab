@@ -101,6 +101,11 @@ function compactBriefing(b: CeoBriefing): string {
         .join("\n")}`,
     );
   }
+  if (b.storeFlow) {
+    lines.push(
+      `Store Flow (afiliados), última rodada "${b.storeFlow.niche}": ${b.storeFlow.pending} posts esperando aprovação na Sala de Aprovação do 4º andar, ${b.storeFlow.approved} aprovados, ${b.storeFlow.rejected} recusados.`,
+    );
+  }
   lines.push(
     `Projetos do escritório (${b.projects.length}): ${b.projects
       .map((p) => `${p.name} [${p.workspaceId}, ${p.kind}${p.missions24h ? `, ${p.missions24h} missões/24h` : ""}${p.failures24h ? `, ${p.failures24h} falhas` : ""}]`)

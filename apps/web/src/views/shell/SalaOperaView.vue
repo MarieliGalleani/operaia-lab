@@ -49,6 +49,7 @@ interface Briefing {
   failures: Failure[];
   counts24h: { completed: number; failed: number; human: number; automatic: number };
   floorRuns: FloorRun[];
+  storeFlow: { niche: string; pending: number; approved: number; rejected: number; updatedAt: string } | null;
   projects: Project[];
 }
 interface SuggestedDemand { workspaceId: string; workspaceName: string; text: string }
@@ -184,7 +185,7 @@ const greetingText = computed(() => {
 const suggestions = computed(() => {
   const b = briefing.value;
   const list: string[] = [];
-  if (b?.approvalsPending.length) list.push("O que está esperando minha aprovação e o que você recomenda?");
+  if (b?.approvalsPending.length || b?.storeFlow?.pending) list.push("O que está esperando minha aprovação e o que você recomenda?");
   if (b?.failures.length) list.push("Por que houve falhas hoje e o que fazer?");
   list.push("O que a equipe entregou nesta semana?");
   list.push("Qual projeto precisa de atenção agora?");
@@ -342,6 +343,14 @@ function when(iso: string): string {
                 <span class="so__item-meta">{{ f.workspaceName }} · {{ when(f.at) }}</span>
               </li>
             </ul>
+          </div>
+
+          <div v-if="briefing.storeFlow" class="so__card">
+            <p class="so__card-title">Store Flow · afiliados <span class="so__count">{{ briefing.storeFlow.pending }}</span></p>
+            <router-link to="/app/floor/store-flow/work" class="so__item-link">
+              {{ briefing.storeFlow.pending ? `${briefing.storeFlow.pending} post(s) esperando sua aprovação` : "Nenhum post esperando aprovação" }}
+            </router-link>
+            <span class="so__item-meta">Rodada “{{ briefing.storeFlow.niche }}” · {{ briefing.storeFlow.approved }} aprovados · {{ briefing.storeFlow.rejected }} recusados</span>
           </div>
 
           <div v-if="briefing.floorRuns.length" class="so__card">

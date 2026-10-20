@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { computeDashboard } from "@/modules/store-flow/dashboard-stats";
 import { loadSavedRun, parseRun, saveRun, type ReviewRun } from "@/modules/store-flow/review-queue";
+import { SYNC_LABEL, importRun, latestRun, setRunId, syncState } from "@/modules/store-flow/run-sync";
 import { createHttpClient } from "@/data/adapters/http-client";
 
 const run = ref<ReviewRun | null>(loadSavedRun());
+onMounted(async () => {
+  const latest = await latestRun();
+  if (latest) {
+    run.value = latest;
+    showForm.value = false;
+  }
+});
 const loadError = ref<string | null>(null);
 
 // —— Nova rodada pelo app (antes: CLI na VM + upload do .json) ——————————————
@@ -51,7 +59,7 @@ async function startRun(): Promise<void> {
   runMessage.value = null;
   loadError.value = null;
   try {
-    const result = await http.post<{ run: unknown; productCount: number }>("/store-flow/runs", {
+    const result = await http.post<{ run: unknown; productCount: number; runId: string | null }>("/store-flow/runs", {
       csv: form.csv,
       niche: form.niche.trim(),
       channels: form.channels,
@@ -60,6 +68,7 @@ async function startRun(): Promise<void> {
     });
     run.value = parseRun(JSON.stringify(result.run));
     saveRun(run.value);
+    setRunId(result.runId);
     showForm.value = false;
     runMessage.value = `Flow analisou ${result.productCount} produto(s) e escolheu ${run.value.curated.length}. Driele escreveu ${run.value.drafts.length} rascunho(s) — revise na Sala de Aprovação.`;
   } catch (error) {
@@ -80,7 +89,7 @@ async function onFile(event: Event): Promise<void> {
   if (!file) return;
   try {
     run.value = parseRun(await file.text());
-    saveRun(run.value);
+    await importRun(run.value);
     loadError.value = null;
   } catch (error) {
     loadError.value = error instanceof Error ? error.message : "Não deu para ler o arquivo.";
@@ -143,12 +152,13 @@ const tipStyle = computed(() => {
       </div>
       <div class="sfd__actions">
         <button type="button" class="btn btn--ghost" @click="showForm = !showForm">
-          {{ showForm ? "Fechar" : "Nova rodada" }}
+          {{ showForm ? "Esconder formulário" : "+ Nova rodada" }}
         </button>
         <label class="btn btn--ghost sfd__upload" title="Para rodadas geradas pelo CLI">
           Abrir .json
           <input type="file" accept="application/json,.json" class="sr-only" @change="onFile" />
         </label>
+        <span v-if="run && SYNC_LABEL[syncState]" class="sfd__sync" :class="`is-${syncState}`">{{ SYNC_LABEL[syncState] }}</span>
         <router-link to="/app/floor/store-flow/work" class="btn btn--primary">
           Sala de Aprovação
           <span v-if="stats && stats.drafts.PENDING_APPROVAL > 0" class="sfd__pill">
@@ -462,6 +472,20 @@ const tipStyle = computed(() => {
 </template>
 
 <style scoped>
+.sfd__sync {
+  align-self: center;
+  font-size: 12px;
+  color: var(--op-muted-2);
+}
+
+.sfd__sync.is-saved {
+  color: var(--op-green);
+}
+
+.sfd__sync.is-error {
+  color: var(--op-red);
+}
+
 .fsd {
   /* Papéis de cor do painel (app é escuro). Azul = magnitude (um tom só). */
   --sfd-seq: #3987e5;

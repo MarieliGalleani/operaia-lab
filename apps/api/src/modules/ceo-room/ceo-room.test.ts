@@ -13,6 +13,7 @@ const briefing: CeoBriefing = {
   failures: [{ id: "f1", workspaceId: "cardapio", workspaceName: "Cardápio", objective: "Build", human: false, at: "2026-10-20T11:00:00.000Z", error: "timeout" }],
   counts24h: { completed: 30, failed: 1, human: 3, automatic: 28 },
   floorRuns: [],
+  storeFlow: { niche: "casa", pending: 4, approved: 1, rejected: 0, updatedAt: "2026-10-20T12:00:00.000Z" },
   projects: [{ workspaceId: "podiario", name: "Podiário", kind: "client", missions24h: 5, failures24h: 0 }],
 };
 
@@ -47,6 +48,7 @@ describe("chat da Opera", () => {
     const msgs = buildOperaMessages({ message: "oi", history: [{ role: "user", text: "a" }, { role: "opera", text: "b" }], briefing });
     expect(msgs[0]!.content).toContain("migrar banco");
     expect(msgs[0]!.content).toContain("Cardápio");
+    expect(msgs[0]!.content).toContain("4 posts esperando aprovação");
     expect(msgs.map((m) => m.role)).toEqual(["system", "user", "assistant", "user"]);
   });
   it("lê JSON da IA", () => {

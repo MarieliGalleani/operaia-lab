@@ -157,7 +157,7 @@ function when(iso: string | undefined): string {
 
         <form class="kb__form" @submit.prevent="createNote">
           <label class="kb__label" for="kb-title">Nova nota</label>
-          <input id="kb-title" v-model="newTitle" class="kb__input" type="text" maxlength="200" placeholder="Título (ex.: Como fazer deploy do Podiário)" />
+          <input id="kb-title" v-model="newTitle" class="kb__input" type="text" maxlength="200" placeholder="Título da nota" />
           <textarea v-model="newContent" class="kb__input" rows="5" maxlength="10000" placeholder="O que a equipe deve saber" />
           <button type="submit" class="kb__btn kb__btn--primary" :disabled="creating || !newTitle.trim() || !selected">
             {{ creating ? "Salvando…" : "Salvar nota" }}

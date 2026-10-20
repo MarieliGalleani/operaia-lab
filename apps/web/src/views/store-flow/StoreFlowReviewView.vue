@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { SYNC_LABEL, importRun, latestRun, pushRun, syncError, syncState } from "@/modules/store-flow/run-sync";
+import { computed, onMounted, ref, watch } from "vue";
 import {
   CHANNEL_LABEL,
   SIGNAL_LABEL,
@@ -11,7 +12,6 @@ import {
   parseRun,
   reopen,
   replaceDraft,
-  saveRun,
   type DraftStatus,
   type ReviewCurated,
   type ReviewDraft,
@@ -33,7 +33,12 @@ const loadError = ref<string | null>(null);
 const actionError = ref<Record<string, string>>({});
 const copiedId = ref<string | null>(null);
 
-watch(run, (value) => saveRun(value), { deep: true });
+// Cada aprovacao/recusa/edicao grava no servidor (antes so no navegador).
+watch(run, (value) => pushRun(value), { deep: true });
+onMounted(async () => {
+  const latest = await latestRun();
+  if (latest) run.value = latest;
+});
 
 const counts = computed(() =>
   run.value ? countByStatus(run.value) : { PENDING_APPROVAL: 0, APPROVED: 0, REJECTED: 0 },
@@ -77,7 +82,9 @@ async function onFile(event: Event): Promise<void> {
   input.value = "";
   if (!file) return;
   try {
-    run.value = parseRun(await file.text());
+    const imported = parseRun(await file.text());
+    await importRun(imported);
+    run.value = imported;
     edits.value = {};
     actionError.value = {};
     loadError.value = null;
@@ -155,6 +162,7 @@ function clearRun(): void {
         <h1 class="page__title">Aprovar posts</h1>
       </div>
       <div class="fs__actions">
+        <span v-if="run && SYNC_LABEL[syncState]" class="fs__sync" :class="`is-${syncState}`" role="status" :title="syncError ?? ''">{{ SYNC_LABEL[syncState] }}</span>
         <router-link to="/app/floor/store-flow/command" class="btn btn--ghost">Painel do andar</router-link>
         <label class="btn btn--ghost fs__upload">
           {{ run ? "Carregar outra rodada" : "Carregar rodada (.json)" }}
@@ -303,6 +311,20 @@ function clearRun(): void {
 </template>
 
 <style scoped>
+.fs__sync {
+  align-self: center;
+  font-size: 12px;
+  color: var(--op-muted-2);
+}
+
+.fs__sync.is-saved {
+  color: var(--op-green);
+}
+
+.fs__sync.is-error {
+  color: var(--op-red);
+}
+
 .fs__actions,
 .fs__card-actions,
 .fs__chips,

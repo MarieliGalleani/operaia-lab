@@ -1076,3 +1076,21 @@ model AutomationEngagement {
   @@index([clientId])
   @@map("automation_engagements")
 }
+
+/// Rodada do Store Flow (4º andar): produtos escolhidos + rascunhos e o
+/// estado de cada um na Sala de Aprovação. Antes vivia so no navegador
+/// (localStorage) e sumia ao trocar de aparelho.
+model StoreFlowRun {
+  id           String   @id @default(uuid())
+  niche        String
+  channelsJson Json
+  productCount Int      @default(0)
+  /// ReviewRun completo (curated, rejected, drafts com status/edicoes).
+  runJson      Json
+  createdBy    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([createdAt])
+  @@map("store_flow_runs")
+}
