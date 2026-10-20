@@ -1,0 +1,5 @@
+# Somente leitura: o LLM esta respondendo de verdade?
+sudo docker logs --since 10m operaia-lab-api 2>&1 | grep -iE '\[llm\]|llm_|gemini|provider|fallback' | sed -E 's/(AIza)[A-Za-z0-9_-]+/***/g' | cut -c1-300 | sort | uniq -c | sort -rn | head -15
+echo "== chave gemini presente? $(sudo docker exec operaia-lab-api sh -c '[ -n "$GEMINI_API_KEY" ] && echo sim || echo nao') | anthropic? $(sudo docker exec operaia-lab-api sh -c '[ -n "$ANTHROPIC_API_KEY" ] && echo sim || echo nao') | fallback=$(sudo docker exec operaia-lab-api sh -c 'echo $LLM_FALLBACK_PROVIDERS')"
+sudo docker exec operaia-lab-api sh -c 'node -e "
+fetch(\"https://generativelanguage.googleapis.com/v1beta/models/\"+process.env.LLM_MODEL+\":generateContent?key=\"+process.env.GEMINI_API_KEY,{method:\"POST\",headers:{\"content-type\":\"application/json\"},body:JSON.stringify({contents:[{parts:[{text:\"diga ok\"}]}]})}).then(async r=>{const t=await r.text(); console.log(\"gemini\",process.env.LLM_MODEL,\"->\",r.status, t.slice(0,200).replace(/AIza[\\w-]+/g,\"***\"))}).catch(e=>console.log(\"erro\",e.message))"'
