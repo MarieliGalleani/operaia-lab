@@ -371,7 +371,9 @@ const totalPeople = computed(() => Object.keys(CAST).length);
 
 .pt__vitals {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  /* 5 sinais numa linha ate ~700px de largura; antes o 5º descia sozinho
+     e deixava uma area cinza vazia. */
+  grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
   gap: 1px;
   overflow: hidden;
   border: 1px solid var(--op-line);
@@ -383,7 +385,8 @@ const totalPeople = computed(() => Object.keys(CAST).length);
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 18px 20px;
+  min-width: 0;
+  padding: 18px 16px;
   background: var(--op-panel);
 }
 
