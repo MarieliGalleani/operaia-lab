@@ -27,6 +27,7 @@ import { inspectMarketingArtifacts } from "./marketing-inspection.js";
 import { inspectProductArtifacts } from "./product-inspection.js";
 import { inspectLegalArtifacts } from "./legal-inspection.js";
 import { inspectUxArtifacts } from "./ux-inspection.js";
+import { isHumanDemandObjective, performRequestedWork, type TaskWorkTools } from "./task-work.js";
 
 const TOP_ACTIONS = 4;
 const BRIEFING_TOOL_CONTEXT_KEY = "toolContext";
@@ -180,6 +181,13 @@ export class SpecialistBrain implements EmployeeBrain {
           );
 
     const inspection = await this.inspectReadOnly(briefing);
+
+    // Interface 3.0 — pedido direto da usuaria: faz o trabalho pedido
+    // (arquivos citados + memoria do projeto + LLM), nao so a inspecao padrao.
+    if (isHumanDemandObjective(briefing.objective)) {
+      return this.decideHumanDemand(briefing, inspection, proposedActions, blocked, withDeps, pending);
+    }
+
     const analysis = this.buildAnalysis(
       briefing,
       pending,
@@ -212,6 +220,63 @@ export class SpecialistBrain implements EmployeeBrain {
       ...(inspection.toolExecutions.length > 0
         ? { toolExecutions: inspection.toolExecutions }
         : {}),
+      ...(delivery ? { delivery } : {}),
+    };
+  }
+
+  private async decideHumanDemand(
+    briefing: EmployeeBriefing,
+    inspection: SpecialistInspection,
+    proposedActions: readonly string[],
+    blocked: readonly EmployeeTask[],
+    withDeps: readonly EmployeeTask[],
+    pending: readonly EmployeeTask[],
+  ): Promise<EmployeeDecision> {
+    const prior = inspection.evidence.slice(0, 6).map((item) =>
+      "error" in item.data
+        ? `${item.source}: ERRO ${String(item.data.error)}`
+        : `${item.source}: ${summarizeToolData(item.source, item.data)}`,
+    );
+    const work = await performRequestedWork({
+      llm: this.llm,
+      systemPrompt: this.config.systemPrompt,
+      domainLabel: this.config.domainLabel,
+      briefing,
+      tools: readToolContext(briefing) as unknown as TaskWorkTools | null,
+      priorEvidence: prior,
+    });
+    const toolExecutions = [...inspection.toolExecutions, ...work.toolExecutions];
+    const evidence = [...inspection.evidence, ...work.evidence];
+    const recommendations = work.recommendations.length > 0 ? work.recommendations : proposedActions;
+    const delivery: EmployeeDelivery | null =
+      this.config.employeeId && this.config.deliveryType
+        ? {
+            type: this.config.deliveryType,
+            status: work.summary ? "DELIVERED" : "FAILED",
+            missionId: "",
+            employeeId: this.config.employeeId,
+            objective: briefing.objective,
+            summary: work.summary,
+            findings: work.findings.length > 0 ? [...work.findings] : [work.summary],
+            evidence:
+              evidence.length > 0
+                ? evidence
+                : [{ source: "pedido", data: { memoria: work.memoryUsed, arquivos: work.filesRead.length } }],
+            recommendations: [...recommendations].slice(0, TOP_ACTIONS + 2),
+            deliveredAt: new Date().toISOString(),
+          }
+        : null;
+    return {
+      analyzed:
+        `Pedido atendido por ${this.config.domainLabel} em ${briefing.project}: ` +
+        `${work.filesRead.length} arquivo(s) lido(s), ${work.memoryUsed} nota(s) de memoria usada(s).`,
+      decision: work.summary,
+      reasoning: "Demanda humana: arquivos citados + memoria do projeto + analise do especialista.",
+      recommendations: [...recommendations],
+      delegations: [],
+      risks: this.identifyRisks(blocked, withDeps, inspection),
+      nextActions: this.buildNextSteps(pending, withDeps),
+      ...(toolExecutions.length > 0 ? { toolExecutions } : {}),
       ...(delivery ? { delivery } : {}),
     };
   }

@@ -132,3 +132,4 @@ export {
   validateLegalReadFilePath,
   validateLegalListDirectoryPath,
 } from "./legal-artifact-path.js";
+export * from "./task-work.js";

@@ -80,7 +80,11 @@ export function buildStrategicPlan(input: StrategicPlanInput): StrategicPlan {
   const pending = input.pendingTitles ?? [];
   // Demanda humana: a tarefa do especialista E o pedido da usuaria (antes
   // recebia uma tarefa generica tipo "Finalizar entregas tecnicas").
-  const humanTask = isHumanDemand(input.objective) ? stripObjectiveMarkers(input.objective) : null;
+  // A marca segue na tarefa para o especialista saber que deve fazer o
+  // trabalho pedido (arquivos + memoria + LLM); a tela esconde a marca.
+  const humanTask = isHumanDemand(input.objective)
+    ? `[HUMAN_DEMAND] ${stripObjectiveMarkers(input.objective)}`
+    : null;
   const delegations: DelegationRequest[] = specializations.map(
     (specialization, index) => ({
       specialization,

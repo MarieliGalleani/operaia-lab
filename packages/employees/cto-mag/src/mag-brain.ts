@@ -10,6 +10,7 @@ import type {
 } from "@operaia/employee-framework";
 import { TaskStatus } from "@operaia/shared";
 import { buildMagSystemPrompt } from "./mag-system-rules.js";
+import { isHumanDemandObjective, performRequestedWork, type TaskWorkTools } from "@operaia/specialist-kit";
 
 const TOP_ACTIONS = 4;
 const MAG_EMPLOYEE_ID = "cto-mag";
@@ -104,6 +105,43 @@ export class MagBrain implements EmployeeBrain {
 
     const inspection = await this.inspectRepositoryState(briefing);
     const proposedActions = this.buildProposedActions(pending);
+
+    // Interface 3.0 — pedido direto da usuaria: Mag faz o trabalho pedido
+    // (arquivos citados + memoria do projeto + LLM) em vez do relatorio padrao.
+    if (isHumanDemandObjective(briefing.objective)) {
+      const work = await performRequestedWork({
+        llm: this.llm,
+        systemPrompt: buildMagSystemPrompt(),
+        domainLabel: "Engenharia de Software",
+        briefing,
+        tools: (briefing.additional["toolContext"] ?? null) as TaskWorkTools | null,
+        priorEvidence: inspection.toolExecutions.map((item) => `${item.toolId}: ${item.outcome}`),
+      });
+      const toolExecutions = [...inspection.toolExecutions, ...work.toolExecutions];
+      const recommendations = work.recommendations.length > 0 ? [...work.recommendations] : proposedActions;
+      return {
+        analyzed: `Pedido atendido pelo Mag em ${briefing.project}: ${work.filesRead.length} arquivo(s) lido(s), ${work.memoryUsed} nota(s) de memoria.`,
+        decision: work.summary,
+        reasoning: "Demanda humana: arquivos citados + memoria do projeto + analise tecnica.",
+        recommendations,
+        delegations: [],
+        risks: this.identifyRisks(blocked, withDeps),
+        nextActions: this.buildNextSteps(pending, withDeps),
+        ...(toolExecutions.length > 0 ? { toolExecutions } : {}),
+        delivery: {
+          type: "technical_analysis",
+          status: work.summary ? "DELIVERED" : "FAILED",
+          missionId: "",
+          employeeId: "cto-mag",
+          objective: briefing.objective,
+          summary: work.summary,
+          findings: work.findings.length > 0 ? [...work.findings] : [work.summary],
+          evidence: [...inspection.evidence, ...work.evidence],
+          recommendations: recommendations.slice(0, 6),
+          deliveredAt: new Date().toISOString(),
+        },
+      };
+    }
     const risks = this.identifyRisks(blocked, withDeps);
     const nextSteps = this.buildNextSteps(pending, withDeps);
     const analysis = this.buildAnalysis(

@@ -367,6 +367,9 @@ importers:
       '@operaia/shared':
         specifier: workspace:*
         version: link:../../shared
+      '@operaia/specialist-kit':
+        specifier: workspace:*
+        version: link:../specialist-kit
     devDependencies:
       vitest:
         specifier: ^3.0.5

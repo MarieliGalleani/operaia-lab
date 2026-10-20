@@ -29,7 +29,7 @@ describe("Demanda humana (Nova demanda do 1º andar)", () => {
   it("o especialista recebe o pedido da usuaria como tarefa", () => {
     const plan = buildStrategicPlan({ objective: demand, pendingTitles: ["Tarefa antiga do quadro"] });
     expect(plan.delegations.length).toBeGreaterThan(0);
-    expect(plan.delegations[0]!.task).toBe("Revisar o README do operaia-lab e listar 3 melhorias de clareza.");
+    expect(plan.delegations[0]!.task).toBe(`${HUMAN_DEMAND_MARKER} Revisar o README do operaia-lab e listar 3 melhorias de clareza.`);
   });
 
   it("escolhe o especialista pelo assunto do pedido", () => {

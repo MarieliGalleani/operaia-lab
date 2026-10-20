@@ -20,6 +20,7 @@ import {
 import type { DigitalOffice } from "../employees/office-composition.js";
 import type { WorkspaceSource } from "../employees/workspace-source.js";
 import { detectActionRisk } from "../governance/risk-classifier.js";
+import { loadKnowledgeNotes } from "../knowledge/knowledge-notes.js";
 import { buildDomainSyncActions } from "../operations/mission-domain-sync.js";
 import {
   buildMissionExecutionPlan,
@@ -105,6 +106,11 @@ export function shouldEnqueueTechnicalFollowUp(input: {
     return false;
   }
   if (parentObjective.includes("GENERAL_CONVERSATION")) {
+    return false;
+  }
+  // Interface 3.0 — pedido direto da usuaria ja foi respondido pelo
+  // especialista; nao abrir um ciclo extra de "investigar o achado".
+  if (parentObjective.includes("[HUMAN_DEMAND]")) {
     return false;
   }
   if (input.sourceAlreadyEmittedFollowUp) {
@@ -303,8 +309,10 @@ export class QueuedMissionExecutor {
       }),
       this.portfolioProvider?.() ?? Promise.resolve(null),
     ]);
+    const knowledgeNotes = await loadKnowledgeNotes(mission.workspaceId, mission.objective);
 
     const contextNotes = [
+      ...knowledgeNotes,
       ...memoryNotes,
       ...(portfolio?.memoryNotes ?? []),
     ];
