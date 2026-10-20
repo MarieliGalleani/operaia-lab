@@ -1,0 +1,1 @@
+docker logs --since 20m operaia-lab-api 2>&1 | grep -iE 'cc152571|3692d011|fallback|llm|gemini|anthropic|credit|provider' | grep -oE '"(msg|level|stage|provider|model|err|message|reason|error)":"?[^"]{0,160}' | sort | uniq -c | sort -rn | head -30
