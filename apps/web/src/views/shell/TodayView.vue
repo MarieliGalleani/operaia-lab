@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { cleanMissionObjective } from "@/data/mappers";
 /**
  * Aba Hoje (P1.21 + P1.X-FIX) — tela de entrada do Escritorio
  * Operacional. Layout fiel ao handoff aprovado (OperationalOffice.dc.html).
@@ -303,7 +304,7 @@ const ariaSummary = computed(() => {
           <span class="op-running-bar" />
           <div class="op-running-main">
             <div class="op-running-title-row">
-              <p class="op-running-title">{{ m.objective }}</p>
+              <p class="op-running-title">{{ cleanMissionObjective(m.objective) }}</p>
               <span class="op-mono op-running-kind">{{ m.missionKind }}</span>
             </div>
             <p class="op-running-owner">{{ ownerName(m.ownerEmployeeId) }}</p>
@@ -349,7 +350,7 @@ const ariaSummary = computed(() => {
           >
             <span class="op-dot" style="background: var(--op-green); margin-top: 5px" />
             <div class="op-list-row__main">
-              <p class="op-list-row__title">{{ d.objective }}</p>
+              <p class="op-list-row__title">{{ cleanMissionObjective(d.objective) }}</p>
               <p class="op-list-row__meta">{{ ownerName(d.ownerEmployeeId) }}</p>
             </div>
             <span class="op-mono op-list-row__when">{{ d.finishedAt ? elapsedFrom(d.finishedAt) : "" }}</span>
@@ -366,7 +367,7 @@ const ariaSummary = computed(() => {
           <div v-for="(q, i) in queued" :key="q.id" class="op-list-row">
             <span class="op-mono op-list-row__pos">{{ String(i + 1).padStart(2, "0") }}</span>
             <div class="op-list-row__main">
-              <p class="op-list-row__title">{{ q.objective }}</p>
+              <p class="op-list-row__title">{{ cleanMissionObjective(q.objective) }}</p>
               <p class="op-list-row__meta">{{ ownerName(q.ownerEmployeeId) }}</p>
             </div>
             <span class="op-mono op-list-row__kind">{{ q.missionKind }}</span>
@@ -415,7 +416,7 @@ const ariaSummary = computed(() => {
             class="op-list-row op-list-row--link"
           >
             <div class="op-list-row__main">
-              <p class="op-list-row__title">{{ d.objective }}</p>
+              <p class="op-list-row__title">{{ cleanMissionObjective(d.objective) }}</p>
               <p class="op-list-row__meta">{{ d.rationale }}</p>
             </div>
           </router-link>

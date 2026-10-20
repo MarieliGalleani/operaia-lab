@@ -1,3 +1,4 @@
+import { isHumanDemand, stripObjectiveMarkers } from "./ceo-delegation-gate.js";
 import type { DelegationRequest } from "@operaia/employee-framework";
 import { Specialization } from "@operaia/employee-framework";
 import {
@@ -77,13 +78,19 @@ export function buildStrategicPlan(input: StrategicPlanInput): StrategicPlan {
   specializations = specializations.slice(0, max);
 
   const pending = input.pendingTitles ?? [];
+  // Demanda humana: a tarefa do especialista E o pedido da usuaria (antes
+  // recebia uma tarefa generica tipo "Finalizar entregas tecnicas").
+  const humanTask = isHumanDemand(input.objective) ? stripObjectiveMarkers(input.objective) : null;
   const delegations: DelegationRequest[] = specializations.map(
     (specialization, index) => ({
       specialization,
-      reason: isBroadLaunchObjective(input.objective)
-        ? "Dominio necessario para o plano de lancamento."
-        : "Dominio identificado no objetivo / pendencias.",
+      reason: humanTask
+        ? "Pedido direto da usuaria (Nova demanda)."
+        : isBroadLaunchObjective(input.objective)
+          ? "Dominio necessario para o plano de lancamento."
+          : "Dominio identificado no objetivo / pendencias.",
       task:
+        humanTask ??
         pending[index] ??
         DEFAULT_TASKS[specialization] ??
         `Executar trabalho de ${specialization}.`,

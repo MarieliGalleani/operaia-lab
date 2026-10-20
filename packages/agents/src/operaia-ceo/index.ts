@@ -50,3 +50,4 @@ export {
   type PrioritizedTask,
   type CeoReview,
 } from "./ceo-types.js";
+export { HUMAN_DEMAND_MARKER, isHumanDemand, stripObjectiveMarkers } from "./ceo-delegation-gate.js";

@@ -1,3 +1,4 @@
+import { HUMAN_DEMAND_MARKER } from "@operaia/agents";
 import type { AssistedMissionQueuePort } from "../operations/operational-mission-service.js";
 import { CEO_EMPLOYEE_ID } from "../runtime/mission-states.js";
 import type {
@@ -41,6 +42,12 @@ export async function submitDemandToCore(
   gate: AlreadyDoneGate | undefined,
   input: SubmitDemandToCoreInput,
 ): Promise<SubmitDemandToCoreResult> {
+  // Marca de demanda humana: a CEO delega ao especialista mesmo sem
+  // pendencias no quadro (antes respondia sozinha e ninguem trabalhava).
+  const objective = input.objective.includes(HUMAN_DEMAND_MARKER)
+    ? input.objective
+    : `${HUMAN_DEMAND_MARKER} ${input.objective}`;
+
   const contextHints = mergeContextHints(
     input.contextHints,
     input.correlationId,
@@ -48,7 +55,7 @@ export async function submitDemandToCore(
 
   const governanceRequest = {
     workspaceId: input.workspaceId,
-    objective: input.objective,
+    objective,
     source: "assisted" as const,
     missionKind: "COORDINATE",
     contextHints,
@@ -73,7 +80,7 @@ export async function submitDemandToCore(
     // SKIP/REUSE sem missionId, REOPEN, EXECUTE → admitir na mesma fila.
     const { mission } = await queue.enqueue({
       workspaceId: input.workspaceId,
-      objective: input.objective,
+      objective,
       ownerEmployeeId: CEO_EMPLOYEE_ID,
       dedupe: false,
       origin: "HUMAN_DEMAND",
@@ -94,7 +101,7 @@ export async function submitDemandToCore(
 
   const { mission } = await queue.enqueue({
     workspaceId: input.workspaceId,
-    objective: input.objective,
+    objective,
     ownerEmployeeId: CEO_EMPLOYEE_ID,
     dedupe: false,
     origin: "HUMAN_DEMAND",

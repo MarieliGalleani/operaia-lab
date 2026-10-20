@@ -101,6 +101,7 @@ const MISSION_STATUS_LABEL: Record<string, string> = {
 export function cleanMissionObjective(raw: string): string {
   const cleaned = raw
     .replace(/\[MISSION_INTENT\][^\n]*/g, "")
+    .replace(/\[HUMAN_DEMAND\]/g, "")
     .replace(/\[CONSOLIDATE\]/g, "")
     .replace(/\[SOURCE_EXECUTE:[^\]]+\]/g, "")
     .replace(/\[FOLLOW_UP_DELEGATE\]/g, "")

@@ -23,6 +23,25 @@ const EXECUTION_PROGRESS_PATTERN =
 const PENDING_WORK_REFERENCE_PATTERN =
   /\b(pend[eê]ncia|pendencias|tarefa|tarefas|essas\s+duas|esses\s+itens|em\s+cima\s+d|pr[oó]xim[ao]s?\s+a[cç][oõ]es?)\w*/i;
 
+/**
+ * Marca de demanda humana explicita (Nova demanda no 1º andar).
+ * Pedido direto da usuaria e ordem de trabalho: vai para especialista
+ * mesmo sem pendencias no quadro do workspace.
+ */
+export const HUMAN_DEMAND_MARKER = "[HUMAN_DEMAND]";
+
+export function isHumanDemand(objective: string): boolean {
+  return objective.includes(HUMAN_DEMAND_MARKER);
+}
+
+/** Objetivo sem as marcas internas (para virar a tarefa do especialista). */
+export function stripObjectiveMarkers(objective: string): string {
+  return objective
+    .replace(/\[HUMAN_DEMAND\]/g, "")
+    .replace(/\[MISSION_INTENT\][^\n]*/g, "")
+    .trim();
+}
+
 export interface DelegationGateInput {
   readonly objective: string;
   readonly pendingTitles: readonly string[];
@@ -42,6 +61,12 @@ export function needsSpecialistDelegation(input: DelegationGateInput): boolean {
   // A.4.2 — Mission Intent Router: TECH/BUG/INFRA forcam especialista
   // mesmo sem pendencias no quadro (intenção do usuario e a fonte).
   if (requiresSpecialistFromIntentMarker(objective)) {
+    return true;
+  }
+
+  // Interface 3.0 — demanda humana explicita: antes caia no "sem pendencias
+  // -> Opera responde sozinha" e nenhum especialista trabalhava.
+  if (isHumanDemand(objective) && !isAdvisoryOnly(stripObjectiveMarkers(objective))) {
     return true;
   }
 

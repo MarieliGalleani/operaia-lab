@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { cleanMissionObjective } from "@/data/mappers";
 /**
  * Employee drill-down (P1.14A / Parte E).
  * Missões via GET /missions?format=flat&ownerEmployeeId= (P1.14A backend-small).
@@ -119,7 +120,7 @@ const completed = computed(() => missions.value.filter((m) => m.status === "COMP
           <li v-for="m in missions" :key="m.id">
             <router-link :to="`/app/floor/dev/missions/${m.id}`" class="op-history__item">
               <MissionStatusBadge :status="m.status" />
-              <span class="op-history__objective">{{ m.objective }}</span>
+              <span class="op-history__objective">{{ cleanMissionObjective(m.objective) }}</span>
               <span class="op-history__ws">{{ workspaceName(m.workspaceId) }}</span>
               <time>{{ formatDateTime(m.createdAt) }}</time>
             </router-link>
