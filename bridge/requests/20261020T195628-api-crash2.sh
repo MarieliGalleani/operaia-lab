@@ -1,0 +1,1 @@
+docker logs --since 2026-10-20T19:54:40Z --until 2026-10-20T19:55:12Z operaia-lab-api 2>&1 | grep -v '"msg":"incoming request"\|request completed' | sed -E 's#//[^@]*@#//***@#g' | cut -c1-260 | tail -20
