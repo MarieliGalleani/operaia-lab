@@ -207,8 +207,23 @@ function goNewWork(): void {
 .op-header__right {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   flex-shrink: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 768px) {
+  .op-header {
+    gap: 14px;
+    padding-top: 18px;
+  }
+  .op-header__right {
+    flex-shrink: 1;
+  }
+  .op-btn {
+    min-height: 40px;
+  }
 }
 
 .op-btn {
