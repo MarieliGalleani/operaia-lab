@@ -42,9 +42,13 @@ const teamCount = computed(() =>
 .op-shell__main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  /* Antes "hidden": telas sem rolagem propria (Store Flow, Campus)
+     cortavam o fim da pagina sem como chegar nele. */
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Celular: barra no topo + abas no rodape (ver OperationalRail). */

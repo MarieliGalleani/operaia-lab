@@ -738,11 +738,9 @@ const tipStyle = computed(() => {
 
 .sfd__row-label {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   color: var(--text);
   font-size: 0.9rem;
+  overflow-wrap: anywhere;
 }
 
 .sfd__rank {

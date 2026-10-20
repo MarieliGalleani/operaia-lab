@@ -312,9 +312,7 @@ onMounted(async () => {
   font-size: var(--text-sm);
   color: var(--text-muted);
   max-width: 52ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .stage__main :deep(.chat) {

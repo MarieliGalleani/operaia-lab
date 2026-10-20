@@ -285,6 +285,12 @@ const totalPeople = computed(() => Object.keys(CAST).length);
   color: var(--op-ink-3);
 }
 
+/* Coluna com rolagem: sem isso o flex espreme os blocos (os sinais vitais
+   tem overflow:hidden e os numeros saiam cortados pela metade). */
+.pt > * {
+  flex-shrink: 0;
+}
+
 .pt__head {
   display: flex;
   flex-wrap: wrap;

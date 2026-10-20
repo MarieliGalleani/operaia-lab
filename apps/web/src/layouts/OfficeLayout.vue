@@ -75,6 +75,7 @@ onMounted(() => {
 
 .office__content--locked .office__page {
   height: 100%;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 </style>

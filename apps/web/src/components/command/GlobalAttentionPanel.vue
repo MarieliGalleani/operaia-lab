@@ -153,9 +153,7 @@ function go(item: AttentionItem): void {
   flex: 1;
   font-size: var(--text-xs);
   color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .attn__item-arrow {

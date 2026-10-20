@@ -678,9 +678,7 @@ const ariaSummary = computed(() => {
   font-size: 13.5px;
   font-weight: 600;
   color: var(--op-ink-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .op-running-kind {
@@ -748,9 +746,7 @@ const ariaSummary = computed(() => {
   font-size: 13px;
   font-weight: 500;
   color: var(--op-ink-4);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .op-list-row__meta {
@@ -951,9 +947,7 @@ const ariaSummary = computed(() => {
   margin-top: 2px;
   font-size: 11px;
   color: var(--op-muted-4);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .op-work-grid {

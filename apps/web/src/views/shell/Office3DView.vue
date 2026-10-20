@@ -741,9 +741,7 @@ watch(
 .o3d__row-role {
   font-size: 12px;
   color: var(--op-muted-2);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .o3d__row-state {

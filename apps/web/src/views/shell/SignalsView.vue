@@ -157,6 +157,11 @@ function when(iso: string): string {
   gap: 14px;
 }
 
+/* Coluna com rolagem: sem isso o flex espremia a lista (290px de 4850). */
+.sg > * {
+  flex-shrink: 0;
+}
+
 .sg__empty {
   max-width: 520px;
   padding: 24px;

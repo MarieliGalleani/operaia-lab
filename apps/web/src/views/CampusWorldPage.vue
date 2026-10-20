@@ -247,9 +247,7 @@ async function goToResident(targetMapId: string): Promise<void> {
 .directory-item__label {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .directory-item.is-current .directory-item__label {
