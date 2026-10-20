@@ -351,7 +351,7 @@ const AUTOMATION_STATUS_LABEL: Record<string, { label: string; tone: string }> =
 .op-content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 34px 40px;
+  padding: 24px var(--op-gutter, 34px) 40px;
 }
 
 .op-loading,

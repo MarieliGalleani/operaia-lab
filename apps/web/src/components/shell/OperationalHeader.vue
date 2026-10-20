@@ -73,7 +73,7 @@ function goNewWork(): void {
   align-items: flex-end;
   justify-content: space-between;
   gap: 32px;
-  padding: 22px 34px 18px;
+  padding: 22px var(--op-gutter, 34px) 18px;
   border-bottom: 1px solid var(--op-line);
   flex-shrink: 0;
   flex-wrap: wrap;

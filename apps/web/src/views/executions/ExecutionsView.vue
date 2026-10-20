@@ -102,7 +102,7 @@ onMounted(loadExecutions);
 .op-content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 34px 40px;
+  padding: 24px var(--op-gutter, 34px) 40px;
 }
 
 .op-loading,

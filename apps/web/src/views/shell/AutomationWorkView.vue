@@ -801,7 +801,7 @@ onBeforeUnmount(() => {
 .op-content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 34px 40px;
+  padding: 24px var(--op-gutter, 34px) 40px;
   display: flex;
   flex-direction: column;
   gap: 20px;

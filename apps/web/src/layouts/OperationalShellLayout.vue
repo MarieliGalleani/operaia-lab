@@ -46,4 +46,17 @@ const teamCount = computed(() =>
   flex-direction: column;
   overflow: hidden;
 }
+
+/* Celular: barra no topo + abas no rodape (ver OperationalRail). */
+@media (max-width: 768px) {
+  .op-shell {
+    flex-direction: column;
+    height: 100dvh;
+  }
+
+  .op-shell__main {
+    min-height: 0;
+    padding-bottom: calc(66px + env(safe-area-inset-bottom, 0px));
+  }
+}
 </style>

@@ -218,7 +218,8 @@ export class OfficeScene {
     this.camera.right = view * aspect;
     this.camera.top = view;
     this.camera.bottom = -view;
-    this.fitZoom = Math.min(1.45, Math.max(0.7, aspect < 1 ? aspect * 1.25 : 1.3));
+    // Celular (retrato): afasta mais a camera para a planta inteira caber.
+    this.fitZoom = Math.min(1.45, Math.max(aspect < 0.8 ? 0.45 : 0.7, aspect < 1 ? aspect * 1.1 : 1.3));
     if (!this.sized) {
       this.camera.zoom = this.fitZoom;
       this.sized = true;

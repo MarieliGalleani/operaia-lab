@@ -211,6 +211,16 @@
   color-scheme: light;
 }
 
+/* Respiro lateral das telas do shell; menor no celular (Interface 3.0). */
+:root {
+  --op-gutter: 34px;
+}
+@media (max-width: 768px) {
+  :root {
+    --op-gutter: 16px;
+  }
+}
+
 [data-theme="light"] {
   --op-bg: #f4f6f9;
   --op-panel: #ffffff;
@@ -734,6 +744,18 @@ button.card:hover {
   .studio__stage {
     padding-left: 16px;
     padding-right: 16px;
+  }
+  /* Celular: titulo em cima, acoes embaixo (antes ficavam espremidos lado a lado). */
+  .studio__topbar {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .studio__topbar > * {
+    min-width: 0;
+  }
+  .studio__topbar .page__title {
+    font-size: 26px;
   }
 }
 

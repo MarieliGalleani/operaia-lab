@@ -7,7 +7,7 @@
  * Vue Router em vez de estado local de aba (o handoff era uma
  * maquete solta; aqui cada item e uma pagina real, com URL propria).
  */
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   ELEVATOR_ORDER,
@@ -32,6 +32,15 @@ const props = defineProps<{
 }>();
 
 const onPortaria = computed(() => isPortariaPath(route.path));
+
+/** Celular: o Elevador vira uma gaveta aberta pelo botao do andar no topo. */
+const elevatorOpen = ref(false);
+watch(
+  () => route.path,
+  () => {
+    elevatorOpen.value = false;
+  },
+);
 
 const activeFloor = computed<OfficeFloorDef>(() => {
   const id = floorIdFromPath(route.path);
@@ -74,6 +83,18 @@ const NAV_ICONS: Record<string, string> = {
       <div class="op-rail__brand-row">
         <span class="op-rail__dot" />
         <span class="op-rail__product">Operaia.lab</span>
+        <button
+          type="button"
+          class="op-rail__floor-toggle"
+          :aria-expanded="elevatorOpen"
+          aria-controls="op-elevator"
+          :aria-label="`Andar atual: ${onPortaria ? PORTARIA.name : activeFloor.name}. Abrir elevador`"
+          @click="elevatorOpen = !elevatorOpen"
+        >
+          <span class="op-floor-badge">{{ onPortaria ? PORTARIA.code : activeFloor.code }}</span>
+          <span class="op-rail__floor-toggle-name">{{ onPortaria ? PORTARIA.name : activeFloor.name }}</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" :style="{ transform: elevatorOpen ? 'rotate(180deg)' : 'none' }"><polyline points="6 9 12 15 18 9" /></svg>
+        </button>
         <div class="op-rail__theme">
           <button
             type="button"
@@ -101,6 +122,7 @@ const NAV_ICONS: Record<string, string> = {
       </div>
     </div>
 
+    <div id="op-elevator" class="op-rail__sheet" :class="{ 'is-open': elevatorOpen }">
     <div class="op-rail__floor">
       <p class="op-eyebrow">Elevador</p>
       <div class="op-floor-list" role="list">
@@ -136,6 +158,34 @@ const NAV_ICONS: Record<string, string> = {
         </button>
       </div>
     </div>
+
+    <div class="op-rail__building">
+      <p class="op-eyebrow">Prédio</p>
+      <router-link to="/app/system/infra" class="op-floor-option">
+        <span class="op-floor-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="14" width="6" height="7" /><rect x="9" y="8" width="6" height="13" /><rect x="16" y="3" width="6" height="18" /></svg>
+        </span>
+        <span class="op-floor-copy"><span class="op-floor-name">Infraestrutura</span></span>
+      </router-link>
+      <router-link to="/app/system/settings" class="op-floor-option">
+        <span class="op-floor-badge">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" /></svg>
+        </span>
+        <span class="op-floor-copy"><span class="op-floor-name">Configurações</span></span>
+      </router-link>
+    </div>
+    <div class="op-rail__account">
+      <span class="op-avatar" :title="adminLogin">{{ adminLogin.slice(0, 1).toUpperCase() }}</span>
+      <div class="op-account-copy">
+        <p class="op-account-name">{{ adminLogin }}</p>
+        <p class="op-account-role">Administradora</p>
+      </div>
+      <button type="button" class="op-logout" aria-label="Sair" @click="signOut">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
+      </button>
+    </div>
+    </div>
+    <button v-if="elevatorOpen" type="button" class="op-rail__scrim" aria-label="Fechar elevador" @click="elevatorOpen = false" />
 
     <div class="op-rail__nav">
       <template v-if="onPortaria">
@@ -182,28 +232,18 @@ const NAV_ICONS: Record<string, string> = {
       </template>
 
       <p class="op-eyebrow op-eyebrow--building">Prédio</p>
-      <router-link to="/app/system/infra" class="op-nav-item" aria-label="Infraestrutura" :class="{ 'is-active': isActive('/app/system/infra') }">
+      <router-link to="/app/system/infra" class="op-nav-item op-nav-item--building" aria-label="Infraestrutura" :class="{ 'is-active': isActive('/app/system/infra') }">
         <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="14" width="6" height="7" /><rect x="9" y="8" width="6" height="13" /><rect x="16" y="3" width="6" height="18" /></svg>
         <span class="op-nav-label">Infraestrutura</span>
         <span class="op-nav-count"></span>
       </router-link>
-      <router-link to="/app/system/settings" class="op-nav-item" aria-label="Configurações" :class="{ 'is-active': isActive('/app/system/settings') }">
+      <router-link to="/app/system/settings" class="op-nav-item op-nav-item--building" aria-label="Configurações" :class="{ 'is-active': isActive('/app/system/settings') }">
         <svg class="op-nav-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4" /></svg>
         <span class="op-nav-label">Configurações</span>
         <span class="op-nav-count"></span>
       </router-link>
     </div>
 
-    <div class="op-rail__account">
-      <span class="op-avatar" :title="adminLogin">{{ adminLogin.slice(0, 1).toUpperCase() }}</span>
-      <div class="op-account-copy">
-        <p class="op-account-name">{{ adminLogin }}</p>
-        <p class="op-account-role">Administradora</p>
-      </div>
-      <button type="button" class="op-logout" aria-label="Sair" @click="signOut">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" /></svg>
-      </button>
-    </div>
   </nav>
 </template>
 
@@ -377,8 +417,24 @@ const NAV_ICONS: Record<string, string> = {
 
 .op-rail__nav {
   flex: 1;
+  order: 2;
   overflow-y: auto;
   padding: 14px 12px;
+}
+
+/* Desktop: a "gaveta" nao existe — seus filhos entram direto no rail. */
+.op-rail__sheet {
+  display: contents;
+}
+
+.op-rail__floor {
+  order: 1;
+}
+
+.op-rail__floor-toggle,
+.op-rail__scrim,
+.op-rail__building {
+  display: none;
 }
 
 .op-nav-item {
@@ -425,6 +481,7 @@ const NAV_ICONS: Record<string, string> = {
 }
 
 .op-rail__account {
+  order: 3;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -496,18 +553,30 @@ const NAV_ICONS: Record<string, string> = {
  * O seletor de andar expandido vira um popover flutuante nessa largura
  * (em vez de empurrar o rail inteiro), pra caber nome+meta legivel.
  */
+/*
+ * Celular (Interface 3.0): barra no topo com o andar atual, Elevador em
+ * gaveta e as abas do andar embaixo, ao alcance do polegar. Antes o rail
+ * virava uma coluna de icones de 64px com a lista de andares aberta por
+ * cima do conteudo.
+ */
 @media (max-width: 768px) {
   .op-rail {
-    width: 64px;
-    min-width: 64px;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--op-line);
   }
 
   .op-rail__brand {
-    padding: 16px 8px 12px;
+    padding: calc(10px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 10px
+      max(16px, env(safe-area-inset-left, 0px));
   }
 
   .op-rail__brand-row {
-    flex-direction: column;
     gap: 10px;
   }
 
@@ -515,62 +584,162 @@ const NAV_ICONS: Record<string, string> = {
     display: none;
   }
 
-  .op-rail__theme {
-    margin-left: 0;
+  .op-rail__floor-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    min-height: 40px;
+    padding: 4px 10px 4px 4px;
+    border: 1px solid var(--op-bd-btn);
+    border-radius: var(--op-radius-sm);
+    background: var(--op-panel-2);
+    color: var(--op-ink-2);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
   }
 
-  .op-eyebrow {
+  .op-rail__floor-toggle-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .op-rail__floor-toggle svg {
+    flex: none;
+    transition: transform 0.2s ease;
+  }
+
+  .op-rail__theme {
+    margin-left: auto;
+  }
+
+  .op-theme-btn {
+    width: 40px;
+    height: 36px;
+  }
+
+  /* Gaveta do Elevador */
+  .op-rail__sheet {
     display: none;
+  }
+
+  .op-rail__sheet.is-open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 45;
+    max-height: calc(100dvh - 140px);
+    overflow-y: auto;
+    background: var(--op-panel);
+    border-bottom: 1px solid var(--op-line-strong);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.28);
+  }
+
+  .op-rail__scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    border: 0;
+    background: rgba(0, 0, 0, 0.35);
+    cursor: pointer;
   }
 
   .op-rail__floor {
-    padding: 0 8px 12px;
-    position: relative;
-  }
-
-  .op-floor-collapsed {
-    justify-content: center;
-    padding: 8px;
-  }
-
-  .op-floor-name,
-  .op-floor-switch {
-    display: none;
-  }
-
-  .op-floor-list {
-    position: absolute;
-    top: 0;
-    left: calc(100% + 8px);
-    z-index: 30;
-    width: 220px;
-    padding: 6px;
-    border: 1px solid var(--op-line-strong);
-    border-radius: var(--op-radius-sm);
-    background: var(--op-panel);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+    padding: 12px max(16px, env(safe-area-inset-left, 0px)) 8px;
   }
 
   .op-floor-option {
-    padding: 9px 10px;
+    min-height: 52px;
+    padding: 10px 12px;
   }
 
-  .op-nav-item {
-    justify-content: center;
-    padding: 10px 0;
+  .op-rail__building {
+    order: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px max(16px, env(safe-area-inset-left, 0px)) 10px;
+    border-top: 1px solid var(--op-line);
   }
 
-  .op-nav-label,
-  .op-nav-count {
+  .op-rail__building .op-eyebrow {
+    padding-top: 10px;
+  }
+
+  .op-rail__building .op-floor-option {
+    text-decoration: none;
+  }
+
+  .op-nav-item--building {
     display: none;
   }
 
   .op-rail__account {
-    padding: 12px 8px 14px;
-    justify-content: center;
+    padding: 12px max(16px, env(safe-area-inset-left, 0px)) 14px;
   }
 
-  .op-account-copy {
+  .op-logout {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* Abas do andar no rodape */
+  .op-rail__nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 35;
+    display: flex;
+    gap: 2px;
+    padding: 6px max(8px, env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px))
+      max(8px, env(safe-area-inset-left, 0px));
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: var(--op-panel);
+    border-top: 1px solid var(--op-line);
+    scrollbar-width: none;
+  }
+
+  .op-rail__nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .op-rail__nav .op-eyebrow {
+    display: none;
+  }
+
+  .op-nav-item {
+    flex: 1 1 0;
+    min-width: 64px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    min-height: 52px;
+    padding: 6px 4px;
+    margin: 0;
+    text-align: center;
+  }
+
+  .op-nav-icon {
+    width: 18px;
+    height: 18px;
+  }
+
+  .op-nav-label {
+    font-size: 10.5px;
+    line-height: 1.15;
+    white-space: nowrap;
+  }
+
+  .op-nav-count {
     display: none;
   }
 }

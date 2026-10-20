@@ -1131,7 +1131,7 @@ onBeforeUnmount(() => {
 .op-tabs {
   display: flex;
   gap: 6px;
-  padding: 0 34px;
+  padding: 0 var(--op-gutter, 34px);
   border-bottom: 1px solid var(--op-line);
 }
 
@@ -1159,7 +1159,7 @@ onBeforeUnmount(() => {
 .op-content {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 34px 40px;
+  padding: 24px var(--op-gutter, 34px) 40px;
   display: flex;
   flex-direction: column;
   gap: 20px;
