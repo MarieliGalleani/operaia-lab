@@ -15,9 +15,20 @@ export class HttpError extends Error {
   constructor(
     readonly status: number,
     readonly url: string,
+    /** Mensagem legivel que a API mandou (campo `message`), quando houver. */
+    readonly serverMessage?: string,
   ) {
-    super(`HTTP ${status} em ${url}`);
+    super(serverMessage ?? `HTTP ${status} em ${url}`);
     this.name = "HttpError";
+  }
+}
+
+async function readServerMessage(response: Response): Promise<string | undefined> {
+  try {
+    const body = (await response.clone().json()) as { message?: unknown };
+    return typeof body?.message === "string" && body.message.trim() ? body.message.trim() : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -51,7 +62,7 @@ async function handle<T>(
   notifyUnauthorized: boolean,
 ): Promise<T> {
   if (!response.ok) {
-    const error = new HttpError(response.status, response.url);
+    const error = new HttpError(response.status, response.url, await readServerMessage(response));
     if (response.status === 401 && notifyUnauthorized) {
       unauthorizedHandler?.({ status: 401, url: response.url });
     }

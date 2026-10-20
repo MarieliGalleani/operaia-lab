@@ -201,6 +201,39 @@ export async function interpretDemand(input: {
   };
 }
 
+/**
+ * Pode executar agora? (corrige o fluxo do 1º andar)
+ *
+ * Antes so READY (autonomia "Autonomo") ou aprovacao concedida passavam.
+ * Uma demanda de risco baixo/medio fica PLANNED e a tela deixa a usuaria
+ * escolher "Controlado" e clicar em "Executar plano" — esse clique E a
+ * confirmacao que o modo Controlado pede, mas a API devolvia 409.
+ */
+export function canExecuteDemand(input: {
+  readonly status: string;
+  readonly approved: boolean;
+  readonly autonomy: AutonomyLevel;
+  readonly risk: string | null;
+}): { ok: true } | { ok: false; message: string } {
+  if (input.status === "READY") return { ok: true };
+  if (input.status === "AWAITING_APPROVAL") {
+    return input.approved
+      ? { ok: true }
+      : { ok: false, message: "Esta demanda precisa da sua aprovação antes de executar. Veja em Aprovações." };
+  }
+  if (input.status === "PLANNED") {
+    if (input.risk === "CRITICAL" || input.risk === "HIGH") {
+      return { ok: false, message: "Risco alto: esta demanda precisa de aprovação antes de executar." };
+    }
+    if (input.autonomy === "CONTROLLED" || input.autonomy === "AUTONOMOUS") return { ok: true };
+    if (input.autonomy === "READ_PLAN") {
+      return { ok: false, message: "No modo Planejar o escritório só planeja. Escolha Controlado ou Autônomo para executar." };
+    }
+    return { ok: false, message: "Esse nível de autonomia pede aprovação antes de executar." };
+  }
+  return { ok: false, message: `Demanda não está pronta para execução (status: ${input.status}).` };
+}
+
 export async function executeDemand(
   deps: AutomationOfficeDeps,
   input: {
@@ -224,14 +257,15 @@ export async function executeDemand(
 
   assertOfficialWorkspace(demand.workspaceId);
 
-  const canExecute =
-    demand.status === "READY" ||
-    (demand.status === "AWAITING_APPROVAL" && demand.approvals.length > 0);
+  const verdict = canExecuteDemand({
+    status: demand.status,
+    approved: demand.approvals.length > 0,
+    autonomy: input.autonomy,
+    risk: demand.risk,
+  });
 
-  if (!canExecute) {
-    throw new ConflictError(
-      `Demanda não está pronta para execução (status: ${demand.status}).`,
-    );
+  if (!verdict.ok) {
+    throw new ConflictError(verdict.message);
   }
 
   // Fire-and-forget via mirror async (Opção A). Não usa OMS.run/runViaQueue.

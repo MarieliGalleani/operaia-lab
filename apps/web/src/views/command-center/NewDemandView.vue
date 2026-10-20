@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { HttpError } from "@/data/adapters/http-client";
 /** Fase 5 — O Mural do Escritório: migra pro sistema visual atual (--op-*). */
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -115,7 +116,10 @@ async function executePlan() {
     step.value = "result";
   } catch (err) {
     console.log("[new-demand] execute failed", err);
-    error.value = "Falha ao solicitar execução.";
+    error.value =
+      err instanceof HttpError && err.serverMessage
+        ? err.serverMessage
+        : "Não deu para iniciar a execução agora. Tente de novo em instantes.";
   } finally {
     executing.value = false;
   }
