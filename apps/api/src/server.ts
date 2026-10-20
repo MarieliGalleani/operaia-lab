@@ -45,6 +45,12 @@ async function start(): Promise<void> {
     }
   };
 
+  // Um erro solto (promessa sem tratamento) derrubava a API inteira — visto
+  // em 20/10 no andar Negocio. Registra e segue; o pedido que falhou ja
+  // respondeu 500 para quem chamou.
+  process.on("unhandledRejection", (reason) => {
+    app.log.error({ err: reason }, "promessa rejeitada sem tratamento (API segue no ar)");
+  });
   process.on("SIGINT", () => void shutdown("SIGINT"));
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
 }

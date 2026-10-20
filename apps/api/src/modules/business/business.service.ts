@@ -206,11 +206,13 @@ export interface BusinessDashboard extends BusinessAnalysis {
 }
 
 export async function getDashboard(now: Date = new Date()): Promise<BusinessDashboard> {
+  // Cada consulta dentro de uma funcao async: um erro sincrono numa delas
+  // vira rejeicao tratada pelo Promise.all, em vez de deixar as outras soltas.
   const [crm, sheet, importsCount, last] = await Promise.all([
     loadCrmSales(),
     loadSpreadsheetSales(),
-    prisma.businessImport.count(),
-    prisma.businessImport.findFirst({ orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
+    (async () => prisma.businessImport.count())(),
+    (async () => prisma.businessImport.findFirst({ orderBy: { createdAt: "desc" }, select: { createdAt: true } }))(),
   ]);
   const sales = [...crm.sales, ...sheet];
   return {
