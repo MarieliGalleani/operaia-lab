@@ -157,7 +157,7 @@ const slabs = computed<Slab[]>(() => {
   floors.push({
     code: PORTARIA.code,
     name: PORTARIA.name,
-    summary: "Sala do CEO, Finanças e Jurídico.",
+    summary: "Sala do CEO e Jurídico.",
     to: PORTARIA.homeRoute,
     officeTo: PORTARIA.officeRoute,
     people: tPeople,

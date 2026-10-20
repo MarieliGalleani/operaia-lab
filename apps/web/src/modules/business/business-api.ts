@@ -31,7 +31,9 @@ export interface BusinessKpis {
   readonly avgTicket: number;
   readonly revenueTrendPct: number | null;
   readonly last30Revenue: number;
-  readonly prev30Revenue: number;
+  readonly baselineRevenue: number;
+  /** AVG_90 = média dos 3 meses anteriores; PREV_30 = 30 dias anteriores. */
+  readonly trendBasis: "AVG_90" | "PREV_30" | null;
 }
 
 export interface MonthPoint {

@@ -72,10 +72,11 @@ function widthOf(value: number, max: number): string {
   return `${Math.max((value / max) * 100, 2)}%`;
 }
 
-function trendText(t: number | null): string {
-  if (t === null) return "sem 60 dias para comparar";
-  if (Math.abs(t) < 0.5) return "estável vs 30 dias antes";
-  return `${t > 0 ? "▲" : "▼"} ${pct(Math.abs(t), 0)} vs 30 dias antes`;
+function trendText(t: number | null, basis: "AVG_90" | "PREV_30" | null): string {
+  if (t === null || basis === null) return "precisa de 60 dias de vendas para comparar";
+  const ref = basis === "AVG_90" ? "média dos 3 meses antes" : "30 dias antes";
+  if (Math.abs(t) < 0.5) return `últimos 30 dias estáveis vs ${ref}`;
+  return `${t > 0 ? "▲" : "▼"} ${pct(Math.abs(t), 0)} nos últimos 30 dias vs ${ref}`;
 }
 
 const ICON: Record<BusinessInsight["category"], string> = { RISK: "!", PROBLEM: "✕", OPPORTUNITY: "↗" };
@@ -181,7 +182,7 @@ const ICON: Record<BusinessInsight["category"], string> = { RISK: "!", PROBLEM: 
             <p class="biz__kpi-label">Receita</p>
             <p class="biz__kpi-value">{{ brl(k.revenue) }}</p>
             <p class="biz__kpi-hint" :class="{ 'is-up': (k.revenueTrendPct ?? 0) > 0.5, 'is-down': (k.revenueTrendPct ?? 0) < -0.5 }">
-              {{ trendText(k.revenueTrendPct) }}
+              {{ trendText(k.revenueTrendPct, k.trendBasis) }}
             </p>
           </div>
           <div class="panel biz__kpi">
@@ -765,6 +766,7 @@ const ICON: Record<BusinessInsight["category"], string> = { RISK: "!", PROBLEM: 
 
 .biz__insight-title {
   font-weight: 600;
+  color: var(--text);
 }
 
 .biz__insight-action {

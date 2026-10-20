@@ -98,6 +98,24 @@ describe("analyzeSales", () => {
     expect(a.insights.find((i) => i.kind === "REVENUE_DROP")?.severity).toBe("CRITICAL");
   });
 
+  it("com 4+ meses compara com a média dos 3 meses anteriores (pega queda que já tinha começado)", () => {
+    const sales: SaleInput[] = [];
+    for (let d = 0; d < 150; d += 1) sales.push(sale(day(d), `C${d % 5}`, "X", d < 100 ? 300 : 150));
+    const a = analyzeSales(sales);
+    expect(a.kpis.trendBasis).toBe("AVG_90");
+    expect(a.kpis.last30Revenue).toBe(4500);
+    expect(a.kpis.baselineRevenue).toBe(8000);
+    expect(a.kpis.revenueTrendPct).toBeCloseTo(-43.75, 0);
+    const drop = a.insights.find((i) => i.kind === "REVENUE_DROP");
+    expect(drop?.severity).toBe("CRITICAL");
+    expect(drop?.detail).toMatch(/média dos 3 meses anteriores/);
+  });
+
+  it("textos usam vírgula decimal", () => {
+    const a = analyzeSales([sale("2026-01-10", "A", "X", 1000, 600), sale("2026-01-20", "B", "Y", 500, 250)]);
+    expect(a.summary).toMatch(/margem de 43,3%/);
+  });
+
   it("menos de 60 dias de dados: não compara períodos", () => {
     const a = analyzeSales([sale(day(0), "A", "X", 100), sale(day(20), "A", "X", 10)]);
     expect(a.kpis.revenueTrendPct).toBeNull();

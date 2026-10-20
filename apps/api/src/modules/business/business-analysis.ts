@@ -52,10 +52,15 @@ export interface BusinessKpis {
   readonly customersCount: number;
   readonly productsCount: number;
   readonly avgTicket: number;
-  /** Receita dos últimos 30 dias vs os 30 anteriores (%). null sem base de comparação. */
+  /**
+   * Receita dos últimos 30 dias vs a base de comparação (%). null sem base.
+   * Base = média dos 3 blocos de 30 dias anteriores (com 120+ dias de dados)
+   * ou os 30 dias anteriores (com 60 a 119 dias).
+   */
   readonly revenueTrendPct: number | null;
   readonly last30Revenue: number;
-  readonly prev30Revenue: number;
+  readonly baselineRevenue: number;
+  readonly trendBasis: "AVG_90" | "PREV_30" | null;
 }
 
 export interface MonthPoint {
@@ -128,6 +133,15 @@ function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+/** Número em português (vírgula decimal). */
+export function fmtNum(value: number, digits: number): string {
+  return value.toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+}
+
+function basisText(kpis: BusinessKpis): string {
+  return kpis.trendBasis === "AVG_90" ? "em relação à média dos 3 meses anteriores" : "em relação aos 30 dias anteriores";
+}
+
 export function formatBrl(value: number): string {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 }
@@ -183,7 +197,8 @@ const EMPTY_KPIS: BusinessKpis = {
   avgTicket: 0,
   revenueTrendPct: null,
   last30Revenue: 0,
-  prev30Revenue: 0,
+  baselineRevenue: 0,
+  trendBasis: null,
 };
 
 export function analyzeSales(sales: readonly SaleInput[]): BusinessAnalysis {
@@ -218,9 +233,19 @@ export function analyzeSales(sales: readonly SaleInput[]): BusinessAnalysis {
   const byProduct = groupBy(sales, (s) => s.product);
 
   const last30 = revenueBetween(sales, asOf - 29 * DAY_MS, asOf + DAY_MS);
-  const prev30 = revenueBetween(sales, asOf - 59 * DAY_MS, asOf - 29 * DAY_MS);
   const spanDays = (asOf - toDay(from)) / DAY_MS;
-  const revenueTrendPct = spanDays >= 59 ? pctChange(last30, prev30) : null;
+  // Comparar so com os 30 dias anteriores esconde uma queda que ja tinha
+  // acontecido antes deles; a media de 90 dias mostra o patamar de antes.
+  let trendBasis: BusinessKpis["trendBasis"] = null;
+  let baseline = 0;
+  if (spanDays >= 119) {
+    trendBasis = "AVG_90";
+    baseline = revenueBetween(sales, asOf - 119 * DAY_MS, asOf - 29 * DAY_MS) / 3;
+  } else if (spanDays >= 59) {
+    trendBasis = "PREV_30";
+    baseline = revenueBetween(sales, asOf - 59 * DAY_MS, asOf - 29 * DAY_MS);
+  }
+  const revenueTrendPct = trendBasis ? pctChange(last30, baseline) : null;
 
   const kpis: BusinessKpis = {
     revenue: round2(revenue),
@@ -233,7 +258,8 @@ export function analyzeSales(sales: readonly SaleInput[]): BusinessAnalysis {
     avgTicket: round2(revenue / sales.length),
     revenueTrendPct: revenueTrendPct === null ? null : round1(revenueTrendPct),
     last30Revenue: round2(last30),
-    prev30Revenue: round2(prev30),
+    baselineRevenue: round2(baseline),
+    trendBasis,
   };
 
   const topCustomers: RankedCustomer[] = [...byCustomer.entries()]
@@ -318,31 +344,31 @@ function revenueTrendInsights(kpis: BusinessKpis): BusinessInsight[] {
   const t = kpis.revenueTrendPct;
   if (t === null) return [];
   if (t <= -15) {
-    const lost = kpis.prev30Revenue - kpis.last30Revenue;
+    const lost = kpis.baselineRevenue - kpis.last30Revenue;
     return [
       {
         key: "revenue-drop",
         kind: "REVENUE_DROP",
         category: "RISK",
         severity: t <= -30 ? "CRITICAL" : "HIGH",
-        title: `Receita caiu ${Math.abs(t).toFixed(0)}% nos últimos 30 dias`,
-        detail: `Foram ${formatBrl(kpis.last30Revenue)} contra ${formatBrl(kpis.prev30Revenue)} nos 30 dias anteriores.`,
-        action: "Ver quais clientes pararam de comprar (abaixo) e falar primeiro com os maiores.",
+        title: `Receita caiu ${fmtNum(Math.abs(t), 0)}% nos últimos 30 dias`,
+        detail: `Foram ${formatBrl(kpis.last30Revenue)} contra ${formatBrl(kpis.baselineRevenue)} ${basisText(kpis)}.`,
+        action: "Ver em Maiores clientes quem está há mais dias sem comprar e falar primeiro com os maiores.",
         impactBrl: round2(lost),
         impactLabel: `${formatBrl(lost)} a menos em 30 dias`,
       },
     ];
   }
   if (t >= 20) {
-    const gained = kpis.last30Revenue - kpis.prev30Revenue;
+    const gained = kpis.last30Revenue - kpis.baselineRevenue;
     return [
       {
         key: "revenue-growth",
         kind: "REVENUE_GROWTH",
         category: "OPPORTUNITY",
         severity: "LOW",
-        title: `Receita subiu ${t.toFixed(0)}% nos últimos 30 dias`,
-        detail: `Foram ${formatBrl(kpis.last30Revenue)} contra ${formatBrl(kpis.prev30Revenue)} nos 30 dias anteriores.`,
+        title: `Receita subiu ${fmtNum(t, 0)}% nos últimos 30 dias`,
+        detail: `Foram ${formatBrl(kpis.last30Revenue)} contra ${formatBrl(kpis.baselineRevenue)} ${basisText(kpis)}.`,
         action: "Descobrir o que puxou o crescimento e repetir (cliente, produto ou canal).",
         impactBrl: round2(gained),
         impactLabel: `${formatBrl(gained)} a mais em 30 dias`,
@@ -407,7 +433,7 @@ function marginInsights(
         category: "PROBLEM",
         severity: "CRITICAL",
         title: `${name} é vendido com prejuízo`,
-        detail: `Margem de ${m.toFixed(1)}%: o custo é maior que o preço de venda.`,
+        detail: `Margem de ${fmtNum(m, 1)}%: o custo é maior que o preço de venda.`,
         action: "Revisar o preço ou o custo deste produto antes de vender mais.",
         impactBrl: round2(loss),
         impactLabel: `${formatBrl(loss)} de prejuízo no período`,
@@ -423,7 +449,7 @@ function marginInsights(
       category: "PROBLEM",
       severity: gap >= 15 ? "HIGH" : "MEDIUM",
       title: `${name} tem margem baixa`,
-      detail: `Margem de ${m.toFixed(1)}%, abaixo da média do negócio (${overallMargin.toFixed(1)}%). Representa ${((r / totalRevenue) * 100).toFixed(0)}% da receita.`,
+      detail: `Margem de ${fmtNum(m, 1)}%, abaixo da média do negócio (${fmtNum(overallMargin, 1)}%). Representa ${fmtNum((r / totalRevenue) * 100, 0)}% da receita.`,
       action: "Revisar preço, desconto ou custo de compra deste produto.",
       impactBrl: round2(lost),
       impactLabel: `${formatBrl(lost)} de margem deixada na mesa`,
@@ -441,7 +467,7 @@ function concentrationInsights(ranked: readonly RankedCustomer[]): BusinessInsig
       kind: "CONCENTRATION",
       category: "RISK",
       severity: top.sharePct >= 50 ? "HIGH" : "MEDIUM",
-      title: `${top.sharePct.toFixed(0)}% da receita vem de um cliente só`,
+      title: `${fmtNum(top.sharePct, 0)}% da receita vem de um cliente só`,
       detail: `${top.name} sozinho responde por ${formatBrl(top.revenue)}. Se ele sair, o caixa sente na hora.`,
       action: "Buscar novos clientes do mesmo perfil para diminuir a dependência.",
       impactBrl: top.revenue,
@@ -469,7 +495,7 @@ function growingCustomerInsights(
       category: "OPPORTUNITY",
       severity: "LOW",
       title: `${name} está comprando mais`,
-      detail: `Comprou ${change.toFixed(0)}% a mais nos últimos 90 dias (${formatBrl(recent)} contra ${formatBrl(before)}).`,
+      detail: `Comprou ${fmtNum(change, 0)}% a mais nos últimos 90 dias (${formatBrl(recent)} contra ${formatBrl(before)}).`,
       action: "Oferecer mais volume, um pacote ou outro produto enquanto ele está crescendo.",
       impactBrl: round2(upside),
       impactLabel: `≈ ${formatBrl(upside)} de potencial extra`,
@@ -508,14 +534,14 @@ function buildSummary(kpis: BusinessKpis, insights: readonly BusinessInsight[]):
   const parts: string[] = [];
   parts.push(
     `${formatBrl(kpis.revenue)} em ${kpis.salesCount} venda(s) para ${kpis.customersCount} cliente(s)` +
-      (kpis.marginPct !== null ? `, com margem de ${kpis.marginPct.toFixed(1)}%.` : "."),
+      (kpis.marginPct !== null ? `, com margem de ${fmtNum(kpis.marginPct, 1)}%.` : "."),
   );
   if (kpis.revenueTrendPct !== null) {
     const t = kpis.revenueTrendPct;
     parts.push(
       Math.abs(t) < 5
         ? "Receita estável nos últimos 30 dias."
-        : `Receita ${t > 0 ? "subiu" : "caiu"} ${Math.abs(t).toFixed(0)}% nos últimos 30 dias.`,
+        : `Receita dos últimos 30 dias ${t > 0 ? "subiu" : "caiu"} ${fmtNum(Math.abs(t), 0)}% ${basisText(kpis)}.`,
     );
   }
   const risks = insights.filter((i) => i.category !== "OPPORTUNITY").length;
