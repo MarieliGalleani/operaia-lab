@@ -96,9 +96,13 @@ export function createLLMStack(config: LLMStackConfig): LLMProvider {
       continue;
     }
     try {
+      // O LLM_MODEL e do provider primario (ex.: claude-sonnet-5-5). Passar
+      // esse nome para o Gemini fazia a reserva falhar tambem e tudo caia
+      // no deterministico. A reserva usa o modelo padrao dela.
       const created = createLLMProvider({
         ...config,
         provider: fallbackId,
+        model: fallbackId === config.provider ? config.model : undefined,
       });
       fallbacks.push(wrapProvider(created, policy, observer));
     } catch (error) {

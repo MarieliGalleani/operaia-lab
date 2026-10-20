@@ -1,4 +1,4 @@
-import { createLLMStack, type LLMProvider } from "@operaia/ai-core";
+import { createLLMStack, parseLLMProviderList, type LLMProvider } from "@operaia/ai-core";
 import {
   STORE_FLOW_CHANNELS,
   parseProductsCsv,
@@ -32,6 +32,8 @@ function getLlm(): LLMProvider {
     openaiApiKey: env.OPENAI_API_KEY,
     anthropicApiKey: env.ANTHROPIC_API_KEY,
     openRouterApiKey: env.OPENROUTER_API_KEY,
+    // Sem isso, Anthropic sem credito = todas as etapas em texto pronto.
+    fallbackProviders: parseLLMProviderList(env.LLM_FALLBACK_PROVIDERS),
     maxTokensClamp: env.LLM_MAX_TOKENS_CLAMP,
     enableConsoleObservability: env.LLM_OBSERVABILITY,
   });

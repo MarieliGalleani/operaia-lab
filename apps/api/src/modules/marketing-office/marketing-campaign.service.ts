@@ -1,4 +1,4 @@
-import { createLLMStack, type LLMProvider, type LLMStackConfig } from "@operaia/ai-core";
+import { createLLMStack, parseLLMProviderList, type LLMProvider, type LLMStackConfig } from "@operaia/ai-core";
 import { prisma } from "@operaia/database";
 import { env } from "../../config/env.js";
 import { resolveClientId, resolveNicheId } from "../crm/niche-client.service.js";
@@ -25,6 +25,8 @@ function getLlm(): LLMProvider {
     openaiApiKey: env.OPENAI_API_KEY,
     anthropicApiKey: env.ANTHROPIC_API_KEY,
     openRouterApiKey: env.OPENROUTER_API_KEY,
+    // Sem isso, Anthropic sem credito = todas as etapas em texto pronto.
+    fallbackProviders: parseLLMProviderList(env.LLM_FALLBACK_PROVIDERS),
     maxTokensClamp: env.LLM_MAX_TOKENS_CLAMP,
     enableConsoleObservability: env.LLM_OBSERVABILITY,
   };

@@ -20,8 +20,11 @@ const ceo = computed(() =>
   ),
 );
 
+// O laboratorio e o projeto da casa: com 17 projetos no catalogo, "o
+// primeiro ativo" virou o ds-onii (repositorio de design, sem fluxo).
 const featured = computed(
   () =>
+    projects.value.find((project) => project.id === "operaia-lab") ??
     projects.value.find((project) => project.status === "ACTIVE") ??
     projects.value[0],
 );
