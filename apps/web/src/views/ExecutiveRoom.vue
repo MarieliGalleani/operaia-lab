@@ -417,6 +417,8 @@ onMounted(async () => {
 
   .topbar__right {
     justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
   /* Celular: foco + indicadores quebram linha (antes 762px numa tela de 311px). */
