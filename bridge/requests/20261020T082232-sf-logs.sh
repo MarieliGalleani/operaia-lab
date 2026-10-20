@@ -1,0 +1,1 @@
+sudo docker logs --since 6m operaia-lab-api 2>&1 | grep -iE 'store-flow|OPTIONS|"statusCode":(4|5)|level":50|error' | grep -v GITHUB | sed -E 's/(sk-ant|AIza)[A-Za-z0-9_-]+/***/g' | cut -c1-400 | tail -15
