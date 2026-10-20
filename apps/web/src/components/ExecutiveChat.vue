@@ -267,6 +267,7 @@ async function send(text: string): Promise<void> {
 
 .chat__input input {
   flex: 1;
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 11px 14px;

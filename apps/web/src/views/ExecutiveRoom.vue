@@ -416,6 +416,17 @@ onMounted(async () => {
     justify-content: space-between;
   }
 
+  /* Celular: foco + indicadores quebram linha (antes 762px numa tela de 311px). */
+  .topbar__center,
+  .pulse {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .focus {
+    margin-right: 10px;
+  }
+
   .stage {
     grid-template-columns: minmax(0, 1fr);
     overflow: visible;
