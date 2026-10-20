@@ -1,0 +1,1 @@
+docker exec operaia-lab-api sh -c 'echo PROVIDER=$LLM_PROVIDER; echo MODEL=$LLM_MODEL; echo FALLBACKS=$LLM_FALLBACK_PROVIDERS; [ -n "$GEMINI_API_KEY" ] && echo GEMINI=set || echo GEMINI=missing; [ -n "$ANTHROPIC_API_KEY" ] && echo ANTHROPIC=set || echo ANTHROPIC=missing'
